@@ -13,13 +13,13 @@ using Xunit;
 
 namespace OilTrading.IntegrationTests.Controllers;
 
-public class FinancialReportControllerIntegrationTests : IClassFixture<OilTradingWebApplicationFactory>
+public class FinancialReportControllerIntegrationTests : IClassFixture<InMemoryWebApplicationFactory>
 {
-    private readonly OilTradingWebApplicationFactory _factory;
+    private readonly InMemoryWebApplicationFactory _factory;
     private readonly HttpClient _client;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public FinancialReportControllerIntegrationTests(OilTradingWebApplicationFactory factory)
+    public FinancialReportControllerIntegrationTests(InMemoryWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

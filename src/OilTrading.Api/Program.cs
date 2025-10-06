@@ -355,10 +355,23 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Handle command line arguments for database operations
-if (args.Length > 0)
+// Only handle specific database commands, not framework arguments like --environment
+if (args.Length > 0 && args.Any(arg => arg.StartsWith("--") && !arg.StartsWith("--environment") && !arg.StartsWith("--contentRoot") && !arg.StartsWith("--applicationName")))
 {
-    await HandleCommandLineArgumentsAsync(app, args);
-    return;
+    var dbCommands = args.Where(arg =>
+        arg.Equals("--initialize-database", StringComparison.OrdinalIgnoreCase) ||
+        arg.Equals("--validate-database", StringComparison.OrdinalIgnoreCase) ||
+        arg.Equals("--create-indexes", StringComparison.OrdinalIgnoreCase) ||
+        arg.Equals("--validate-config", StringComparison.OrdinalIgnoreCase) ||
+        arg.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+        arg.Equals("-h", StringComparison.OrdinalIgnoreCase)
+    ).ToArray();
+
+    if (dbCommands.Length > 0)
+    {
+        await HandleCommandLineArgumentsAsync(app, dbCommands);
+        return;
+    }
 }
 
 // Enhanced database initialization based on environment and connection string

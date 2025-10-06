@@ -11,12 +11,12 @@ using Xunit;
 
 namespace OilTrading.IntegrationTests.Controllers;
 
-public class ProductsControllerIntegrationTests : IClassFixture<OilTradingWebApplicationFactory>
+public class ProductsControllerIntegrationTests : IClassFixture<InMemoryWebApplicationFactory>
 {
-    private readonly OilTradingWebApplicationFactory _factory;
+    private readonly InMemoryWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
-    public ProductsControllerIntegrationTests(OilTradingWebApplicationFactory factory)
+    public ProductsControllerIntegrationTests(InMemoryWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

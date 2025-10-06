@@ -57,7 +57,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(purchaseContract);
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation>());
 
         // Mock inventory availability check
@@ -69,11 +69,11 @@ public class ContractInventoryServiceTests
         // Mock inventory reservation
         _mockInventoryService
             .Setup(s => s.ReserveInventoryAsync(It.IsAny<InventoryReservationRequest>()))
-            .ReturnsAsync(new InventoryOperationResult { IsSuccessful = true });
+            .ReturnsAsync(new InventoryReservationResult { IsSuccessful = true, ReservationId = Guid.NewGuid(), ReservedQuantity = quantity });
 
         _mockReservationRepository
-            .Setup(r => r.AddAsync(It.IsAny<InventoryReservation>()))
-            .Returns(Task.CompletedTask);
+            .Setup(r => r.AddAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((InventoryReservation r, CancellationToken ct) => r);
 
         _mockUnitOfWork
             .Setup(u => u.SaveChangesAsync(default))
@@ -106,7 +106,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(purchaseContract);
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation>());
 
         // Mock insufficient inventory
@@ -153,7 +153,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(purchaseContract);
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation> { existingReservation });
 
         // Act
@@ -202,12 +202,12 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(salesContract);
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation>());
 
         _mockReservationRepository
-            .Setup(r => r.AddAsync(It.IsAny<InventoryReservation>()))
-            .Returns(Task.CompletedTask);
+            .Setup(r => r.AddAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((InventoryReservation r, CancellationToken ct) => r);
 
         _mockUnitOfWork
             .Setup(u => u.SaveChangesAsync(default))
@@ -246,7 +246,7 @@ public class ContractInventoryServiceTests
             "System");
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation> { reservation });
 
         _mockInventoryService
@@ -254,7 +254,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(new InventoryOperationResult { IsSuccessful = true });
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -277,7 +277,7 @@ public class ContractInventoryServiceTests
         var contractId = Guid.NewGuid();
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation>());
 
         // Act
@@ -306,7 +306,7 @@ public class ContractInventoryServiceTests
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(29), "Reservation 2", "System");
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation> { reservation1, reservation2 });
 
         _mockInventoryService
@@ -314,7 +314,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(new InventoryOperationResult { IsSuccessful = true });
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -327,7 +327,7 @@ public class ContractInventoryServiceTests
         // Assert
         result.IsSuccessful.Should().BeTrue();
         result.ReservedQuantity!.Value.Should().Be(800m); // 500 + 300
-        _mockReservationRepository.Verify(r => r.UpdateAsync(It.IsAny<InventoryReservation>()), Times.Exactly(2));
+        _mockReservationRepository.Verify(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     #endregion
@@ -347,7 +347,7 @@ public class ContractInventoryServiceTests
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(29), "Test reservation", "System");
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation> { reservation });
 
         _mockInventoryService
@@ -355,7 +355,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(new InventoryOperationResult { IsSuccessful = true });
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -385,7 +385,7 @@ public class ContractInventoryServiceTests
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(29), "Test reservation", "System");
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation> { reservation });
 
         _mockInventoryService
@@ -393,7 +393,7 @@ public class ContractInventoryServiceTests
             .ReturnsAsync(new InventoryOperationResult { IsSuccessful = true });
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -422,7 +422,7 @@ public class ContractInventoryServiceTests
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(29), "Test reservation", "System");
 
         _mockReservationRepository
-            .Setup(r => r.GetByContractIdAsync(contractId))
+            .Setup(r => r.GetByContractIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation> { reservation });
 
         _mockUnitOfWork
@@ -527,17 +527,15 @@ public class ContractInventoryServiceTests
             Guid.NewGuid(), "Purchase", "BRENT", "ROTTERDAM",
             new Quantity(1000m, QuantityUnit.MT),
             DateTime.UtcNow.AddDays(-1), originalExpiryDate,
-            "Test reservation", "System")
-        {
-            Id = reservationId
-        };
+            "Test reservation", "System");
+        reservation.SetId(reservationId);
 
         _mockReservationRepository
-            .Setup(r => r.GetByIdAsync(reservationId))
+            .Setup(r => r.GetByIdAsync(reservationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(reservation);
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -560,7 +558,7 @@ public class ContractInventoryServiceTests
         var reservationId = Guid.NewGuid();
 
         _mockReservationRepository
-            .Setup(r => r.GetByIdAsync(reservationId))
+            .Setup(r => r.GetByIdAsync(reservationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((InventoryReservation?)null);
 
         // Act
@@ -586,17 +584,15 @@ public class ContractInventoryServiceTests
             Guid.NewGuid(), "Purchase", "BRENT", "ROTTERDAM",
             new Quantity(1000m, QuantityUnit.MT),
             DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(29),
-            "Test reservation", "System")
-        {
-            Id = reservationId
-        };
+            "Test reservation", "System");
+        reservation.SetId(reservationId);
 
         _mockReservationRepository
-            .Setup(r => r.GetByIdAsync(reservationId))
+            .Setup(r => r.GetByIdAsync(reservationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(reservation);
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -619,7 +615,7 @@ public class ContractInventoryServiceTests
         var reservationId = Guid.NewGuid();
 
         _mockReservationRepository
-            .Setup(r => r.GetByIdAsync(reservationId))
+            .Setup(r => r.GetByIdAsync(reservationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((InventoryReservation?)null);
 
         // Act
@@ -654,7 +650,7 @@ public class ContractInventoryServiceTests
         };
 
         _mockReservationRepository
-            .Setup(r => r.GetActiveReservationsAsync())
+            .Setup(r => r.GetActiveReservationsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(activeReservations);
 
         // Act
@@ -688,11 +684,11 @@ public class ContractInventoryServiceTests
         };
 
         _mockReservationRepository
-            .Setup(r => r.GetExpiredReservationsAsync())
+            .Setup(r => r.GetExpiredReservationsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expiredReservations);
 
         _mockReservationRepository
-            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>()))
+            .Setup(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         _mockUnitOfWork
@@ -706,7 +702,7 @@ public class ContractInventoryServiceTests
         result.IsSuccessful.Should().BeTrue();
         result.Metadata.Should().ContainKey("ProcessedReservations");
         result.Metadata.Should().ContainKey("TotalExpired");
-        _mockReservationRepository.Verify(r => r.UpdateAsync(It.IsAny<InventoryReservation>()), Times.Exactly(2));
+        _mockReservationRepository.Verify(r => r.UpdateAsync(It.IsAny<InventoryReservation>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         _mockUnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
 
@@ -715,7 +711,7 @@ public class ContractInventoryServiceTests
     {
         // Arrange
         _mockReservationRepository
-            .Setup(r => r.GetExpiredReservationsAsync())
+            .Setup(r => r.GetExpiredReservationsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<InventoryReservation>());
 
         // Act
@@ -741,7 +737,7 @@ public class ContractInventoryServiceTests
         var purchaseContract = CreatePurchaseContract(contractId, productCode, quantity);
 
         _mockPurchaseContractRepository
-            .Setup(r => r.GetByIdAsync(contractId))
+            .Setup(r => r.GetByIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(purchaseContract);
 
         var inventorySnapshot = CreateInventorySnapshot(productCode, availableQuantity: 2000m);
@@ -768,7 +764,7 @@ public class ContractInventoryServiceTests
         var purchaseContract = CreatePurchaseContract(contractId, productCode, quantity);
 
         _mockPurchaseContractRepository
-            .Setup(r => r.GetByIdAsync(contractId))
+            .Setup(r => r.GetByIdAsync(contractId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(purchaseContract);
 
         var inventorySnapshot = CreateInventorySnapshot(productCode, availableQuantity: 500m);
@@ -824,71 +820,77 @@ public class ContractInventoryServiceTests
     private PurchaseContract CreatePurchaseContract(Guid contractId, string productCode, Quantity quantity)
     {
         var traderId = Guid.NewGuid();
-        var supplierId = Guid.NewGuid();
+        var tradingPartnerId = Guid.NewGuid();
         var productId = Guid.NewGuid();
 
-        return new PurchaseContract(
-            contractNumber: new ContractNumber($"PC-{contractId.ToString()[..8]}"),
-            traderId: traderId,
-            supplierId: supplierId,
+        var contract = new PurchaseContract(
+            contractNumber: ContractNumber.Parse($"ITGR-2025-CARGO-B0001"),
+            contractType: ContractType.CARGO,
+            tradingPartnerId: tradingPartnerId,
             productId: productId,
-            contractQuantity: quantity,
-            contractPrice: Money.USD(75m),
-            deliveryStart: DateTime.UtcNow.AddMonths(1),
-            deliveryEnd: DateTime.UtcNow.AddMonths(2))
+            traderId: traderId,
+            contractQuantity: quantity);
+
+        contract.SetId(contractId);
+        contract.Activate();
+
+        // Set the Product navigation property using reflection
+        var productProperty = typeof(PurchaseContract).GetProperty("Product");
+        var product = new Product
         {
-            Id = contractId,
-            Status = ContractStatus.Active,
-            Product = new Product
-            {
-                Id = productId,
-                Code = productCode,
-                Name = productCode,
-                Category = ProductCategory.Crude
-            }
+            Code = productCode,
+            Name = productCode,
+            Type = ProductType.CrudeOil
         };
+        product.SetId(productId);
+        productProperty!.SetValue(contract, product);
+
+        return contract;
     }
 
     private SalesContract CreateSalesContract(Guid contractId, string productCode, Quantity quantity)
     {
         var traderId = Guid.NewGuid();
-        var buyerId = Guid.NewGuid();
+        var tradingPartnerId = Guid.NewGuid();
         var productId = Guid.NewGuid();
 
-        return new SalesContract(
-            contractNumber: new ContractNumber($"SC-{contractId.ToString()[..8]}"),
-            traderId: traderId,
-            buyerId: buyerId,
+        var contract = new SalesContract(
+            contractNumber: ContractNumber.Parse($"ITGR-2025-CARGO-B0002"),
+            contractType: ContractType.CARGO,
+            tradingPartnerId: tradingPartnerId,
             productId: productId,
-            contractQuantity: quantity,
-            contractPrice: Money.USD(80m),
-            deliveryStart: DateTime.UtcNow.AddMonths(1),
-            deliveryEnd: DateTime.UtcNow.AddMonths(2))
+            traderId: traderId,
+            contractQuantity: quantity);
+
+        contract.SetId(contractId);
+        contract.Activate();
+
+        // Set the Product navigation property using reflection
+        var productProperty = typeof(SalesContract).GetProperty("Product");
+        var product = new Product
         {
-            Id = contractId,
-            Status = ContractStatus.Active,
-            Product = new Product
-            {
-                Id = productId,
-                Code = productCode,
-                Name = productCode,
-                Category = ProductCategory.Crude
-            }
+            Code = productCode,
+            Name = productCode,
+            Type = ProductType.CrudeOil
         };
+        product.SetId(productId);
+        productProperty!.SetValue(contract, product);
+
+        return contract;
     }
 
-    private RealTimeInventorySnapshot CreateInventorySnapshot(string productCode, decimal availableQuantity)
+    private InventorySnapshot CreateInventorySnapshot(string productCode, decimal availableQuantity)
     {
         var productId = Guid.NewGuid();
-        return new RealTimeInventorySnapshot
+        return new InventorySnapshot
         {
-            SnapshotTime = DateTime.UtcNow,
-            Positions = new List<InventoryPosition>
+            Timestamp = DateTime.UtcNow,
+            Positions = new List<OilTrading.Application.Services.InventoryPosition>
             {
-                new InventoryPosition
+                new OilTrading.Application.Services.InventoryPosition
                 {
                     ProductId = productId,
-                    ProductCode = productCode,
+                    ProductName = productCode,
                     AvailableQuantity = new Quantity(availableQuantity, QuantityUnit.MT),
                     TotalQuantity = new Quantity(availableQuantity, QuantityUnit.MT),
                     ReservedQuantity = Quantity.Zero(QuantityUnit.MT)

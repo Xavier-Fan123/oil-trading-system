@@ -4,6 +4,7 @@ using Moq;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Services;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Entities.TimeSeries;
 using OilTrading.Core.Repositories;
 using Xunit;
 
@@ -503,7 +504,7 @@ public class RiskCalculationServiceTests
     {
         // Arrange
         _mockPaperContractRepository
-            .Setup(r => r.GetOpenPositionsAsync())
+            .Setup(r => r.GetOpenPositionsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<PaperContract>());
 
         // Act
@@ -521,18 +522,18 @@ public class RiskCalculationServiceTests
     {
         // Arrange
         var positions = CreateSamplePositions(portfolioValue: 1000000m);
-        var marketPrices = CreateMarketDataPrices("Brent", 80m, count: 260);
+        var marketPrices = CreateMarketPrices("Brent", 80m, count: 260);
 
         _mockPaperContractRepository
-            .Setup(r => r.GetOpenPositionsAsync())
+            .Setup(r => r.GetOpenPositionsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(positions);
 
         _mockMarketDataRepository
-            .Setup(r => r.GetHistoricalPricesAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .Setup(r => r.GetHistoricalPricesAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(marketPrices);
 
         _mockMarketDataRepository
-            .Setup(r => r.GetLatestPriceAsync(It.IsAny<string>(), It.IsAny<DateTime>()))
+            .Setup(r => r.GetLatestPriceAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(marketPrices.Last());
 
         // Act
@@ -576,20 +577,19 @@ public class RiskCalculationServiceTests
 
     private PaperContract CreatePaperContract(string productType, PositionType position, decimal quantity, decimal price)
     {
-        return new PaperContract
+        var contract = new PaperContract
         {
-            Id = Guid.NewGuid(),
             ProductType = productType,
             Position = position,
             Quantity = (int)quantity,
             LotSize = 1000m, // Standard: 1000 barrels per lot
             EntryPrice = price,
             CurrentPrice = price,
-            ContractDate = DateTime.UtcNow.AddDays(-30),
-            MaturityDate = DateTime.UtcNow.AddDays(30),
-            Status = ContractStatus.Active,
-            TraderId = Guid.NewGuid()
+            TradeDate = DateTime.UtcNow.AddDays(-30),
+            Status = PaperContractStatus.Open
         };
+        contract.SetId(Guid.NewGuid());
+        return contract;
     }
 
     private List<decimal> CreateNormalDistributionReturns(decimal mean, decimal stdDev, int count)
@@ -621,9 +621,9 @@ public class RiskCalculationServiceTests
         return result;
     }
 
-    private List<MarketData> CreateMarketDataPrices(string productType, decimal basePrice, int count)
+    private List<MarketPrice> CreateMarketPrices(string productCode, decimal basePrice, int count)
     {
-        var prices = new List<MarketData>();
+        var prices = new List<MarketPrice>();
         var random = new Random(42);
         var currentPrice = basePrice;
 
@@ -632,14 +632,18 @@ public class RiskCalculationServiceTests
             var dailyReturn = (decimal)(random.NextDouble() - 0.5) * 0.04m; // +/- 2% daily
             currentPrice *= (1 + dailyReturn);
 
-            prices.Add(new MarketData
+            var marketPrice = new MarketPrice
             {
-                Id = Guid.NewGuid(),
-                ProductType = productType,
+                ProductCode = productCode,
+                ProductName = productCode,
                 Price = currentPrice,
                 PriceDate = DateTime.UtcNow.AddDays(-count + i),
-                DataSource = "Test"
-            });
+                PriceType = MarketPriceType.Spot,
+                DataSource = "Test",
+                ImportedAt = DateTime.UtcNow
+            };
+            marketPrice.SetId(Guid.NewGuid());
+            prices.Add(marketPrice);
         }
 
         return prices;

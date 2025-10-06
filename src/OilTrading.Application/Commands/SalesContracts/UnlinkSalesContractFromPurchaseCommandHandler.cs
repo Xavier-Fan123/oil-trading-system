@@ -24,8 +24,11 @@ public class UnlinkSalesContractFromPurchaseCommandHandler : IRequestHandler<Unl
         if (salesContract == null)
             throw new NotFoundException($"Sales contract with ID {request.SalesContractId} not found");
 
-        // Unlink the contract
-        salesContract.UnlinkFromPurchaseContract();
+        // Unlink the contract only if it's currently linked (idempotent operation)
+        if (salesContract.LinkedPurchaseContractId.HasValue)
+        {
+            salesContract.UnlinkFromPurchaseContract();
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Unit.Value;

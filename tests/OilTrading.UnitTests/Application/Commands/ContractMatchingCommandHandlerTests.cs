@@ -299,8 +299,7 @@ public class ContractMatchingCommandHandlerTests
         var purchaseContractId = Guid.NewGuid();
         var salesContractId = Guid.NewGuid();
 
-        var purchaseContract = CreatePurchaseContract(purchaseContractId, productId, quantity: 10000m);
-        purchaseContract.Status = ContractStatus.Draft; // Not active
+        var purchaseContract = CreatePurchaseContract(purchaseContractId, productId, quantity: 10000m, activate: false);
 
         var salesContract = CreateSalesContract(salesContractId, productId, quantity: 5000m);
 
@@ -549,48 +548,81 @@ public class ContractMatchingCommandHandlerTests
         Guid id,
         Guid productId,
         decimal quantity,
-        QuantityUnit unit = QuantityUnit.MT)
+        QuantityUnit unit = QuantityUnit.MT,
+        bool activate = true)
     {
         var traderId = Guid.NewGuid();
-        var supplierId = Guid.NewGuid();
+        var tradingPartnerId = Guid.NewGuid();
 
-        return new PurchaseContract(
-            contractNumber: new ContractNumber($"PC-{id.ToString()[..8]}"),
-            traderId: traderId,
-            supplierId: supplierId,
+        // Generate a random 4-digit serial number from the ID
+        var serialNumber = Math.Abs(id.GetHashCode() % 9999) + 1;
+
+        var contract = new PurchaseContract(
+            contractNumber: ContractNumber.Parse($"ITGR-2025-CARGO-B{serialNumber:D4}"),
+            contractType: ContractType.CARGO,
+            tradingPartnerId: tradingPartnerId,
             productId: productId,
-            contractQuantity: new Quantity(quantity, unit),
-            contractPrice: Money.USD(75m),
-            deliveryStart: DateTime.UtcNow.AddMonths(1),
-            deliveryEnd: DateTime.UtcNow.AddMonths(2))
+            traderId: traderId,
+            contractQuantity: new Quantity(quantity, unit));
+
+        contract.SetId(id);
+
+        if (activate)
         {
-            Id = id,
-            Status = ContractStatus.Active
-        };
+            // Set required fields for activation
+            var priceFormula = PriceFormula.Fixed(75m, "USD");
+            var contractValue = Money.Dollar(75m * quantity);
+            contract.UpdatePricing(priceFormula, contractValue);
+            contract.UpdateLaycan(DateTime.UtcNow.AddMonths(1), DateTime.UtcNow.AddMonths(2));
+            contract.UpdatePorts("Load Port", "Discharge Port");
+            contract.UpdatePaymentTerms("TT 30 days", 30);
+
+            contract.Activate();
+        }
+
+        return contract;
     }
 
     private SalesContract CreateSalesContract(
         Guid id,
         Guid productId,
         decimal quantity,
-        QuantityUnit unit = QuantityUnit.MT)
+        QuantityUnit unit = QuantityUnit.MT,
+        bool activate = false)
     {
         var traderId = Guid.NewGuid();
-        var buyerId = Guid.NewGuid();
+        var tradingPartnerId = Guid.NewGuid();
 
-        return new SalesContract(
-            contractNumber: new ContractNumber($"SC-{id.ToString()[..8]}"),
-            traderId: traderId,
-            buyerId: buyerId,
+        // Generate a random 4-digit serial number from the ID
+        var serialNumber = Math.Abs(id.GetHashCode() % 9999) + 1;
+
+        var contract = new SalesContract(
+            contractNumber: ContractNumber.Parse($"ITGR-2025-CARGO-B{serialNumber:D4}"),
+            contractType: ContractType.CARGO,
+            tradingPartnerId: tradingPartnerId,
             productId: productId,
-            contractQuantity: new Quantity(quantity, unit),
-            contractPrice: Money.USD(80m),
-            deliveryStart: DateTime.UtcNow.AddMonths(1),
-            deliveryEnd: DateTime.UtcNow.AddMonths(2))
+            traderId: traderId,
+            contractQuantity: new Quantity(quantity, unit));
+
+        contract.SetId(id);
+
+        if (activate)
         {
-            Id = id,
-            Status = ContractStatus.Active
-        };
+            // Set required fields for activation
+            var priceFormula = PriceFormula.Fixed(80m, "USD");
+            var contractValue = Money.Dollar(80m * quantity);
+            contract.UpdatePricing(priceFormula, contractValue);
+            contract.UpdateLaycan(DateTime.UtcNow.AddMonths(1), DateTime.UtcNow.AddMonths(2));
+            contract.UpdatePorts("Load Port", "Discharge Port");
+
+            // Use reflection to set PaymentTerms since there's no public method
+            var paymentTermsProperty = typeof(SalesContract).GetProperty("PaymentTerms");
+            paymentTermsProperty?.SetValue(contract, "TT 30 days");
+
+            contract.Activate();
+        }
+
+        return contract;
     }
 
     #endregion

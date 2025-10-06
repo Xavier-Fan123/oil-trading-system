@@ -28,22 +28,19 @@ public class RiskEngineHealthCheck : IHealthCheck
         try
         {
             // Create a simple test position
-            var testPositions = new List<PaperContract>
+            var testPosition = new PaperContract
             {
-                new PaperContract
-                {
-                    Id = Guid.NewGuid(),
-                    ProductType = "BRENT",
-                    Position = PositionType.Long,
-                    Quantity = 1,
-                    LotSize = 1000,
-                    EntryPrice = 80.00m,
-                    CurrentPrice = 82.00m,
-                    TradeDate = DateTime.UtcNow.AddDays(-10),
-                    MaturityDate = DateTime.UtcNow.AddDays(20),
-                    Status = PaperContractStatus.Active
-                }
+                ProductType = "BRENT",
+                Position = PositionType.Long,
+                Quantity = 1,
+                LotSize = 1000,
+                EntryPrice = 80.00m,
+                CurrentPrice = 82.00m,
+                TradeDate = DateTime.UtcNow.AddDays(-10),
+                Status = PaperContractStatus.Open
             };
+
+            var testPositions = new List<PaperContract> { testPosition };
 
             // Create simple test returns data
             var testReturns = new List<decimal> { 0.01m, -0.02m, 0.015m, -0.01m, 0.005m };
