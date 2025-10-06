@@ -20,9 +20,9 @@ public class MarketPrice : BaseEntity
 
 public enum MarketPriceType
 {
-    Spot = 1,              // 现货价格 (MOPS)
-    FuturesSettlement = 2, // 期货结算价
-    FuturesClose = 3,      // 期货收盘价
-    Index = 4,             // 指数价格
-    Spread = 5             // 价差
+    Spot = 1,              // Spot price (MOPS)
+    FuturesSettlement = 2, // Futures settlement price
+    FuturesClose = 3,      // Futures closing price
+    Index = 4,             // Index price
+    Spread = 5             // Spread
 }

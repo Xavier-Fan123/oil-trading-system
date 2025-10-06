@@ -21,14 +21,14 @@ public class PaperContract : BaseEntity
     public decimal? DailyPnL { get; set; }
     public DateTime? LastMTMDate { get; set; }
 
-    // Trade Group Association - 交易组关联
+    // Trade Group Association
     /// <summary>
-    /// 交易组ID - Trade Group ID for multi-leg strategies
+    /// Trade Group ID for multi-leg strategies
     /// </summary>
     public Guid? TradeGroupId { get; private set; }
 
     /// <summary>
-    /// 交易组导航属性 - Trade Group navigation property
+    /// Trade Group navigation property
     /// </summary>
     public TradeGroup? TradeGroup { get; private set; }
     
@@ -77,7 +77,7 @@ public class PaperContract : BaseEntity
     }
 
     /// <summary>
-    /// 分配到交易组 - Assign to trade group
+    /// Assign to trade group
     /// </summary>
     public void AssignToTradeGroup(Guid tradeGroupId, string updatedBy = "System")
     {
@@ -99,7 +99,7 @@ public class PaperContract : BaseEntity
     }
 
     /// <summary>
-    /// 从交易组移除 - Remove from trade group
+    /// Remove from trade group
     /// </summary>
     public void RemoveFromTradeGroup(string updatedBy = "System")
     {
@@ -115,7 +115,7 @@ public class PaperContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取未实现盈亏 - Get unrealized P&L
+    /// Get unrealized P&L
     /// </summary>
     public decimal GetUnrealizedPnL()
     {
@@ -128,7 +128,7 @@ public class PaperContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取合约总价值 - Get total contract value
+    /// Get total contract value
     /// </summary>
     public decimal GetTotalValue()
     {

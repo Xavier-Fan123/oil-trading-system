@@ -70,8 +70,31 @@ public class AuditLogService : IAuditLogService
 
     public async Task<IEnumerable<OperationAuditLog>> GetAuditLogsByEntityAsync(string entityType, string entityId)
     {
-        // TODO: Implement OperationAuditLogs DbSet and related classes
-        return new List<OperationAuditLog>(); // Temporary placeholder
+        // NOTE: This method requires entity type and entity ID to be stored in OperationAuditLog.AdditionalData
+        // The OperationAuditLog entity should store entity context in its AdditionalData dictionary:
+        // - Key "EntityType" for entity type (e.g., "PurchaseContract", "SalesContract")
+        // - Key "EntityId" for entity ID (Guid as string)
+        // This allows flexible tracking of operations across different entity types without rigid schema changes.
+
+        try
+        {
+            var query = _context.OperationAuditLogs
+                .Where(log =>
+                    log.HasDataKey("EntityType") &&
+                    log.GetDataValue<string>("EntityType") == entityType &&
+                    log.HasDataKey("EntityId") &&
+                    log.GetDataValue<string>("EntityId") == entityId);
+
+            return await query
+                .OrderByDescending(log => log.Timestamp)
+                .Take(500) // Limit results for performance
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get audit logs for entity {EntityType}:{EntityId}", entityType, entityId);
+            return new List<OperationAuditLog>(); // Return empty list on error
+        }
     }
 
     public async Task<IEnumerable<OperationAuditLog>> GetAuditLogsByUserAsync(string userId, DateTime? fromDate = null, DateTime? toDate = null)

@@ -26,17 +26,17 @@ public class PurchaseContract : BaseEntity
         TraderId = traderId;
         ContractQuantity = contractQuantity ?? throw new ArgumentNullException(nameof(contractQuantity));
         TonBarrelRatio = tonBarrelRatio;
-        // 设置价格基准物 - Set price benchmark for pricing reference
+        // Set price benchmark for pricing reference
         PriceBenchmarkId = priceBenchmarkId;
-        // 设置外部合同编号 - Set external contract number for official records
+        // Set external contract number for official records
         ExternalContractNumber = string.IsNullOrWhiteSpace(externalContractNumber) ? null : externalContractNumber.Trim();
         Status = ContractStatus.Draft;
         
         AddDomainEvent(new PurchaseContractCreatedEvent(Id, contractNumber.Value));
     }
 
-    public ContractNumber ContractNumber { get; private set; } = null!; // 系统内部合同编号 - System internal contract number
-    public string? ExternalContractNumber { get; private set; } // 外部/手动合同编号 - External/Manual contract number for official records
+    public ContractNumber ContractNumber { get; private set; } = null!; // System internal contract number
+    public string? ExternalContractNumber { get; private set; } // External/Manual contract number for official records
     public ContractType ContractType { get; private set; }
     public Guid TradingPartnerId { get; private set; }
     public Guid ProductId { get; private set; }
@@ -48,9 +48,9 @@ public class PurchaseContract : BaseEntity
     /// </summary>
     public Guid SupplierId => TradingPartnerId;
     
-    // Benchmark Information - 基准物信息，用于价格结算
-    // Purpose: 在油品交易中，产品价格通常与特定的市场基准物挂钩（如Brent、WTI等）
-    // 这个字段存储与合同关联的基准物ID，用于后续的价格计算和结算
+    // Benchmark Information for pricing settlement
+    // Purpose: In oil trading, product prices are typically linked to specific market benchmarks (such as Brent, WTI, etc.)
+    // This field stores the benchmark ID associated with the contract for subsequent price calculation and settlement
     public Guid? PriceBenchmarkId { get; private set; }
     
     // Quantity
@@ -88,14 +88,14 @@ public class PurchaseContract : BaseEntity
     public string? InspectionAgency { get; private set; }
     public string? Notes { get; private set; }
     
-    // Trade Group Association - 交易组关联
+    // Trade Group Association
     /// <summary>
-    /// 交易组ID - Trade Group ID for multi-leg strategies
+    /// Trade Group ID for multi-leg strategies
     /// </summary>
     public Guid? TradeGroupId { get; private set; }
 
     /// <summary>
-    /// 交易组导航属性 - Trade Group navigation property
+    /// Trade Group navigation property
     /// </summary>
     public TradeGroup? TradeGroup { get; private set; }
 
@@ -104,8 +104,8 @@ public class PurchaseContract : BaseEntity
     public Product Product { get; private set; } = null!;
     public User Trader { get; private set; } = null!;
     public PurchaseContract? BenchmarkContract { get; private set; }
-    // Price Benchmark Navigation - 基准物导航属性
-    // Purpose: 关联到PriceBenchmark实体，提供基准物的详细信息（名称、类型、货币等）
+    // Price Benchmark Navigation property
+    // Purpose: Links to PriceBenchmark entity, providing detailed benchmark information (name, type, currency, etc.)
     public PriceBenchmark? PriceBenchmark { get; private set; }
     public ICollection<SalesContract> LinkedSalesContracts { get; private set; } = new List<SalesContract>();
     public ICollection<ShippingOperation> ShippingOperations { get; private set; } = new List<ShippingOperation>();
@@ -171,8 +171,8 @@ public class PurchaseContract : BaseEntity
         BenchmarkContractId = benchmarkContractId;
     }
 
-    // Purpose: 设置价格基准物，用于确定合同的结算价格基准
-    // Logic: 只允许在草稿状态下设置，确保合同定价的一致性
+    // Purpose: Set price benchmark to determine contract settlement price reference
+    // Logic: Only allowed in Draft/PendingApproval status to ensure contract pricing consistency
     public void SetPriceBenchmark(Guid? priceBenchmarkId, string updatedBy = "")
     {
         if (Status != ContractStatus.Draft && Status != ContractStatus.PendingApproval)
@@ -185,14 +185,14 @@ public class PurchaseContract : BaseEntity
         }
     }
 
-    // Purpose: 设置外部合同编号，用于与交易对手的正式合同关联
-    // Logic: 这是用于对账和查询的主要标识符，必须是唯一的
+    // Purpose: Set external contract number to associate with counterparty's official contract
+    // Logic: This is the primary identifier for reconciliation and queries, must be unique
     public void SetExternalContractNumber(string externalContractNumber, string updatedBy = "")
     {
         if (string.IsNullOrWhiteSpace(externalContractNumber))
             throw new DomainException("External contract number cannot be empty");
 
-        // 允许在活跃状态下更新外部合同编号，因为正式合同号可能在后期确定
+        // Allow updating in Active status as official contract number may be determined later
         if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
             throw new DomainException($"Cannot set external contract number when contract is in {Status} status");
 
@@ -443,7 +443,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 分配到交易组 - Assign to trade group
+    /// Assign to trade group
     /// </summary>
     public void AssignToTradeGroup(Guid tradeGroupId, string updatedBy = "System")
     {
@@ -465,7 +465,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 从交易组移除 - Remove from trade group
+    /// Remove from trade group
     /// </summary>
     public void RemoveFromTradeGroup(string updatedBy = "System")
     {
@@ -481,7 +481,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取合同的所有标签
+    /// Get all tags for the contract
     /// </summary>
     public IEnumerable<Tag> GetTags()
     {
@@ -489,7 +489,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 检查合同是否有指定标签
+    /// Check if contract has the specified tag
     /// </summary>
     public bool HasTag(Guid tagId)
     {
@@ -497,7 +497,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 检查合同是否有指定名称的标签
+    /// Check if contract has a tag with the specified name
     /// </summary>
     public bool HasTag(string tagName)
     {
@@ -505,7 +505,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取指定分类的标签
+    /// Get tags by category
     /// </summary>
     public IEnumerable<Tag> GetTagsByCategory(ValueObjects.TagCategory category)
     {
@@ -513,7 +513,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取合同的风险等级标签
+    /// Get the risk level tag for the contract
     /// </summary>
     public Tag? GetRiskLevelTag()
     {
@@ -521,7 +521,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取合同的优先级标签
+    /// Get the priority tag for the contract
     /// </summary>
     public Tag? GetPriorityTag()
     {
@@ -529,7 +529,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 检查合同是否为高风险
+    /// Check if contract is high risk
     /// </summary>
     public bool IsHighRisk()
     {
@@ -537,7 +537,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 检查合同是否为紧急优先级
+    /// Check if contract has urgent priority
     /// </summary>
     public bool IsUrgent()
     {
@@ -545,7 +545,7 @@ public class PurchaseContract : BaseEntity
     }
 
     /// <summary>
-    /// 获取合同标签的显示文本
+    /// Get display text of contract tags
     /// </summary>
     public string GetTagsDisplayText()
     {

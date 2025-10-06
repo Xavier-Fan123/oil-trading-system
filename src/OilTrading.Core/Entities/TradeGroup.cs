@@ -5,7 +5,6 @@ using OilTrading.Core.ValueObjects;
 namespace OilTrading.Core.Entities;
 
 /// <summary>
-/// 交易组 - 用于管理复杂的多腿交易策略，如价差、对冲、套利等
 /// Trade Group - Manages complex multi-leg trading strategies like spreads, hedges, arbitrage
 /// </summary>
 public class TradeGroup : BaseEntity
@@ -32,65 +31,65 @@ public class TradeGroup : BaseEntity
     }
 
     /// <summary>
-    /// 交易组名称 - Trade group name
+    /// Trade group name
     /// </summary>
     public string GroupName { get; private set; } = string.Empty;
 
     /// <summary>
-    /// 策略类型 - Strategy type (Calendar Spread, Intercommodity Spread, etc.)
+    /// Strategy type (Calendar Spread, Intercommodity Spread, etc.)
     /// </summary>
     public StrategyType StrategyType { get; private set; }
 
     /// <summary>
-    /// 描述 - Optional description of the strategy
+    /// Optional description of the strategy
     /// </summary>
     public string? Description { get; private set; }
 
     /// <summary>
-    /// 交易组状态 - Trade group status
+    /// Trade group status
     /// </summary>
     public TradeGroupStatus Status { get; private set; }
 
     /// <summary>
-    /// 预期风险水平 - Expected risk level for this strategy
+    /// Expected risk level for this strategy
     /// </summary>
     public RiskLevel? ExpectedRiskLevel { get; private set; }
 
     /// <summary>
-    /// 最大允许损失 - Maximum allowed loss for this group (optional limit)
+    /// Maximum allowed loss for this group (optional limit)
     /// </summary>
     public decimal? MaxAllowedLoss { get; private set; }
 
     /// <summary>
-    /// 目标利润 - Target profit for this group
+    /// Target profit for this group
     /// </summary>
     public decimal? TargetProfit { get; private set; }
 
     // Navigation Properties
     /// <summary>
-    /// 关联的纸面合约 - Associated paper contracts
+    /// Associated paper contracts
     /// </summary>
     public ICollection<PaperContract> PaperContracts { get; private set; } = new List<PaperContract>();
 
     /// <summary>
-    /// 关联的采购合约 - Associated purchase contracts
+    /// Associated purchase contracts
     /// </summary>
     public ICollection<PurchaseContract> PurchaseContracts { get; private set; } = new List<PurchaseContract>();
 
     /// <summary>
-    /// 关联的销售合约 - Associated sales contracts
+    /// Associated sales contracts
     /// </summary>
     public ICollection<SalesContract> SalesContracts { get; private set; } = new List<SalesContract>();
 
     /// <summary>
-    /// 关联的标签 - Associated tags for strategy and risk classification
+    /// Associated tags for strategy and risk classification
     /// </summary>
     public ICollection<TradeGroupTag> TradeGroupTags { get; private set; } = new List<TradeGroupTag>();
 
     // Business Methods
 
     /// <summary>
-    /// 更新交易组信息 - Update trade group information
+    /// Update trade group information
     /// </summary>
     public void UpdateInfo(string groupName, string? description = null, string updatedBy = "System")
     {
@@ -106,7 +105,7 @@ public class TradeGroup : BaseEntity
     }
 
     /// <summary>
-    /// 设置风险参数 - Set risk parameters
+    /// Set risk parameters
     /// </summary>
     public void SetRiskParameters(
         RiskLevel expectedRiskLevel,
@@ -124,7 +123,7 @@ public class TradeGroup : BaseEntity
     }
 
     /// <summary>
-    /// 关闭交易组 - Close the trade group
+    /// Close the trade group
     /// </summary>
     public void Close(string closedBy = "System")
     {
@@ -146,7 +145,7 @@ public class TradeGroup : BaseEntity
     }
 
     /// <summary>
-    /// 获取组合净值 - Get the net P&L of all positions in this group
+    /// Get the net P&L of all positions in this group
     /// </summary>
     public decimal GetNetPnL()
     {
@@ -165,7 +164,7 @@ public class TradeGroup : BaseEntity
     }
 
     /// <summary>
-    /// 获取组合总价值 - Get the total value of all positions in this group
+    /// Get the total value of all positions in this group
     /// </summary>
     public decimal GetTotalValue()
     {

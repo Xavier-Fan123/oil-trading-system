@@ -1,74 +1,74 @@
 namespace OilTrading.Core.ValueObjects;
 
 /// <summary>
-/// 标签分类枚举 - Tag Category Enumeration
-/// Purpose: 定义油品交易系统中业务相关的标签分类，专注于交易策略和风险管理
+/// Tag Category Enumeration
+/// Purpose: Defines business-related tag categories in the oil trading system, focusing on trading strategies and risk management
 /// </summary>
 public enum TagCategory
 {
     /// <summary>
-    /// 风险等级 - Risk Level (Low, Medium, High, VeryHigh)
+    /// Risk Level (Low, Medium, High, VeryHigh)
     /// </summary>
     RiskLevel = 1,
 
     /// <summary>
-    /// 交易策略 - Trading Strategy (对应TradeGroup中的9种策略类型)
+    /// Trading Strategy (Corresponds to 9 strategy types in TradeGroup)
     /// </summary>
     TradingStrategy = 2,
 
     /// <summary>
-    /// 头寸管理 - Position Management (Long, Short, Hedge, Flat)
+    /// Position Management (Long, Short, Hedge, Flat)
     /// </summary>
     PositionManagement = 3,
 
     /// <summary>
-    /// 风险控制 - Risk Control (VaR监控, 止损, 限额管理)
+    /// Risk Control (VaR monitoring, stop loss, limit management)
     /// </summary>
     RiskControl = 4,
 
     /// <summary>
-    /// 合规标识 - Compliance Tags (KYC, 制裁检查, 监管要求)
+    /// Compliance Tags (KYC, sanctions check, regulatory requirements)
     /// </summary>
     Compliance = 5,
 
     /// <summary>
-    /// 市场条件 - Market Conditions (Backwardation, Contango, Volatile)
+    /// Market Conditions (Backwardation, Contango, Volatile)
     /// </summary>
     MarketCondition = 6,
 
     /// <summary>
-    /// 产品分级 - Product Classification (Crude, Refined, Gas, Quality Grade)
+    /// Product Classification (Crude, Refined, Gas, Quality Grade)
     /// </summary>
     ProductClass = 7,
 
     /// <summary>
-    /// 地理区域 - Geographic Region (Asia Pacific, Europe, Americas, etc.)
+    /// Geographic Region (Asia Pacific, Europe, Americas, etc.)
     /// </summary>
     Region = 8,
 
     /// <summary>
-    /// 业务优先级 - Business Priority (Urgent, High, Normal, Low)
+    /// Business Priority (Urgent, High, Normal, Low)
     /// </summary>
     Priority = 9,
 
     /// <summary>
-    /// 客户分类 - Customer Classification (VIP, Regular, New, Problem)
+    /// Customer Classification (VIP, Regular, New, Problem)
     /// </summary>
     Customer = 10,
 
     /// <summary>
-    /// 自定义分类 - Custom Category
+    /// Custom Category
     /// </summary>
     Custom = 99
 }
 
 /// <summary>
-/// 标签分类扩展方法
+/// Tag Category Extension Methods
 /// </summary>
 public static class TagCategoryExtensions
 {
     /// <summary>
-    /// 获取分类的显示名称
+    /// Get display name of the category
     /// </summary>
     public static string GetDisplayName(this TagCategory category)
     {
@@ -90,51 +90,51 @@ public static class TagCategoryExtensions
     }
 
     /// <summary>
-    /// 获取分类的描述
+    /// Get description of the category
     /// </summary>
     public static string GetDescription(this TagCategory category)
     {
         return category switch
         {
-            TagCategory.RiskLevel => "交易头寸风险等级分类",
-            TagCategory.TradingStrategy => "交易策略类型标识，对应TradeGroup策略",
-            TagCategory.PositionManagement => "头寸管理状态标识",
-            TagCategory.RiskControl => "风险控制措施和限额管理",
-            TagCategory.Compliance => "合规性检查和监管要求标识",
-            TagCategory.MarketCondition => "市场状况和价格结构标识",
-            TagCategory.ProductClass => "石油产品分类和质量等级",
-            TagCategory.Region => "地理区域和交易市场分类",
-            TagCategory.Priority => "业务处理优先级别",
-            TagCategory.Customer => "客户分类和信用等级",
-            TagCategory.Custom => "用户自定义分类",
-            _ => "未知分类"
+            TagCategory.RiskLevel => "Trading position risk level classification",
+            TagCategory.TradingStrategy => "Trading strategy type identifier, corresponds to TradeGroup strategies",
+            TagCategory.PositionManagement => "Position management status identifier",
+            TagCategory.RiskControl => "Risk control measures and limit management",
+            TagCategory.Compliance => "Compliance checks and regulatory requirement identifiers",
+            TagCategory.MarketCondition => "Market conditions and price structure identifiers",
+            TagCategory.ProductClass => "Petroleum product classification and quality grade",
+            TagCategory.Region => "Geographic region and trading market classification",
+            TagCategory.Priority => "Business processing priority level",
+            TagCategory.Customer => "Customer classification and credit rating",
+            TagCategory.Custom => "User-defined classification",
+            _ => "Unknown category"
         };
     }
 
     /// <summary>
-    /// 获取分类的默认颜色
+    /// Get default color of the category
     /// </summary>
     public static string GetDefaultColor(this TagCategory category)
     {
         return category switch
         {
-            TagCategory.RiskLevel => "#EF4444", // Red - 风险警示
-            TagCategory.TradingStrategy => "#8B5CF6", // Purple - 策略识别
-            TagCategory.PositionManagement => "#10B981", // Green - 头寸状态
-            TagCategory.RiskControl => "#DC2626", // Dark Red - 风控严格
-            TagCategory.Compliance => "#059669", // Dark Green - 合规安全
-            TagCategory.MarketCondition => "#0891B2", // Dark Cyan - 市场状态
-            TagCategory.ProductClass => "#EA580C", // Dark Orange - 产品分类
-            TagCategory.Region => "#2563EB", // Blue - 地理区域
-            TagCategory.Priority => "#D97706", // Amber - 优先级
-            TagCategory.Customer => "#DB2777", // Pink - 客户关系
-            TagCategory.Custom => "#6B7280", // Gray - 自定义
+            TagCategory.RiskLevel => "#EF4444", // Red - Risk warning
+            TagCategory.TradingStrategy => "#8B5CF6", // Purple - Strategy identification
+            TagCategory.PositionManagement => "#10B981", // Green - Position status
+            TagCategory.RiskControl => "#DC2626", // Dark Red - Strict risk control
+            TagCategory.Compliance => "#059669", // Dark Green - Compliance safety
+            TagCategory.MarketCondition => "#0891B2", // Dark Cyan - Market status
+            TagCategory.ProductClass => "#EA580C", // Dark Orange - Product classification
+            TagCategory.Region => "#2563EB", // Blue - Geographic region
+            TagCategory.Priority => "#D97706", // Amber - Priority
+            TagCategory.Customer => "#DB2777", // Pink - Customer relationship
+            TagCategory.Custom => "#6B7280", // Gray - Custom
             _ => "#6B7280"
         };
     }
 
     /// <summary>
-    /// 获取预定义的标签名称
+    /// Get predefined tag names for the category
     /// </summary>
     public static string[] GetPredefinedTags(this TagCategory category)
     {

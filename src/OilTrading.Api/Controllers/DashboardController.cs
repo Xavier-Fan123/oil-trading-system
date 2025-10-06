@@ -7,7 +7,8 @@ using OilTrading.Application.Services;
 namespace OilTrading.Api.Controllers;
 
 [ApiController]
-[Route("api/dashboard")]
+[Route("api/v{version:apiVersion}/dashboard")]
+[ApiVersion("2.0")]
 public class DashboardController : ControllerBase
 {
     private readonly IMediator _mediator;

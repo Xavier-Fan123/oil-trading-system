@@ -3,13 +3,13 @@ using OilTrading.Core.Entities;
 namespace OilTrading.Core.ValueObjects;
 
 /// <summary>
-/// 交易策略映射器 - Maps between Tag strategy names and TradeGroup StrategyType
-/// Purpose: 提供Tag系统中的策略标签与TradeGroup策略类型之间的双向映射
+/// Trading Strategy Mapper - Maps between Tag strategy names and TradeGroup StrategyType
+/// Purpose: Provides bidirectional mapping between strategy tags in Tag system and strategy types in TradeGroup
 /// </summary>
 public static class TradingStrategyMapper
 {
     /// <summary>
-    /// Tag策略名称到TradeGroup策略类型的映射
+    /// Tag strategy name to TradeGroup strategy type mapping
     /// </summary>
     private static readonly Dictionary<string, StrategyType> TagToStrategyMapping = new()
     {
@@ -25,72 +25,72 @@ public static class TradingStrategyMapper
     };
 
     /// <summary>
-    /// TradeGroup策略类型到Tag策略名称的反向映射
+    /// Reverse mapping from TradeGroup strategy type to Tag strategy name
     /// </summary>
-    private static readonly Dictionary<StrategyType, string> StrategyToTagMapping = 
+    private static readonly Dictionary<StrategyType, string> StrategyToTagMapping =
         TagToStrategyMapping.ToDictionary(kvp => kvp.Value, kvp => kvp.Key);
 
     /// <summary>
-    /// 根据Tag策略名称获取对应的TradeGroup策略类型
+    /// Get corresponding TradeGroup strategy type based on Tag strategy name
     /// </summary>
-    /// <param name="tagStrategyName">Tag中的策略名称</param>
-    /// <returns>对应的StrategyType，如果不匹配则返回null</returns>
+    /// <param name="tagStrategyName">Strategy name in Tag</param>
+    /// <returns>Corresponding StrategyType, returns null if no match</returns>
     public static StrategyType? GetStrategyTypeFromTag(string tagStrategyName)
     {
         if (string.IsNullOrWhiteSpace(tagStrategyName))
             return null;
 
-        return TagToStrategyMapping.TryGetValue(tagStrategyName.Trim(), out var strategyType) 
-            ? strategyType 
+        return TagToStrategyMapping.TryGetValue(tagStrategyName.Trim(), out var strategyType)
+            ? strategyType
             : null;
     }
 
     /// <summary>
-    /// 根据TradeGroup策略类型获取对应的Tag策略名称
+    /// Get corresponding Tag strategy name based on TradeGroup strategy type
     /// </summary>
-    /// <param name="strategyType">TradeGroup中的策略类型</param>
-    /// <returns>对应的Tag策略名称</returns>
+    /// <param name="strategyType">Strategy type in TradeGroup</param>
+    /// <returns>Corresponding Tag strategy name</returns>
     public static string GetTagNameFromStrategyType(StrategyType strategyType)
     {
-        return StrategyToTagMapping.TryGetValue(strategyType, out var tagName) 
-            ? tagName 
+        return StrategyToTagMapping.TryGetValue(strategyType, out var tagName)
+            ? tagName
             : strategyType.ToString();
     }
 
     /// <summary>
-    /// 检查指定的Tag名称是否为有效的交易策略标签
+    /// Check if the specified Tag name is a valid trading strategy tag
     /// </summary>
-    /// <param name="tagName">待检查的Tag名称</param>
-    /// <returns>是否为有效的交易策略标签</returns>
+    /// <param name="tagName">Tag name to check</param>
+    /// <returns>Whether it's a valid trading strategy tag</returns>
     public static bool IsValidTradingStrategyTag(string tagName)
     {
-        return !string.IsNullOrWhiteSpace(tagName) && 
+        return !string.IsNullOrWhiteSpace(tagName) &&
                TagToStrategyMapping.ContainsKey(tagName.Trim());
     }
 
     /// <summary>
-    /// 获取所有支持的交易策略标签名称
+    /// Get all supported trading strategy tag names
     /// </summary>
-    /// <returns>所有交易策略标签名称列表</returns>
+    /// <returns>List of all trading strategy tag names</returns>
     public static IEnumerable<string> GetAllTradingStrategyTagNames()
     {
         return TagToStrategyMapping.Keys;
     }
 
     /// <summary>
-    /// 获取所有支持的TradeGroup策略类型
+    /// Get all supported TradeGroup strategy types
     /// </summary>
-    /// <returns>所有策略类型列表</returns>
+    /// <returns>List of all strategy types</returns>
     public static IEnumerable<StrategyType> GetAllSupportedStrategyTypes()
     {
         return TagToStrategyMapping.Values;
     }
 
     /// <summary>
-    /// 根据策略类型获取相关的风险级别建议
+    /// Get suggested risk level based on strategy type
     /// </summary>
-    /// <param name="strategyType">策略类型</param>
-    /// <returns>建议的风险级别</returns>
+    /// <param name="strategyType">Strategy type</param>
+    /// <returns>Suggested risk level</returns>
     public static RiskLevel GetSuggestedRiskLevel(StrategyType strategyType)
     {
         return strategyType switch
@@ -110,21 +110,21 @@ public static class TradingStrategyMapper
     }
 
     /// <summary>
-    /// 根据策略类型获取建议的标签组合
+    /// Get suggested tag combination based on strategy type
     /// </summary>
-    /// <param name="strategyType">策略类型</param>
-    /// <returns>建议的标签名称列表</returns>
+    /// <param name="strategyType">Strategy type</param>
+    /// <returns>List of suggested tag names</returns>
     public static string[] GetSuggestedTagsForStrategy(StrategyType strategyType)
     {
         var strategyTag = GetTagNameFromStrategyType(strategyType);
         var riskLevel = GetSuggestedRiskLevel(strategyType);
-        
+
         var baseTags = new List<string> { strategyTag };
-        
-        // 添加风险级别标签
+
+        // Add risk level tag
         baseTags.Add($"{riskLevel} Risk");
-        
-        // 根据策略类型添加特定的标签
+
+        // Add specific tags based on strategy type
         switch (strategyType)
         {
             case StrategyType.Directional:

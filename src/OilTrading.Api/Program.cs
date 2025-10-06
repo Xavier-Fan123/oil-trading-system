@@ -30,6 +30,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +65,22 @@ builder.Services.AddControllers()
         // Preserve property names case for API consistency
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
+
+// Add API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(2, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+});
+
+builder.Services.AddVersionedApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 builder.Services.AddEndpointsApiExplorer();
 
 // Add Memory Cache - Required by many services
@@ -104,11 +122,24 @@ builder.Services.AddRateLimiter(options =>
 // Configure Swagger/OpenAPI
 builder.Services.AddSwaggerGen(c =>
 {
+    c.SwaggerDoc("v2.0", new OpenApiInfo
+    {
+        Title = "Oil Trading API",
+        Version = "v2.0",
+        Description = "Enterprise Oil Trading and Risk Management System API - Version 2.0 with API Versioning",
+        Contact = new OpenApiContact
+        {
+            Name = "Oil Trading Support",
+            Email = "support@oiltrading.com"
+        }
+    });
+
+    // Also document v1 for backward compatibility reference
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Oil Trading API",
         Version = "v1",
-        Description = "Enterprise Oil Trading and Risk Management System API",
+        Description = "Enterprise Oil Trading API - Legacy Version 1.0 (deprecated)",
         Contact = new OpenApiContact
         {
             Name = "Oil Trading Support",
@@ -153,20 +184,36 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add health checks
+// Add comprehensive health checks with dependency monitoring
 builder.Services.AddHealthChecks()
-    // .AddDbContextCheck<ApplicationDbContext>("database") // Commented out - missing extension
-    // .AddRedis(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379") // Commented out - missing extension
-    // .AddUrlGroup(new Uri("http://localhost:9090/"), "prometheus") // Commented out - missing extension
-    .AddCheck("self", () => HealthCheckResult.Healthy("API is healthy"))
+    // Self check - basic API availability
+    .AddCheck("self", () => HealthCheckResult.Healthy("API is healthy"), tags: new[] { "ready", "live" })
+
+    // Disk space check - critical infrastructure
     .AddCheck("disk-space", () =>
     {
         var drive = new DriveInfo(Directory.GetCurrentDirectory());
         var freeSpacePercentage = (double)drive.AvailableFreeSpace / drive.TotalSize * 100;
-        return freeSpacePercentage > 10 
+        return freeSpacePercentage > 10
             ? HealthCheckResult.Healthy($"Free disk space: {freeSpacePercentage:F1}%")
             : HealthCheckResult.Unhealthy($"Low disk space: {freeSpacePercentage:F1}%");
-    });
+    }, tags: new[] { "infrastructure" })
+
+    // Custom health checks with detailed diagnostics
+    .AddCheck<OilTrading.Api.HealthChecks.DatabaseHealthCheck>(
+        "database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: new[] { "ready", "db", "sql" })
+
+    .AddCheck<OilTrading.Api.HealthChecks.CacheHealthCheck>(
+        "redis-cache",
+        failureStatus: HealthStatus.Degraded, // Cache failure is degraded, not unhealthy
+        tags: new[] { "cache", "redis" })
+
+    .AddCheck<OilTrading.Api.HealthChecks.RiskEngineHealthCheck>(
+        "risk-engine",
+        failureStatus: HealthStatus.Degraded,
+        tags: new[] { "business", "risk" });
 
 // Add OpenTelemetry
 builder.Services.AddOpenTelemetry()
@@ -323,9 +370,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Oil Trading API v1");
+        c.SwaggerEndpoint("/swagger/v2.0/swagger.json", "Oil Trading API v2.0");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Oil Trading API v1 (Legacy)");
         c.RoutePrefix = "swagger";
         c.DisplayRequestDuration();
+        c.DefaultModelsExpandDepth(-1); // Hide schemas by default for cleaner UI
     });
 }
 
@@ -402,7 +451,32 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 // Kubernetes-style health checks
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
-    Predicate = check => check.Tags.Contains("ready") || check.Name == "database",
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                data = e.Value.Data
+            })
+        }, new JsonSerializerOptions { WriteIndented = true });
+
+        await context.Response.WriteAsync(result);
+    }
+}).WithTags("Health");
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live"),
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
@@ -411,15 +485,6 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
             status = report.Status.ToString(),
             timestamp = DateTime.UtcNow
         }));
-    }
-}).WithTags("Health");
-
-app.MapHealthChecks("/health/live", new HealthCheckOptions
-{
-    Predicate = check => check.Name == "self",
-    ResponseWriter = async (context, report) =>
-    {
-        await context.Response.WriteAsync("OK");
     }
 }).WithTags("Health");
 

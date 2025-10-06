@@ -4,8 +4,8 @@ using OilTrading.Core.ValueObjects;
 namespace OilTrading.Core.Entities;
 
 /// <summary>
-/// 标签实体 - Tag Entity
-/// Purpose: 为合同、交易和其他业务对象提供标签化分类管理功能
+/// Tag Entity
+/// Purpose: Provides tag-based classification management for contracts, trades, and other business objects
 /// </summary>
 public class Tag : BaseEntity
 {
@@ -24,62 +24,62 @@ public class Tag : BaseEntity
         IsActive = true;
         UsageCount = 0;
         
-        // 设置业务规则
+        // Set business rules
         SetBusinessRules();
     }
 
     /// <summary>
-    /// 标签名称 - Tag name (unique)
+    /// Tag name (unique)
     /// </summary>
     public string Name { get; private set; } = string.Empty;
 
     /// <summary>
-    /// 标签描述 - Tag description
+    /// Tag description
     /// </summary>
     public string? Description { get; private set; }
 
     /// <summary>
-    /// 标签颜色 - Tag color (hex code)
+    /// Tag color (hex code)
     /// </summary>
     public string Color { get; private set; } = "#6B7280";
 
     /// <summary>
-    /// 标签分类 - Tag category for grouping
+    /// Tag category for grouping
     /// </summary>
     public TagCategory Category { get; private set; }
 
     /// <summary>
-    /// 标签优先级 - Tag priority for sorting and display
+    /// Tag priority for sorting and display
     /// </summary>
     public int Priority { get; private set; }
 
     /// <summary>
-    /// 是否激活 - Is tag active
+    /// Is tag active
     /// </summary>
     public bool IsActive { get; private set; }
 
     /// <summary>
-    /// 使用次数 - Usage count for analytics
+    /// Usage count for analytics
     /// </summary>
     public int UsageCount { get; private set; }
 
     /// <summary>
-    /// 最后使用时间 - Last used date
+    /// Last used date
     /// </summary>
     public DateTime? LastUsedAt { get; private set; }
 
     /// <summary>
-    /// 互斥标签 - Tags that cannot coexist with this tag
+    /// Tags that cannot coexist with this tag
     /// </summary>
     public string? MutuallyExclusiveTags { get; private set; }
 
     /// <summary>
-    /// 最大使用限制 - Maximum usage limit per entity
+    /// Maximum usage limit per entity
     /// </summary>
     public int? MaxUsagePerEntity { get; private set; }
 
     /// <summary>
-    /// 允许的合同状态 - Contract statuses where this tag can be applied
+    /// Contract statuses where this tag can be applied
     /// </summary>
     public string? AllowedContractStatuses { get; private set; }
 
@@ -87,7 +87,7 @@ public class Tag : BaseEntity
     public ICollection<ContractTag> ContractTags { get; private set; } = new List<ContractTag>();
     
     /// <summary>
-    /// 关联的交易组标签 - Associated trade group tags (for strategy and risk management)
+    /// Associated trade group tags (for strategy and risk management)
     /// </summary>
     public ICollection<TradeGroupTag> TradeGroupTags { get; private set; } = new List<TradeGroupTag>();
 
@@ -142,7 +142,7 @@ public class Tag : BaseEntity
     }
 
     /// <summary>
-    /// 检查标签是否可以应用于指定的合同状态
+    /// Check if tag can be applied to specified contract status
     /// </summary>
     public bool CanBeAppliedToContractStatus(ContractStatus status)
     {
@@ -154,7 +154,7 @@ public class Tag : BaseEntity
     }
 
     /// <summary>
-    /// 检查是否与其他标签互斥
+    /// Check if this tag conflicts with other tags
     /// </summary>
     public bool IsConflictWith(IEnumerable<string> existingTagNames)
     {
@@ -167,7 +167,7 @@ public class Tag : BaseEntity
     }
 
     /// <summary>
-    /// 检查是否达到最大使用限制
+    /// Check if maximum usage limit has been reached
     /// </summary>
     public bool HasReachedMaxUsage(int currentUsageCount)
     {
@@ -175,7 +175,7 @@ public class Tag : BaseEntity
     }
 
     /// <summary>
-    /// 设置业务规则
+    /// Set business rules
     /// </summary>
     private void SetBusinessRules()
     {
@@ -187,12 +187,12 @@ public class Tag : BaseEntity
                 break;
             
             case TagCategory.TradingStrategy:
-                // 某些策略可能互斥，例如单向策略与价差策略
+                // Some strategies may be mutually exclusive, e.g., directional vs spread strategies
                 if (Name == "Directional")
                 {
                     MutuallyExclusiveTags = "Calendar Spread,Intercommodity Spread,Location Spread,Crack Spread";
                 }
-                MaxUsagePerEntity = 2; // 允许组合策略，如 Calendar Spread + Basis Hedge
+                MaxUsagePerEntity = 2; // Allow combined strategies, e.g., Calendar Spread + Basis Hedge
                 break;
             
             case TagCategory.PositionManagement:
@@ -201,7 +201,7 @@ public class Tag : BaseEntity
                 break;
             
             case TagCategory.RiskControl:
-                // 风控标签可以多个同时使用
+                // Risk control tags can be used simultaneously
                 MaxUsagePerEntity = 5;
                 break;
             
@@ -215,12 +215,12 @@ public class Tag : BaseEntity
                 {
                     AllowedContractStatuses = "Draft,PendingApproval";
                 }
-                MaxUsagePerEntity = 3; // 可以同时有多个合规标识
+                MaxUsagePerEntity = 3; // Can have multiple compliance identifiers simultaneously
                 break;
             
             case TagCategory.MarketCondition:
                 MutuallyExclusiveTags = "Backwardation,Contango";
-                MaxUsagePerEntity = 2; // 可以同时标记市场结构和波动性
+                MaxUsagePerEntity = 2; // Can mark both market structure and volatility simultaneously
                 break;
             
             case TagCategory.ProductClass:
@@ -231,7 +231,7 @@ public class Tag : BaseEntity
     }
 
     /// <summary>
-    /// 获取标签的显示文本
+    /// Get tag display text
     /// </summary>
     public string GetDisplayText()
     {
@@ -239,7 +239,7 @@ public class Tag : BaseEntity
     }
 
     /// <summary>
-    /// 验证标签完整性
+    /// Validate tag integrity
     /// </summary>
     public bool IsValid()
     {

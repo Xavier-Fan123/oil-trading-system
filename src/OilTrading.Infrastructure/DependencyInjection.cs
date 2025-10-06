@@ -256,9 +256,35 @@ public static class DependencyInjection
         services.AddScoped<ISettlementService, SettlementService>();
         services.AddScoped<IRealTimeRiskMonitoringService, RealTimeRiskMonitoringService>();
         services.AddScoped<IComplianceReportingService, ComplianceReportingService>();
-        
+
         // Configuration management services
-        // services.AddScoped<IConfigurationManagementService, ConfigurationManagementService>(); // TODO: Implement ConfigurationManagementService
+        // NOTE: IConfigurationManagementService is currently not implemented
+        // This service would provide runtime configuration management features including:
+        // - Dynamic system configuration updates without restart
+        // - Configuration version control and rollback
+        // - Environment-specific configuration management
+        // - Configuration validation and schema enforcement
+        // - Audit trail for configuration changes
+        //
+        // IMPLEMENTATION REQUIREMENTS:
+        // 1. Create interface: IConfigurationManagementService in OilTrading.Core.Services
+        // 2. Implement service: ConfigurationManagementService in OilTrading.Infrastructure.Services
+        // 3. Add database entity: SystemConfiguration with fields:
+        //    - ConfigurationKey (string, unique)
+        //    - ConfigurationValue (JSON string)
+        //    - Environment (Development/Staging/Production)
+        //    - IsActive (bool)
+        //    - Version (int)
+        //    - ChangedBy (string)
+        //    - ChangedAt (DateTime)
+        // 4. Add repository: IConfigurationRepository
+        // 5. Implement caching layer for configuration values (Redis)
+        // 6. Add API endpoints for configuration CRUD operations
+        // 7. Implement configuration change event notifications
+        //
+        // Once implemented, uncomment the line below:
+        // services.AddScoped<IConfigurationManagementService, ConfigurationManagementService>();
+
         services.AddScoped<IDataValidationService, DataValidationService>();
         
         // Database optimization services

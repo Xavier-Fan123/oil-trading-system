@@ -379,14 +379,14 @@ public enum ContractSettlementStatus
 
 public enum ChargeType
 {
-    Demurrage = 1,        // 滞期费
-    Despatch = 2,         // 速遣费
-    InspectionFee = 3,    // 检验费
-    PortCharges = 4,      // 港口费
-    FreightCost = 5,      // 运费
-    InsurancePremium = 6, // 保险费
-    BankCharges = 7,      // 银行手续费
-    StorageFee = 8,       // 仓储费
-    AgencyFee = 9,        // 代理费
-    Other = 99            // 其他费用
+    Demurrage = 1,        // Demurrage fee
+    Despatch = 2,         // Despatch fee
+    InspectionFee = 3,    // Inspection fee
+    PortCharges = 4,      // Port charges
+    FreightCost = 5,      // Freight cost
+    InsurancePremium = 6, // Insurance premium
+    BankCharges = 7,      // Bank charges
+    StorageFee = 8,       // Storage fee
+    AgencyFee = 9,        // Agency fee
+    Other = 99            // Other charges
 }
