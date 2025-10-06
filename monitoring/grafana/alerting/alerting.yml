@@ -1,0 +1,334 @@
+# Grafana Alerting Configuration
+apiVersion: 1
+
+# Contact points for notifications
+contactPoints:
+  - orgId: 1
+    name: email-alerts
+    receivers:
+      - uid: email-critical
+        type: email
+        settings:
+          addresses: "critical-alerts@oiltrading.com"
+          subject: "[CRITICAL] Oil Trading Alert: {{ .GroupLabels.alertname }}"
+          body: |
+            Alert: {{ .GroupLabels.alertname }}
+            Status: {{ .Status }}
+            
+            {{ range .Alerts }}
+            Summary: {{ .Annotations.summary }}
+            Description: {{ .Annotations.description }}
+            Labels: {{ range .Labels.SortedPairs }}{{ .Name }}={{ .Value }} {{ end }}
+            {{ end }}
+            
+            Dashboard: {{ .ExternalURL }}
+            
+      - uid: slack-critical
+        type: slack
+        settings:
+          url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+          channel: "#oil-trading-critical"
+          title: "🚨 Critical Alert: {{ .GroupLabels.alertname }}"
+          text: |
+            *Status:* {{ .Status }}
+            {{ range .Alerts }}
+            *Summary:* {{ .Annotations.summary }}
+            *Description:* {{ .Annotations.description }}
+            {{ end }}
+
+  - orgId: 1
+    name: business-alerts
+    receivers:
+      - uid: email-business
+        type: email
+        settings:
+          addresses: "trading-team@oiltrading.com"
+          subject: "[BUSINESS] Oil Trading Alert: {{ .GroupLabels.alertname }}"
+          
+      - uid: slack-business
+        type: slack
+        settings:
+          url: "https://hooks.slack.com/services/YOUR/BUSINESS/WEBHOOK"
+          channel: "#oil-trading-business"
+          title: "📊 Business Alert: {{ .GroupLabels.alertname }}"
+
+  - orgId: 1
+    name: system-alerts
+    receivers:
+      - uid: email-system
+        type: email
+        settings:
+          addresses: "devops@oiltrading.com"
+          subject: "[SYSTEM] Oil Trading Alert: {{ .GroupLabels.alertname }}"
+          
+      - uid: slack-system
+        type: slack
+        settings:
+          url: "https://hooks.slack.com/services/YOUR/SYSTEM/WEBHOOK"
+          channel: "#oil-trading-devops"
+          title: "🔧 System Alert: {{ .GroupLabels.alertname }}"
+
+# Notification policies
+policies:
+  - orgId: 1
+    receiver: email-alerts
+    group_by: ['alertname', 'grafana_folder']
+    group_wait: 10s
+    group_interval: 5m
+    repeat_interval: 12h
+    routes:
+      - receiver: business-alerts
+        matchers:
+          - category = business
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+        
+      - receiver: system-alerts
+        matchers:
+          - category = system
+        group_wait: 1m
+        group_interval: 10m
+        repeat_interval: 2h
+        
+      - receiver: email-alerts
+        matchers:
+          - severity = critical
+        group_wait: 0s
+        group_interval: 1m
+        repeat_interval: 30m
+
+# Alert rules
+groups:
+  - orgId: 1
+    name: oil-trading-alerts
+    folder: Oil Trading
+    interval: 1m
+    rules:
+      - uid: api-down
+        title: "API Service Down"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: up{job="oil-trading-api"}
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              refId: C
+              type: classic_condition
+        noDataState: NoData
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: "Oil Trading API is down"
+          description: "The Oil Trading API service is not responding"
+          runbook_url: "https://wiki.oiltrading.com/runbooks/api-down"
+        labels:
+          severity: critical
+          category: system
+          
+      - uid: high-response-time
+        title: "High API Response Time"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [2]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              refId: C
+              type: classic_condition
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "High API response time detected"
+          description: "95th percentile response time is above 2 seconds"
+          current_value: "{{ $values.A.Value }}s"
+          threshold: "2s"
+        labels:
+          severity: warning
+          category: performance
+          
+      - uid: position-exposure-high
+        title: "High Position Exposure"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: oil_trading_position_exposure_usd
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [100000000]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              refId: C
+              type: classic_condition
+        noDataState: NoData
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: "Position exposure above limit"
+          description: "Total position exposure exceeds $100M USD"
+          current_value: "${{ $values.A.Value }}"
+          threshold: "$100,000,000"
+        labels:
+          severity: critical
+          category: business
+          
+      - uid: contracts-expiring
+        title: "Contracts Expiring Soon"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: oil_trading_contracts_expiring_24h
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [20]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              refId: C
+              type: classic_condition
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "High number of contracts expiring"
+          description: "{{ $values.A.Value }} contracts are expiring within 24 hours"
+          action_required: "Review expiring contracts and ensure proper handling"
+        labels:
+          severity: warning
+          category: business
+          
+      - uid: database-slow
+        title: "Database Slow Queries"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, rate(oil_trading_db_query_duration_seconds_bucket[5m]))
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              refId: C
+              type: classic_condition
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Database queries are slow"
+          description: "95th percentile query time exceeds 1 second"
+          current_value: "{{ $values.A.Value }}s"
+          threshold: "1s"
+        labels:
+          severity: warning
+          category: performance

@@ -1,0 +1,190 @@
+---
+# Service Account for Oil Trading API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oil-trading-api
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: api
+  annotations:
+    description: "Service account for Oil Trading API pods"
+
+---
+# Service Account for Oil Trading Frontend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oil-trading-frontend
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+  annotations:
+    description: "Service account for Oil Trading Frontend pods"
+
+---
+# Cluster Role for Oil Trading API (minimal permissions)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oil-trading-api-role
+  labels:
+    app: oil-trading-system
+    component: api
+rules:
+  # Allow reading own pod information for health checks
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+    resourceNames: []
+  
+  # Allow reading config maps in the same namespace
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  
+  # Allow reading secrets in the same namespace
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  
+  # Allow creating events for logging/debugging
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+
+---
+# Cluster Role Binding for Oil Trading API
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oil-trading-api-binding
+  labels:
+    app: oil-trading-system
+    component: api
+subjects:
+  - kind: ServiceAccount
+    name: oil-trading-api
+    namespace: oil-trading
+roleRef:
+  kind: ClusterRole
+  name: oil-trading-api-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Role for Oil Trading Frontend (namespace-scoped)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oil-trading-frontend-role
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+rules:
+  # Allow reading config maps
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  
+  # Allow creating events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+
+---
+# Role Binding for Oil Trading Frontend
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oil-trading-frontend-binding
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+subjects:
+  - kind: ServiceAccount
+    name: oil-trading-frontend
+    namespace: oil-trading
+roleRef:
+  kind: Role
+  name: oil-trading-frontend-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Pod Security Policy (if PSP is enabled)
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: oil-trading-psp
+  labels:
+    app: oil-trading-system
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+    - ALL
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+  runAsUser:
+    rule: 'MustRunAsNonRoot'
+  runAsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1000
+        max: 65535
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1000
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1000
+        max: 65535
+  readOnlyRootFilesystem: true
+
+---
+# Cluster Role for PSP
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oil-trading-psp-user
+  labels:
+    app: oil-trading-system
+rules:
+  - apiGroups: ['policy']
+    resources: ['podsecuritypolicies']
+    verbs: ['use']
+    resourceNames:
+      - oil-trading-psp
+
+---
+# Cluster Role Binding for PSP
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oil-trading-psp-binding
+  labels:
+    app: oil-trading-system
+roleRef:
+  kind: ClusterRole
+  name: oil-trading-psp-user
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: oil-trading-api
+    namespace: oil-trading
+  - kind: ServiceAccount
+    name: oil-trading-frontend
+    namespace: oil-trading

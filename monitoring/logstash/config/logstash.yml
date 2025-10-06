@@ -1,0 +1,36 @@
+# Logstash Configuration for Oil Trading System
+http.host: "0.0.0.0"
+xpack.monitoring.enabled: false
+xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# Pipeline settings
+pipeline.workers: 2
+pipeline.batch.size: 500
+pipeline.batch.delay: 50
+
+# Path settings
+path.config: /usr/share/logstash/pipeline
+path.logs: /usr/share/logstash/logs
+
+# JVM heap size settings (set via environment variables)
+# -Xms1g
+# -Xmx1g
+
+# Performance tuning
+queue.type: persisted
+queue.page_capacity: 250mb
+queue.drain: true
+queue.checkpoint.writes: 1
+
+# Dead letter queue
+dead_letter_queue.enable: true
+dead_letter_queue.max_bytes: 1gb
+
+# Config reload
+config.reload.automatic: true
+config.reload.interval: 3s
+
+# Log level
+log.level: info
+slowlog.threshold.warn: 2s
+slowlog.threshold.info: 1s

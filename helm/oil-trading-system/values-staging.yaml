@@ -1,0 +1,152 @@
+# Staging values for oil-trading-system
+# This overrides the default values.yaml for staging environment
+
+# Global staging settings
+global:
+  environment: staging
+
+# Staging API settings
+api:
+  replicaCount: 2
+  
+  # Staging resource limits (reduced from production)
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  
+  # Staging auto-scaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  
+  # Staging environment variables
+  env:
+    ASPNETCORE_ENVIRONMENT: "Staging"
+    Features__EnableRealTimeRisk: "true"
+    Features__EnableAdvancedAnalytics: "false"
+    Logging__LogLevel__Default: "Debug"
+
+# Staging frontend settings
+frontend:
+  replicaCount: 1
+  
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: false
+
+# Staging PostgreSQL settings
+postgresql:
+  primary:
+    persistence:
+      size: 20Gi
+      storageClass: "standard"
+    
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# Staging Redis settings
+redis:
+  master:
+    persistence:
+      enabled: false
+    
+    resources:
+      limits:
+        cpu: 250m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# Staging ingress settings
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Oil Trading System - Staging Access Required"
+    nginx.ingress.kubernetes.io/rate-limit: "50"
+  
+  hosts:
+    - host: staging.oiltrading.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: staging-api.oiltrading.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+  
+  tls:
+    - secretName: oil-trading-staging-tls
+      hosts:
+        - staging.oiltrading.example.com
+        - staging-api.oiltrading.example.com
+
+# Staging monitoring (reduced scope)
+monitoring:
+  prometheus:
+    enabled: true
+    retention: "7d"
+    storageSize: "10Gi"
+  
+  grafana:
+    enabled: true
+    persistence:
+      enabled: false
+
+# External secrets disabled for staging (use regular secrets)
+externalSecrets:
+  enabled: false
+
+# Staging backup (less frequent)
+backup:
+  enabled: true
+  schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+  retention: "7d"
+
+# Staging security (less restrictive)
+security:
+  podSecurityStandards:
+    enforced: false
+  
+  networkPolicies:
+    enabled: true
+    denyAll: false
+
+# Staging resource quotas (smaller)
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    persistentvolumeclaims: "10"
+
+# Staging node selection
+nodeSelector:
+  node-type: "staging"
+
+# No special tolerations for staging
+tolerations: []

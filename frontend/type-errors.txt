@@ -1,0 +1,231 @@
+
+> oil-trading-dashboard@1.0.0 type-check
+> tsc --noEmit
+
+src/components/Dashboard/SettlementStatus.tsx(22,14): error TS6133: 'WarningIcon' is declared but its value is never read.
+src/components/Dashboard/TradingMetrics.tsx(20,11): error TS6133: 'data' is declared but its value is never read.
+src/components/Inventory/InventoryDashboard.tsx(21,10): error TS6133: 'AddIcon' is declared but its value is never read.
+src/components/Inventory/InventoryDashboard.tsx(103,28): error TS6133: 'event' is declared but its value is never read.
+src/components/Inventory/LocationModal.tsx(190,15): error TS2322: Type '{ id: string; locationCode: string; locationName: string; locationType: string; country: string; region: string; address: string; coordinates: string; operatorName: string; contactInfo: string; ... 8 more ...; isActive: boolean; }' is not assignable to type 'UpdateInventoryLocationRequest'.
+  Types of property 'locationType' are incompatible.
+    Type 'string' is not assignable to type 'InventoryLocationType'.
+src/components/Inventory/LocationModal.tsx(197,15): error TS2322: Type '{ locationCode: string; locationName: string; locationType: string; country: string; region: string; address: string; coordinates: string; operatorName: string; contactInfo: string; totalCapacity: number; ... 7 more ...; isActive: boolean; }' is not assignable to type 'CreateInventoryLocationRequest'.
+  Types of property 'locationType' are incompatible.
+    Type 'string' is not assignable to type 'InventoryLocationType'.
+src/components/Inventory/MovementModal.tsx(186,11): error TS2322: Type 'Date' is not assignable to type 'string'.
+src/components/Inventory/MovementModal.tsx(187,11): error TS2322: Type 'Date | undefined' is not assignable to type 'string | undefined'.
+  Type 'Date' is not assignable to type 'string'.
+src/components/Inventory/MovementModal.tsx(188,11): error TS2322: Type 'string' is not assignable to type 'InventoryMovementStatus'.
+src/components/Inventory/MovementModal.tsx(195,11): error TS2322: Type 'Date' is not assignable to type 'string'.
+src/components/Inventory/MovementModal.tsx(196,11): error TS2322: Type 'Date | undefined' is not assignable to type 'string | undefined'.
+  Type 'Date' is not assignable to type 'string'.
+src/components/Inventory/PositionModal.tsx(15,3): error TS6133: 'Autocomplete' is declared but its value is never read.
+src/components/Inventory/PositionModal.tsx(178,11): error TS2322: Type 'Date | undefined' is not assignable to type 'string | undefined'.
+  Type 'Date' is not assignable to type 'string'.
+src/components/Inventory/PositionModal.tsx(185,11): error TS2322: Type 'Date | undefined' is not assignable to type 'string | undefined'.
+  Type 'Date' is not assignable to type 'string'.
+src/components/MarketData/MarketDataHistory.tsx(4,3): error TS6133: 'Paper' is declared but its value is never read.
+src/components/MarketData/MarketDataHistory.tsx(39,1): error TS6133: 'MarketPriceDto' is declared but its value is never read.
+src/components/MarketData/MarketDataHistory.tsx(200,44): error TS2339: Property 'unit' does not exist on type 'ProductPriceDto'.
+src/components/MarketData/MarketDataHistory.tsx(236,40): error TS2551: Property 'exchange' does not exist on type 'ProductPriceDto'. Did you mean 'change'?
+src/components/MarketData/MarketDataHistory.tsx(239,40): error TS2339: Property 'priceType' does not exist on type 'ProductPriceDto'.
+src/components/MarketData/MarketDataTable.tsx(33,17): error TS6133: 'FilterIcon' is declared but its value is never read.
+src/components/MarketData/MarketDataTable.tsx(40,1): error TS6192: All imports in import declaration are unused.
+src/components/MarketData/MarketDataTable.tsx(87,29): error TS6133: 'event' is declared but its value is never read.
+src/components/MarketData/MarketDataTable.tsx(129,9): error TS6133: 'getPriceTypeColor' is declared but its value is never read.
+src/components/MarketData/MarketDataUpload.tsx(8,3): error TS6133: 'CardActions' is declared but its value is never read.
+src/components/MarketData/MarketDataUpload.tsx(20,3): error TS6133: 'ListItemText' is declared but its value is never read.
+src/components/MarketData/MarketDataUpload.tsx(33,14): error TS6133: 'WarningIcon' is declared but its value is never read.
+src/components/MarketData/MarketDataUpload.tsx(83,9): error TS6133: 'importSpotMutation' is declared but its value is never read.
+src/components/MarketData/MarketDataUpload.tsx(84,9): error TS6133: 'importFuturesMutation' is declared but its value is never read.
+src/components/MarketData/MarketDataUpload.tsx(416,50): error TS2339: Property 'isLoading' does not exist on type 'UseMutationResult<MarketDataUploadResultDto, Error, { file: File; fileType: "Spot" | "Futures"; overwriteExisting?: boolean | undefined; }, unknown>'.
+  Property 'isLoading' does not exist on type 'Override<MutationObserverIdleResult<MarketDataUploadResultDto, Error, { file: File; fileType: "Spot" | "Futures"; overwriteExisting?: boolean | undefined; }, unknown>, { ...; }> & { ...; }'.
+src/components/MarketData/MarketDataUpload.tsx(559,46): error TS2339: Property 'isLoading' does not exist on type 'UseMutationResult<void, Error, void, unknown>'.
+  Property 'isLoading' does not exist on type 'Override<MutationObserverIdleResult<void, Error, void, unknown>, { mutate: UseMutateFunction<void, Error, void, unknown>; }> & { ...; }'.
+src/components/MarketData/MarketDataUpload.tsx(593,49): error TS2322: Type '{ children: any; severity: "warning"; size: string; sx: { mt: number; }; }' is not assignable to type 'IntrinsicAttributes & AlertProps'.
+  Property 'size' does not exist on type 'IntrinsicAttributes & AlertProps'.
+src/components/MarketData/RealTimePriceDashboard.tsx(1,38): error TS6133: 'useMemo' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(10,3): error TS6133: 'ButtonGroup' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(19,3): error TS6133: 'Paper' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(33,3): error TS6133: 'Tooltip' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(34,3): error TS6133: 'LinearProgress' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(35,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(54,3): error TS6133: 'Error' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(55,3): error TS6133: 'Info' is declared but its value is never read.
+src/components/MarketData/RealTimePriceDashboard.tsx(174,22): error TS6133: 'setWatchlists' is declared but its value is never read.
+src/components/Positions/PositionCharts.tsx(64,54): error TS6133: 'entry' is declared but its value is never read.
+src/components/Positions/PositionCharts.tsx(124,26): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: Props): Bar', gave the following error.
+    Type '(entry: any) => "#00C49F" | "#FF8042"' is not assignable to type 'string'.
+  Overload 2 of 2, '(props: Props, context: any): Bar', gave the following error.
+    Type '(entry: any) => "#00C49F" | "#FF8042"' is not assignable to type 'string'.
+src/components/Positions/PositionFilters.tsx(77,29): error TS6133: 'key' is declared but its value is never read.
+src/components/Positions/PositionFilters.tsx(99,29): error TS6133: 'key' is declared but its value is never read.
+src/components/Positions/PositionsTable.tsx(15,3): error TS6133: 'Tooltip' is declared but its value is never read.
+src/components/Positions/PositionsTable.tsx(76,3): error TS6133: 'index' is declared but its value is never read.
+src/components/Positions/PositionsTable.tsx(213,29): error TS6133: 'event' is declared but its value is never read.
+src/components/Products/ProductsManagement.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/Products/ProductsManagement.tsx(41,3): error TS6133: 'UpdateProductRequest' is declared but its value is never read.
+src/components/PWA/PWAInstallPrompt.tsx(112,28): error TS2353: Object literal may only specify known properties, and 'direction' does not exist in type 'TransitionProps'.
+src/components/Risk/EnhancedRiskDashboard.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(19,3): error TS6133: 'Paper' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(35,3): error TS6133: 'Tooltip' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(39,3): error TS6133: 'Avatar' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(40,3): error TS6133: 'Badge' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(47,3): error TS6133: 'Error' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(51,3): error TS6133: 'Timeline' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(52,3): error TS6133: 'Notifications' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(55,3): error TS6133: 'Download' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(58,3): error TS6133: 'BarChart' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(59,3): error TS6133: 'DonutLarge' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(60,3): error TS6133: 'TableChart' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(66,3): error TS6133: 'AreaChart' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(79,3): error TS6133: 'RadarChart' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(80,3): error TS6133: 'PolarGrid' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(81,3): error TS6133: 'PolarAngleAxis' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(82,3): error TS6133: 'PolarRadiusAxis' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(83,3): error TS6133: 'Radar' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(226,10): error TS6133: 'selectedTimeframe' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(231,28): error TS6133: 'event' is declared but its value is never read.
+src/components/Risk/EnhancedRiskDashboard.tsx(356,38): error TS2339: Property 'portfolioVaR95' does not exist on type 'RiskCalculationResponse'.
+src/components/Risk/EnhancedRiskDashboard.tsx(372,38): error TS2339: Property 'portfolioVaR99' does not exist on type 'RiskCalculationResponse'.
+src/components/Risk/EnhancedRiskDashboard.tsx(388,38): error TS2339: Property 'expectedShortfall' does not exist on type 'RiskCalculationResponse'.
+src/components/Risk/RiskDashboard.tsx(9,3): error TS6133: 'Button' is declared but its value is never read.
+src/components/Risk/RiskDashboard.tsx(33,3): error TS6133: 'AreaChart' is declared but its value is never read.
+src/components/Risk/RiskDashboard.tsx(34,3): error TS6133: 'Area' is declared but its value is never read.
+src/components/Risk/RiskDashboard.tsx(123,67): error TS2345: Argument of type '1' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(131,59): error TS2345: Argument of type '1' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(170,20): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: Props): Bar', gave the following error.
+    Type '(entry: any) => "#4caf50" | "#f44336"' is not assignable to type 'string'.
+  Overload 2 of 2, '(props: Props, context: any): Bar', gave the following error.
+    Type '(entry: any) => "#4caf50" | "#f44336"' is not assignable to type 'string'.
+src/components/Risk/RiskDashboard.tsx(260,28): error TS6133: 'event' is declared but its value is never read.
+src/components/Risk/RiskDashboard.tsx(442,80): error TS2345: Argument of type '1' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(492,63): error TS2345: Argument of type '1' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(548,83): error TS2345: Argument of type '0' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(556,81): error TS2345: Argument of type '0' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(589,104): error TS2345: Argument of type '1' is not assignable to parameter of type '2'.
+src/components/Risk/RiskDashboard.tsx(609,104): error TS2345: Argument of type '1' is not assignable to parameter of type '2'.
+src/components/SalesContracts/SalesContractForm.tsx(19,3): error TS6133: 'Autocomplete' is declared but its value is never read.
+src/components/SalesContracts/SalesContractForm.tsx(31,3): error TS2459: Module '"@/types/salesContracts"' declares 'ContractStatus' locally, but it is not exported.
+src/components/SalesContracts/SalesContractForm.tsx(31,3): error TS6133: 'ContractStatus' is declared but its value is never read.
+src/components/SalesContracts/SalesContractForm.tsx(32,3): error TS2459: Module '"@/types/salesContracts"' declares 'DeliveryTerms' locally, but it is not exported.
+src/components/SalesContracts/SalesContractForm.tsx(33,3): error TS2459: Module '"@/types/salesContracts"' declares 'SettlementType' locally, but it is not exported.
+src/components/SalesContracts/SalesContractForm.tsx(34,3): error TS2459: Module '"@/types/salesContracts"' declares 'PricingType' locally, but it is not exported.
+src/components/SalesContracts/SalesContractForm.tsx(35,3): error TS2459: Module '"@/types/salesContracts"' declares 'QuantityUnit' locally, but it is not exported.
+src/components/SalesContracts/SalesContractForm.tsx(36,3): error TS2459: Module '"@/types/salesContracts"' declares 'ContractType' locally, but it is not exported.
+src/components/SalesContracts/SalesContractForm.tsx(38,3): error TS6133: 'UpdateSalesContractDto' is declared but its value is never read.
+src/components/SalesContracts/SalesContractForm.tsx(87,101): error TS2554: Expected 1 arguments, but got 2.
+src/components/SalesContracts/SalesContractForm.tsx(109,9): error TS2322: Type 'string' is not assignable to type 'Date'.
+src/components/SalesContracts/SalesContractForm.tsx(110,9): error TS2322: Type 'string' is not assignable to type 'Date'.
+src/components/SalesContracts/SalesContractForm.tsx(117,7): error TS2304: Cannot find name 'setLaycanStart'.
+src/components/SalesContracts/SalesContractForm.tsx(118,7): error TS2304: Cannot find name 'setLaycanEnd'.
+src/components/SalesContracts/SalesContractForm.tsx(134,20): error TS2304: Cannot find name 'laycanStart'.
+src/components/SalesContracts/SalesContractForm.tsx(135,18): error TS2304: Cannot find name 'laycanEnd'.
+src/components/SalesContracts/SalesContractForm.tsx(297,39): error TS2339: Property 'firstName' does not exist on type 'UserSummary'.
+src/components/SalesContracts/SalesContractForm.tsx(297,56): error TS2339: Property 'lastName' does not exist on type 'UserSummary'.
+src/components/SalesContracts/SalesContractForm.tsx(602,42): error TS2339: Property 'isLoading' does not exist on type 'UseMutationResult<string, Error, CreateSalesContractDto, unknown>'.
+  Property 'isLoading' does not exist on type 'Override<MutationObserverIdleResult<string, Error, CreateSalesContractDto, unknown>, { mutate: UseMutateFunction<string, Error, CreateSalesContractDto, unknown>; }> & { ...; }'.
+src/components/SalesContracts/SalesContractForm.tsx(602,70): error TS2339: Property 'isLoading' does not exist on type 'UseMutationResult<void, Error, { id: string; contract: UpdateSalesContractDto; }, unknown>'.
+  Property 'isLoading' does not exist on type 'Override<MutationObserverIdleResult<void, Error, { id: string; contract: UpdateSalesContractDto; }, unknown>, { mutate: UseMutateFunction<void, Error, { ...; }, unknown>; }> & { ...; }'.
+src/components/SalesContracts/SalesContractForm.tsx(604,33): error TS2339: Property 'isLoading' does not exist on type 'UseMutationResult<string, Error, CreateSalesContractDto, unknown>'.
+  Property 'isLoading' does not exist on type 'Override<MutationObserverIdleResult<string, Error, CreateSalesContractDto, unknown>, { mutate: UseMutateFunction<string, Error, CreateSalesContractDto, unknown>; }> & { ...; }'.
+src/components/SalesContracts/SalesContractForm.tsx(604,61): error TS2339: Property 'isLoading' does not exist on type 'UseMutationResult<void, Error, { id: string; contract: UpdateSalesContractDto; }, unknown>'.
+  Property 'isLoading' does not exist on type 'Override<MutationObserverIdleResult<void, Error, { id: string; contract: UpdateSalesContractDto; }, unknown>, { mutate: UseMutateFunction<void, Error, { ...; }, unknown>; }> & { ...; }'.
+src/components/SalesContracts/SalesContractsList.tsx(46,3): error TS2459: Module '"@/types/salesContracts"' declares 'ContractStatus' locally, but it is not exported.
+src/components/SalesContracts/SalesContractsList.tsx(48,3): error TS6133: 'SalesContractListDto' is declared but its value is never read.
+src/components/SalesContracts/SalesContractsList.tsx(101,50): error TS6133: 'refetch' is declared but its value is never read.
+src/components/SalesContracts/SalesContractsList.tsx(114,36): error TS2339: Property 'data' does not exist on type 'PagedResult<SalesContractListDto>'.
+src/components/SalesContracts/SalesContractsList.tsx(117,29): error TS6133: 'event' is declared but its value is never read.
+src/components/SalesContracts/SalesContractsList.tsx(333,29): error TS7006: Parameter 'contract' implicitly has an 'any' type.
+src/components/Settlements/ChargeManager.tsx(28,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/Settlements/QuantityCalculator.tsx(15,3): error TS6133: 'Button' is declared but its value is never read.
+src/components/Settlements/QuantityCalculator.tsx(21,16): error TS6133: 'CalculateIcon' is declared but its value is never read.
+src/components/Settlements/QuantityCalculator.tsx(24,14): error TS6133: 'RefreshIcon' is declared but its value is never read.
+src/components/Settlements/SettlementDetail.tsx(33,13): error TS6133: 'DeleteIcon' is declared but its value is never read.
+src/components/Settlements/SettlementDetail.tsx(34,14): error TS6133: 'ReceiptIcon' is declared but its value is never read.
+src/components/Settlements/SettlementDetail.tsx(35,15): error TS6133: 'DownloadIcon' is declared but its value is never read.
+src/components/Settlements/SettlementDetail.tsx(43,3): error TS6133: 'getChargeTypeColor' is declared but its value is never read.
+src/components/Settlements/SettlementDetail.tsx(44,3): error TS6133: 'SettlementChargeDto' is declared but its value is never read.
+src/components/Settlements/SettlementDetail.tsx(72,66): error TS2554: Expected 1 arguments, but got 2.
+src/components/Settlements/SettlementDetail.tsx(225,51): error TS2352: Conversion of type 'string' to type 'ContractSettlementStatus' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/components/Settlements/SettlementDetail.tsx(226,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & ChipOwnProps & CommonProps & Omit<any, "color" | ... 15 more ... | "skipFocusWhenDisabled">): Element | null', gave the following error.
+    Type '"large"' is not assignable to type 'OverridableStringUnion<"small" | "medium", ChipPropsSizeOverrides> | undefined'.
+  Overload 2 of 2, '(props: DefaultComponentProps<ChipTypeMap<{}, "div">>): Element | null', gave the following error.
+    Type '"large"' is not assignable to type 'OverridableStringUnion<"small" | "medium", ChipPropsSizeOverrides> | undefined'.
+src/components/Settlements/SettlementEntry.tsx(16,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/Settlements/SettlementEntry.tsx(25,16): error TS6133: 'CalculateIcon' is declared but its value is never read.
+src/components/Settlements/SettlementEntry.tsx(38,3): error TS6133: 'ContractSettlementDto' is declared but its value is never read.
+src/components/Settlements/SettlementEntry.tsx(114,72): error TS2554: Expected 1 arguments, but got 2.
+src/components/Settlements/SettlementEntry.tsx(194,36): error TS2339: Property 'tonBarrelRatio' does not exist on type 'PurchaseContractListDto'.
+src/components/Settlements/SettlementEntry.tsx(264,14): error TS18048: 'formData.documentNumber' is possibly 'undefined'.
+src/components/Settlements/SettlementEntry.tsx(302,25): error TS18048: 'formData.documentNumber' is possibly 'undefined'.
+src/components/Settlements/SettlementList.tsx(14,3): error TS6133: 'Paper' is declared but its value is never read.
+src/components/Settlements/SettlementList.tsx(22,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/Settlements/SettlementList.tsx(31,14): error TS6133: 'RefreshIcon' is declared but its value is never read.
+src/components/Settlements/SettlementList.tsx(404,55): error TS2352: Conversion of type 'string' to type 'ContractSettlementStatus' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+src/components/Settlements/SettlementList.tsx(429,35): error TS2339: Property 'canBeModified' does not exist on type 'ContractSettlementListDto'.
+src/components/Shipping/ShippingOperationDetails.tsx(14,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/Shipping/ShippingOperationDetails.tsx(15,3): error TS6133: 'Stack' is declared but its value is never read.
+src/components/Shipping/ShippingOperationForm.tsx(14,3): error TS6133: 'Typography' is declared but its value is never read.
+src/components/Shipping/ShippingOperationForm.tsx(15,3): error TS6133: 'Box' is declared but its value is never read.
+src/components/Shipping/ShippingOperationForm.tsx(16,3): error TS6133: 'Chip' is declared but its value is never read.
+src/components/Shipping/ShippingOperationsList.tsx(45,17): error TS6133: 'LiftingIcon' is declared but its value is never read.
+src/components/Shipping/ShippingOperationsList.tsx(100,29): error TS6133: 'event' is declared but its value is never read.
+src/components/Shipping/ShippingOperationsList.tsx(163,9): error TS6133: 'handleDelete' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(7,3): error TS6133: 'IconButton' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(13,3): error TS6133: 'FormControl' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(14,3): error TS6133: 'InputLabel' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(15,3): error TS6133: 'Select' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(16,3): error TS6133: 'MenuItem' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(20,3): error TS6133: 'CircularProgress' is declared but its value is never read.
+src/components/Tags/ContractTagSelector.tsx(62,44): error TS6133: 'refetchContractTags' is declared but its value is never read.
+src/components/Tags/TagManagement.tsx(45,3): error TS6133: 'TagUsageStatistics' is declared but its value is never read.
+src/components/Tags/TagManagement.tsx(46,3): error TS6133: 'PredefinedTagInfo' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupDetails.tsx(4,3): error TS6133: 'Paper' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupDetails.tsx(27,3): error TS6133: 'Tooltip' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupDetails.tsx(32,3): error TS6133: 'Divider' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupDetails.tsx(42,17): error TS6133: 'LocalOfferIcon' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupDetails.tsx(47,3): error TS6133: 'TradeGroupDetailsDto' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupDetails.tsx(185,46): error TS2304: Cannot find name 'TradeGroupStatus'.
+src/components/TradeGroups/TradeGroupManagement.tsx(161,9): error TS6133: 'getStrategyTypeFromString' is declared but its value is never read.
+src/components/TradeGroups/TradeGroupManagement.tsx(165,9): error TS6133: 'getRiskLevelFromString' is declared but its value is never read.
+src/components/Trading/FuturesSpotIntegration.tsx(42,21): error TS6133: 'AccountBalanceIcon' is declared but its value is never read.
+src/components/Trading/FuturesSpotIntegration.tsx(45,3): error TS2724: '"@mui/icons-material"' has no exported member named 'Unlink'. Did you mean 'Link'?
+src/components/Trading/FuturesSpotIntegration.tsx(45,13): error TS6133: 'UnlinkIcon' is declared but its value is never read.
+src/components/Trading/FuturesSpotIntegration.tsx(48,1): error TS6192: All imports in import declaration are unused.
+src/components/Trading/FuturesSpotIntegration.tsx(222,10): error TS6133: 'selectedPosition' is declared but its value is never read.
+src/components/Trading/FuturesSpotIntegration.tsx(222,28): error TS6133: 'setSelectedPosition' is declared but its value is never read.
+src/components/Trading/FuturesSpotIntegration.tsx(225,17): error TS6133: 'tradeGroups' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(33,14): error TS6133: 'WarningIcon' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(34,18): error TS6133: 'CheckCircleIcon' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(35,11): error TS6133: 'InfoIcon' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(50,3): error TS6133: 'BarChart' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(51,3): error TS6133: 'Bar' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(52,3): error TS6133: 'PieChart' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(53,3): error TS6133: 'Pie' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(54,3): error TS6133: 'Cell' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(60,3): error TS6133: 'FinancialRatio' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(97,3): error TS6133: 'onClose' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(211,28): error TS6133: 'event' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(342,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & SvgIconOwnProps & CommonProps & Omit<any, "color" | ... 10 more ... | "titleAccess">): Element | null', gave the following error.
+    Type '"success" | "error" | "warning" | "info" | "default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+      Type '"default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+  Overload 2 of 2, '(props: DefaultComponentProps<SvgIconTypeMap<{}, "svg">>): Element | null', gave the following error.
+    Type '"success" | "error" | "warning" | "info" | "default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+      Type '"default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+src/components/TradingPartners/TradingPartnerAnalysis.tsx(532,23): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & SvgIconOwnProps & CommonProps & Omit<any, "color" | ... 10 more ... | "titleAccess">): Element | null', gave the following error.
+    Type '"success" | "error" | "warning" | "default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+      Type '"default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+  Overload 2 of 2, '(props: DefaultComponentProps<SvgIconTypeMap<{}, "svg">>): Element | null', gave the following error.
+    Type '"success" | "error" | "warning" | "default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+      Type '"default"' is not assignable to type 'OverridableStringUnion<"primary" | "secondary" | "success" | "error" | "warning" | "info" | "disabled" | "action" | "inherit", SvgIconPropsColorOverrides> | undefined'.
+src/components/TradingPartners/TradingPartnerForm.tsx(30,3): error TS6133: 'GridColDef' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerForm.tsx(31,3): error TS6133: 'GridRowsProp' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerForm.tsx(33,3): error TS6133: 'GridRowId' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerForm.tsx(34,3): error TS6133: 'GridRowModel' is declared but its value is never read.
+src/components/TradingPartners/TradingPartnerForm.tsx(35,8): error TS2307: Cannot find module '@mui/x-data-grid' or its corresponding type declarations.

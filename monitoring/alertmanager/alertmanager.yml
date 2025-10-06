@@ -1,0 +1,225 @@
+# AlertManager Configuration for Oil Trading System
+global:
+  # SMTP configuration
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@oiltrading.com'
+  smtp_auth_username: 'alerts@oiltrading.com'
+  smtp_auth_password: 'your_email_password'
+  smtp_require_tls: true
+  
+  # Slack configuration
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  
+  # Global labels
+  resolve_timeout: 5m
+
+# Templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route configuration
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+  
+  routes:
+    # Critical alerts (immediate notification)
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+      
+    # Business alerts
+    - match:
+        category: business
+      receiver: 'business-alerts'
+      group_interval: 5m
+      repeat_interval: 30m
+      
+    # System alerts
+    - match:
+        category: system
+      receiver: 'system-alerts'
+      group_interval: 30s
+      repeat_interval: 15m
+      
+    # Performance alerts
+    - match:
+        category: performance
+      receiver: 'performance-alerts'
+      group_interval: 1m
+      repeat_interval: 10m
+
+# Inhibit rules
+inhibit_rules:
+  # Inhibit any warning-level alert if there's a critical alert
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+    
+  # Inhibit API down alerts if the entire system is down
+  - source_match:
+      alertname: 'SystemDown'
+    target_match_re:
+      alertname: '.*API.*'
+    equal: ['cluster']
+
+# Receivers
+receivers:
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'critical-alerts@oiltrading.com'
+        subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }} in {{ .GroupLabels.environment }}'
+        body: |
+          Alert: {{ .GroupLabels.alertname }}
+          Environment: {{ .GroupLabels.environment }}
+          Severity: {{ .GroupLabels.severity }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Labels: {{ range .Labels.SortedPairs }}{{ .Name }}={{ .Value }}{{ end }}
+          {{ end }}
+        headers:
+          Priority: 'high'
+          
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/CRITICAL/WEBHOOK'
+        channel: '#oil-trading-critical'
+        title: '🚨 Critical Alert in {{ .GroupLabels.environment }}'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .GroupLabels.severity }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+        
+    pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_INTEGRATION_KEY'
+        description: '{{ .GroupLabels.alertname }}: {{ .GroupLabels.instance }}'
+        client: 'Oil Trading AlertManager'
+        client_url: 'http://alertmanager:9093'
+        details:
+          environment: '{{ .GroupLabels.environment }}'
+          alertname: '{{ .GroupLabels.alertname }}'
+          instance: '{{ .GroupLabels.instance }}'
+
+  - name: 'business-alerts'
+    email_configs:
+      - to: 'trading-team@oiltrading.com'
+        subject: '📊 Business Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Business Alert Triggered
+          
+          Alert: {{ .GroupLabels.alertname }}
+          Environment: {{ .GroupLabels.environment }}
+          Time: {{ .CommonAnnotations.timestamp }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          
+          Business Context:
+          {{ if .Labels.contract_type }}Contract Type: {{ .Labels.contract_type }}{{ end }}
+          {{ if .Labels.trading_partner }}Trading Partner: {{ .Labels.trading_partner }}{{ end }}
+          {{ if .Labels.product_type }}Product Type: {{ .Labels.product_type }}{{ end }}
+          {{ end }}
+          
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/BUSINESS/WEBHOOK'
+        channel: '#oil-trading-business'
+        title: '📊 Business Alert'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'system-alerts'
+    email_configs:
+      - to: 'devops@oiltrading.com'
+        subject: '🔧 System Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          System Alert
+          
+          Alert: {{ .GroupLabels.alertname }}
+          Environment: {{ .GroupLabels.environment }}
+          Instance: {{ .GroupLabels.instance }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+          
+          Runbook: {{ .CommonAnnotations.runbook_url }}
+          
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SYSTEM/WEBHOOK'
+        channel: '#oil-trading-devops'
+        title: '🔧 System Alert'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Instance:* {{ .GroupLabels.instance }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+
+  - name: 'performance-alerts'
+    email_configs:
+      - to: 'performance-team@oiltrading.com'
+        subject: '⚡ Performance Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          Performance Alert
+          
+          Alert: {{ .GroupLabels.alertname }}
+          Environment: {{ .GroupLabels.environment }}
+          
+          {{ range .Alerts }}
+          Summary: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Current Value: {{ .Annotations.current_value }}
+          Threshold: {{ .Annotations.threshold }}
+          {{ end }}
+          
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/PERFORMANCE/WEBHOOK'
+        channel: '#oil-trading-performance'
+        title: '⚡ Performance Alert'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Current Value:* {{ .Annotations.current_value }}
+          *Threshold:* {{ .Annotations.threshold }}
+          {{ end }}
+
+# Advanced configuration
+time_intervals:
+  - name: 'business-hours'
+    time_intervals:
+      - times:
+          - start_time: '09:00'
+            end_time: '17:00'
+        weekdays: ['monday:friday']
+        
+  - name: 'after-hours'
+    time_intervals:
+      - times:
+          - start_time: '17:01'
+            end_time: '08:59'
+        weekdays: ['monday:friday']
+      - weekdays: ['saturday', 'sunday']

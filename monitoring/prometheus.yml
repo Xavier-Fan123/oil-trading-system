@@ -1,0 +1,173 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'oil-trading-monitor'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Oil Trading API (生产环境)
+  - job_name: 'oil-trading-api'
+    static_configs:
+      - targets: ['oil-trading-api:5000']
+    scrape_interval: 15s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    honor_labels: true
+    
+  # Oil Trading API Metrics Port
+  - job_name: 'oil-trading-metrics'
+    static_configs:
+      - targets: ['oil-trading-api:9091']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # Node Exporter (System metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # cAdvisor (Container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+
+  # PostgreSQL metrics
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Redis metrics
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # Nginx metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    scrape_interval: 30s
+
+  # Custom application metrics
+  - job_name: 'oiltrading-custom'
+    static_configs:
+      - targets: ['oiltrading-api:8080']
+    scrape_interval: 10s
+    metrics_path: /metrics/custom
+    params:
+      format: ['prometheus']
+
+  # Business metrics
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets: ['oiltrading-api:8080']
+    scrape_interval: 60s
+    metrics_path: /api/metrics/business
+    scrape_timeout: 30s
+
+  # Blackbox exporter for external monitoring
+  - job_name: 'blackbox-external'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://oiltrading-api:8080/health
+        - http://oiltrading-api:8080/health/ready
+        - http://oiltrading-api:8080/health/live
+        - http://grafana:3000
+        - http://kibana:5601
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Blackbox SSL certificate monitoring
+  - job_name: 'blackbox-ssl'
+    metrics_path: /probe
+    params:
+      module: [http_ssl]
+    static_configs:
+      - targets:
+        - https://oiltrading.com
+        - https://api.oiltrading.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Database connectivity checks
+  - job_name: 'blackbox-database'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+        - postgres:5432
+        - redis:6379
+        - elasticsearch:9200
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ICMP monitoring
+  - job_name: 'blackbox-icmp'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - oiltrading-api
+        - postgres
+        - redis
+        - elasticsearch
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+# Remote storage (optional - for long-term storage)
+# remote_write:
+#   - url: "http://cortex:9009/api/prom/push"
+#     queue_config:
+#       batch_send_deadline: 5s
+#       max_samples_per_send: 1000
+#       capacity: 10000
+
+# Storage configuration
+storage:
+  tsdb:
+    retention: '30d'
+    retention_size: '10GB'

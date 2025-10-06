@@ -1,0 +1,718 @@
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using OilTrading.Application.DTOs;
+using OilTrading.Application.Common.Exceptions;
+using OilTrading.Application.Queries.FinancialReports;
+using OilTrading.Core.Entities;
+using OilTrading.Core.Repositories;
+using OilTrading.Core.ValueObjects;
+using Xunit;
+
+namespace OilTrading.Tests.Application.Queries.FinancialReports;
+
+public class GetTradingPartnerAnalysisQueryHandlerTests : IDisposable
+{
+    private readonly Mock<IFinancialReportRepository> _mockFinancialReportRepository;
+    private readonly Mock<ITradingPartnerRepository> _mockTradingPartnerRepository;
+    private readonly Mock<IPurchaseContractRepository> _mockPurchaseContractRepository;
+    private readonly Mock<ISalesContractRepository> _mockSalesContractRepository;
+    private readonly Mock<ILogger<GetTradingPartnerAnalysisQueryHandler>> _mockLogger;
+    private readonly GetTradingPartnerAnalysisQueryHandler _handler;
+
+    // Test data
+    private readonly Guid _tradingPartnerId = Guid.NewGuid();
+    private readonly TradingPartner _tradingPartner;
+    private readonly List<FinancialReport> _financialReports;
+    private readonly List<PurchaseContract> _purchaseContracts;
+    private readonly List<SalesContract> _salesContracts;
+
+    public GetTradingPartnerAnalysisQueryHandlerTests()
+    {
+        _mockFinancialReportRepository = new Mock<IFinancialReportRepository>();
+        _mockTradingPartnerRepository = new Mock<ITradingPartnerRepository>();
+        _mockPurchaseContractRepository = new Mock<IPurchaseContractRepository>();
+        _mockSalesContractRepository = new Mock<ISalesContractRepository>();
+        _mockLogger = new Mock<ILogger<GetTradingPartnerAnalysisQueryHandler>>();
+
+        _handler = new GetTradingPartnerAnalysisQueryHandler(
+            _mockFinancialReportRepository.Object,
+            _mockTradingPartnerRepository.Object,
+            _mockPurchaseContractRepository.Object,
+            _mockSalesContractRepository.Object,
+            _mockLogger.Object);
+
+        // Setup test entities
+        _tradingPartner = CreateTestTradingPartner();
+        _financialReports = CreateTestFinancialReports();
+        _purchaseContracts = CreateTestPurchaseContracts();
+        _salesContracts = CreateTestSalesContracts();
+    }
+
+    #region Success Cases
+
+    [Fact]
+    public async Task Handle_WithValidTradingPartnerId_ShouldReturnBasicAnalysis()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId);
+        SetupBasicScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TradingPartnerId.Should().Be(_tradingPartnerId);
+        result.CompanyName.Should().Be("Test Trading Company");
+        result.CompanyCode.Should().Be("TTC");
+        result.CreditLimit.Should().Be(1000000m);
+        result.CurrentExposure.Should().Be(250000m);
+        result.CreditUtilization.Should().Be(25m); // 25%
+    }
+
+    [Fact]
+    public async Task Handle_WithIncludeCooperationVolume_ShouldCalculateCooperationMetrics()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeCooperationVolume = true
+        };
+        SetupCooperationVolumeScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TotalCooperationAmount.Should().BeGreaterThan(0);
+        result.TotalCooperationQuantity.Should().BeGreaterThan(0);
+        
+        // Verify specific calculated values based on test contracts
+        var expectedPurchaseAmount = 2000000m; // 1000 MT * 2000 USD/MT
+        var expectedSalesAmount = 1650000m; // 1000 BBL / 7.3 * 1200 USD/MT * 10 (conversion factor approximation)
+        result.TotalCooperationAmount.Should().BeApproximately(expectedPurchaseAmount + expectedSalesAmount, 100000m);
+    }
+
+    [Fact]
+    public async Task Handle_WithIncludeFinancialHistory_ShouldIncludeFinancialReports()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true
+        };
+        SetupFinancialHistoryScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FinancialReports.Should().HaveCount(3);
+        result.FinancialReports.Should().BeInDescendingOrder(r => r.ReportStartDate);
+        
+        // Verify latest report financial indicators
+        result.CurrentRatio.Should().Be(2.0m); // From latest report
+        result.DebtToAssetRatio.Should().Be(0.5m);
+        result.ROE.Should().Be(0.2m);
+        result.ROA.Should().Be(0.1m);
+    }
+
+    [Fact]
+    public async Task Handle_WithMaxReportsCount_ShouldLimitReportsReturned()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true,
+            MaxReportsCount = 2
+        };
+        SetupFinancialHistoryScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FinancialReports.Should().HaveCount(2);
+        result.FinancialReports.Should().BeInDescendingOrder(r => r.ReportStartDate);
+    }
+
+    [Fact]
+    public async Task Handle_WithIncludeRiskAssessment_ShouldPerformRiskAnalysis()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true,
+            IncludeRiskAssessment = true
+        };
+        SetupRiskAssessmentScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FinancialHealthStatus.Should().NotBeNullOrEmpty();
+        result.RiskIndicators.Should().NotBeNull();
+        
+        // Based on test data, should have good health status
+        result.FinancialHealthStatus.Should().Be("Good");
+        result.RiskIndicators.Should().BeEmpty(); // No risk indicators for healthy company
+    }
+
+    [Theory]
+    [InlineData(0.8, 95, "Poor")]
+    [InlineData(1.2, 80, "Fair")]
+    [InlineData(2.0, 25, "Good")]
+    public async Task Handle_WithDifferentRiskProfiles_ShouldCalculateCorrectHealthStatus(decimal currentRatio, decimal creditUtilization, string expectedHealthStatus)
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true,
+            IncludeRiskAssessment = true
+        };
+
+        SetupCustomRiskScenario(currentRatio, creditUtilization);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FinancialHealthStatus.Should().Be(expectedHealthStatus);
+    }
+
+    [Fact]
+    public async Task Handle_WithYearOverYearGrowth_ShouldCalculateGrowthMetrics()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true
+        };
+        SetupGrowthCalculationScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FinancialReports.Should().HaveCount(2);
+        
+        var currentYearReport = result.FinancialReports.First();
+        currentYearReport.RevenueGrowth.Should().Be(20m); // 20% growth
+        currentYearReport.NetProfitGrowth.Should().Be(50m); // 50% growth
+        currentYearReport.TotalAssetsGrowth.Should().Be(25m); // 25% growth
+        
+        var previousYearReport = result.FinancialReports.Last();
+        previousYearReport.RevenueGrowth.Should().BeNull(); // No previous year data
+    }
+
+    #endregion
+
+    #region Error Cases
+
+    [Fact]
+    public async Task Handle_WithNonExistentTradingPartner_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId);
+        
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TradingPartner?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<NotFoundException>(
+            () => _handler.Handle(query, CancellationToken.None));
+        
+        exception.Message.Should().Contain("TradingPartner");
+        exception.Message.Should().Contain(_tradingPartnerId.ToString());
+    }
+
+    [Fact]
+    public async Task Handle_WithRepositoryException_ShouldThrowOriginalException()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId);
+        
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Database connection failed"));
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _handler.Handle(query, CancellationToken.None));
+        
+        exception.Message.Should().Contain("Database connection failed");
+    }
+
+    #endregion
+
+    #region Edge Cases
+
+    [Fact]
+    public async Task Handle_WithZeroCreditLimit_ShouldHandleCreditUtilizationCorrectly()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId);
+        var tradingPartnerWithZeroCredit = CreateTestTradingPartner();
+        tradingPartnerWithZeroCredit.CreditLimit = 0;
+        
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tradingPartnerWithZeroCredit);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.CreditUtilization.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithNoFinancialReports_ShouldReturnAnalysisWithoutFinancialData()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true,
+            IncludeRiskAssessment = true
+        };
+        
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_tradingPartner);
+            
+        _mockFinancialReportRepository
+            .Setup(x => x.GetByTradingPartnerIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FinancialReport>());
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FinancialReports.Should().BeEmpty();
+        result.CurrentRatio.Should().BeNull();
+        result.DebtToAssetRatio.Should().BeNull();
+        result.ROE.Should().BeNull();
+        result.ROA.Should().BeNull();
+        result.FinancialHealthStatus.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WithNoContracts_ShouldReturnZeroCooperationVolume()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeCooperationVolume = true
+        };
+        
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_tradingPartner);
+            
+        _mockPurchaseContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<PurchaseContract>());
+            
+        _mockSalesContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SalesContract>());
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TotalCooperationAmount.Should().Be(0);
+        result.TotalCooperationQuantity.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithMixedCurrencyContracts_ShouldConvertToUSD()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeCooperationVolume = true
+        };
+        
+        SetupMixedCurrencyScenario();
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TotalCooperationAmount.Should().BeGreaterThan(0);
+        // The exact amount should reflect currency conversion
+    }
+
+    #endregion
+
+    #region Currency Conversion Tests
+
+    [Theory]
+    [InlineData("USD", 1000, 1000)] // No conversion
+    [InlineData("EUR", 1000, 1100)] // EUR to USD: 1000 * 1.1
+    [InlineData("GBP", 1000, 1300)] // GBP to USD: 1000 * 1.3
+    public async Task Handle_CurrencyConversion_ShouldConvertCorrectly(string currency, decimal amount, decimal expectedUsdAmount)
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeCooperationVolume = true
+        };
+        
+        SetupSingleCurrencyScenario(currency, amount);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TotalCooperationAmount.Should().BeApproximately(expectedUsdAmount, 1m);
+    }
+
+    #endregion
+
+    #region Quantity Conversion Tests
+
+    [Theory]
+    [InlineData(QuantityUnit.MT, 1000, 7.6, 1000)] // MT stays MT
+    [InlineData(QuantityUnit.BBL, 760, 7.6, 100)] // BBL to MT: 760 / 7.6
+    [InlineData(QuantityUnit.GAL, 1000, 7.6, 1000)] // Default case
+    public async Task Handle_QuantityConversion_ShouldConvertToMTCorrectly(QuantityUnit unit, decimal quantity, decimal tonBarrelRatio, decimal expectedMT)
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeCooperationVolume = true
+        };
+        
+        SetupQuantityConversionScenario(unit, quantity, tonBarrelRatio);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.TotalCooperationQuantity.Should().BeApproximately(expectedMT, 0.1m);
+    }
+
+    #endregion
+
+    #region Logging Verification
+
+    [Fact]
+    public async Task Handle_SuccessfulAnalysis_ShouldLogAnalysisCompletion()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeFinancialHistory = true,
+            IncludeRiskAssessment = true
+        };
+        SetupCompleteScenario();
+
+        // Act
+        await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Trading partner analysis completed")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_CooperationVolumeCalculation_ShouldLogVolumeDetails()
+    {
+        // Arrange
+        var query = new GetTradingPartnerAnalysisQuery(_tradingPartnerId)
+        {
+            IncludeCooperationVolume = true
+        };
+        SetupCooperationVolumeScenario();
+
+        // Act
+        await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Cooperation volume calculated")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private TradingPartner CreateTestTradingPartner()
+    {
+        var partner = new TradingPartner
+        {
+            CompanyName = "Test Trading Company",
+            CompanyCode = "TTC",
+            Type = TradingPartnerType.Supplier,
+            CreditLimit = 1000000m,
+            CurrentExposure = 250000m,
+            IsActive = true
+        };
+        SetEntityId(partner, _tradingPartnerId);
+        return partner;
+    }
+
+    private List<FinancialReport> CreateTestFinancialReports()
+    {
+        var reports = new List<FinancialReport>();
+        
+        // 2024 report (latest)
+        var report2024 = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
+        report2024.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
+        report2024.UpdatePerformanceData(12000m, 1000m, 1200m);
+        reports.Add(report2024);
+        
+        // 2023 report
+        var report2023 = new FinancialReport(_tradingPartnerId, new DateTime(2023, 1, 1), new DateTime(2023, 12, 31));
+        report2023.UpdateFinancialPosition(8000m, 4500m, 3500m, 4800m, 2400m);
+        report2023.UpdatePerformanceData(10000m, 666m, 800m);
+        reports.Add(report2023);
+        
+        // 2022 report
+        var report2022 = new FinancialReport(_tradingPartnerId, new DateTime(2022, 1, 1), new DateTime(2022, 12, 31));
+        report2022.UpdateFinancialPosition(6000m, 3000m, 3000m, 3600m, 1800m);
+        report2022.UpdatePerformanceData(8000m, 400m, 600m);
+        reports.Add(report2022);
+        
+        return reports;
+    }
+
+    private List<PurchaseContract> CreateTestPurchaseContracts()
+    {
+        var contract = CreateTestPurchaseContract(new Money(2000000m, "USD"), new Quantity(1000m, QuantityUnit.MT));
+        contract.UpdatePricing(PriceFormula.Fixed(2000m), contract.ContractValue!);
+        contract.Activate();
+        
+        return new List<PurchaseContract> { contract };
+    }
+
+    private List<SalesContract> CreateTestSalesContracts()
+    {
+        var contract = CreateTestSalesContract(new Money(1650000m, "USD"), new Quantity(1000m, QuantityUnit.BBL), 7.3m);
+        contract.UpdatePricing(PriceFormula.Fixed(1650m), contract.ContractValue!);
+        contract.Activate();
+        contract.Complete();
+        
+        return new List<SalesContract> { contract };
+    }
+
+    private void SetupBasicScenario()
+    {
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_tradingPartner);
+    }
+
+    private void SetupCooperationVolumeScenario()
+    {
+        SetupBasicScenario();
+        
+        _mockPurchaseContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_purchaseContracts);
+            
+        _mockSalesContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_salesContracts);
+    }
+
+    private void SetupFinancialHistoryScenario()
+    {
+        SetupBasicScenario();
+        
+        _mockFinancialReportRepository
+            .Setup(x => x.GetByTradingPartnerIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_financialReports);
+    }
+
+    private void SetupRiskAssessmentScenario()
+    {
+        SetupFinancialHistoryScenario();
+    }
+
+    private void SetupCompleteScenario()
+    {
+        SetupBasicScenario();
+        SetupCooperationVolumeScenario();
+        SetupFinancialHistoryScenario();
+    }
+
+    private void SetupCustomRiskScenario(decimal currentRatio, decimal creditUtilization)
+    {
+        var customPartner = CreateTestTradingPartner();
+        customPartner.CreditLimit = 1000000m;
+        customPartner.CurrentExposure = creditUtilization * 10000m; // Convert percentage to actual exposure
+        
+        var customReport = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
+        var currentLiabilities = 1000m;
+        var currentAssets = currentRatio * currentLiabilities;
+        customReport.UpdateFinancialPosition(10000m, 5000m, 5000m, currentAssets, currentLiabilities);
+        customReport.UpdatePerformanceData(12000m, 1000m, 1200m);
+        
+        _mockTradingPartnerRepository
+            .Setup(x => x.GetByIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(customPartner);
+            
+        _mockFinancialReportRepository
+            .Setup(x => x.GetByTradingPartnerIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FinancialReport> { customReport });
+    }
+
+    private void SetupGrowthCalculationScenario()
+    {
+        SetupBasicScenario();
+        
+        var growthReports = new List<FinancialReport>();
+        
+        // Current year (2024)
+        var current = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
+        current.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
+        current.UpdatePerformanceData(12000m, 1500m, 1200m); // Revenue growth from 10000 to 12000
+        growthReports.Add(current);
+        
+        // Previous year (2023)
+        var previous = new FinancialReport(_tradingPartnerId, new DateTime(2023, 1, 1), new DateTime(2023, 12, 31));
+        previous.UpdateFinancialPosition(8000m, 4000m, 4000m, 4800m, 2400m);
+        previous.UpdatePerformanceData(10000m, 1000m, 1000m); // Base for growth calculation
+        growthReports.Add(previous);
+        
+        _mockFinancialReportRepository
+            .Setup(x => x.GetByTradingPartnerIdAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(growthReports);
+    }
+
+    private void SetupMixedCurrencyScenario()
+    {
+        SetupBasicScenario();
+        
+        var mixedContracts = new List<PurchaseContract>
+        {
+            CreateTestPurchaseContract(new Money(1000000m, "EUR"), new Quantity(500m, QuantityUnit.MT)),
+            CreateTestPurchaseContract(new Money(800000m, "GBP"), new Quantity(400m, QuantityUnit.MT))
+        };
+        // Activate contracts
+        foreach (var contract in mixedContracts)
+        {
+            contract.UpdatePricing(PriceFormula.Fixed(100m), contract.ContractValue!);
+            contract.Activate();
+        }
+        
+        _mockPurchaseContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mixedContracts);
+            
+        _mockSalesContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SalesContract>());
+    }
+
+    private void SetupSingleCurrencyScenario(string currency, decimal amount)
+    {
+        SetupBasicScenario();
+        
+        var contract = CreateTestPurchaseContract(new Money(amount, currency), new Quantity(1000m, QuantityUnit.MT));
+        contract.UpdatePricing(PriceFormula.Fixed(100m), contract.ContractValue!);
+        contract.Activate();
+        var contracts = new List<PurchaseContract> { contract };
+        
+        _mockPurchaseContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contracts);
+            
+        _mockSalesContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SalesContract>());
+    }
+
+    private void SetupQuantityConversionScenario(QuantityUnit unit, decimal quantity, decimal tonBarrelRatio)
+    {
+        SetupBasicScenario();
+        
+        var contract = CreateTestPurchaseContract(new Money(100000m, "USD"), new Quantity(quantity, unit), tonBarrelRatio);
+        contract.UpdatePricing(PriceFormula.Fixed(100m), contract.ContractValue!);
+        contract.Activate();
+        var contracts = new List<PurchaseContract> { contract };
+        
+        _mockPurchaseContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(contracts);
+            
+        _mockSalesContractRepository
+            .Setup(x => x.GetByTradingPartnerAsync(_tradingPartnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SalesContract>());
+    }
+
+    private static void SetEntityId(BaseEntity entity, Guid id)
+    {
+        var idProperty = typeof(BaseEntity).GetProperty(nameof(BaseEntity.Id));
+        idProperty?.SetValue(entity, id);
+    }
+    
+    private PurchaseContract CreateTestPurchaseContract(Money contractValue, Quantity contractQuantity, decimal tonBarrelRatio = 7.6m)
+    {
+        var contractNumber = ContractNumber.Create(2024, ContractType.CARGO, Random.Shared.Next(1, 9999));
+        var contract = new PurchaseContract(
+            contractNumber,
+            ContractType.CARGO,
+            _tradingPartnerId, // supplierId
+            Guid.NewGuid(), // productId
+            Guid.NewGuid(), // traderId
+            contractQuantity,
+            tonBarrelRatio);
+        
+        SetEntityId(contract, Guid.NewGuid());
+        return contract;
+    }
+    
+    private SalesContract CreateTestSalesContract(Money contractValue, Quantity contractQuantity, decimal tonBarrelRatio = 7.6m)
+    {
+        var contractNumber = ContractNumber.Create(2024, ContractType.CARGO, Random.Shared.Next(1, 9999));
+        var contract = new SalesContract(
+            contractNumber,
+            ContractType.CARGO,
+            _tradingPartnerId, // customerId
+            Guid.NewGuid(), // productId
+            Guid.NewGuid(), // traderId
+            contractQuantity,
+            tonBarrelRatio);
+        
+        SetEntityId(contract, Guid.NewGuid());
+        return contract;
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+
+    #endregion
+}

@@ -1,0 +1,175 @@
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "oil-trading-system.fullname" . }}-api
+  namespace: {{ include "oil-trading-system.namespace" . }}
+  labels:
+    {{- include "oil-trading-system.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  {{- with .Values.additionalAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "oil-trading-system.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "oil-trading-system.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+        {{- with .Values.additionalLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        kubectl.kubernetes.io/default-container: "api"
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "oil-trading-system.serviceAccountName" . }}-api
+      securityContext:
+        {{- toYaml .Values.api.securityContext | nindent 8 }}
+      
+      {{- if .Values.api.initContainers.enabled | default true }}
+      initContainers:
+        - name: db-migration
+          image: "{{ .Values.global.imageRegistry | default .Values.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          command:
+            - dotnet
+            - OilTrading.Api.dll
+            - --migrate-database
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.global.environment | default "Production" | quote }}
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oil-trading-system.fullname" . }}-secrets
+                  key: database-connection-string
+          securityContext:
+            {{- toYaml .Values.api.securityContext | nindent 12 }}
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      {{- end }}
+      
+      containers:
+        - name: api
+          image: "{{ .Values.global.imageRegistry | default .Values.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          
+          env:
+            {{- range $key, $value := .Values.api.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oil-trading-system.fullname" . }}-secrets
+                  key: database-connection-string
+            - name: ConnectionStrings__ReadConnection
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oil-trading-system.fullname" . }}-secrets
+                  key: database-read-connection-string
+            - name: ConnectionStrings__Redis
+              value: "{{ include "oil-trading-system.fullname" . }}-redis:6379"
+            - name: JwtSettings__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oil-trading-system.fullname" . }}-secrets
+                  key: jwt-secret
+          
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: temp
+              mountPath: /app/temp
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          
+          livenessProbe:
+            {{- toYaml .Values.api.livenessProbe | nindent 12 }}
+          
+          readinessProbe:
+            {{- toYaml .Values.api.readinessProbe | nindent 12 }}
+          
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+          
+          securityContext:
+            {{- toYaml .Values.api.securityContext | nindent 12 }}
+          
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+      
+      volumes:
+        - name: logs
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: temp
+          emptyDir:
+            sizeLimit: 500Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: config
+          configMap:
+            name: {{ include "oil-trading-system.fullname" . }}-config
+      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      terminationGracePeriodSeconds: 30
+{{- end }}

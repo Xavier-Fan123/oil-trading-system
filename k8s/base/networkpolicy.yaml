@@ -1,0 +1,223 @@
+---
+# Network Policy for Oil Trading API
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oil-trading-api-netpol
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: api
+spec:
+  podSelector:
+    matchLabels:
+      app: oil-trading-system
+      component: api
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  ingress:
+    # Allow traffic from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: oil-trading-system
+              component: frontend
+      ports:
+        - protocol: TCP
+          port: 8080
+    
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    
+    # Allow traffic from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+  
+  egress:
+    # Allow traffic to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: oil-trading-system
+              component: database
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow traffic to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: oil-trading-system
+              component: cache
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    
+    # Allow HTTPS egress (for external APIs)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Network Policy for Oil Trading Frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oil-trading-frontend-netpol
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+spec:
+  podSelector:
+    matchLabels:
+      app: oil-trading-system
+      component: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  ingress:
+    # Allow traffic from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    
+    # Allow traffic from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9113
+  
+  egress:
+    # Allow traffic to API
+    - to:
+        - podSelector:
+            matchLabels:
+              app: oil-trading-system
+              component: api
+      ports:
+        - protocol: TCP
+          port: 8080
+    
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# Network Policy for PostgreSQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgresql-netpol
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: database
+spec:
+  podSelector:
+    matchLabels:
+      app: oil-trading-system
+      component: database
+  policyTypes:
+    - Ingress
+  
+  ingress:
+    # Allow traffic from API
+    - from:
+        - podSelector:
+            matchLabels:
+              app: oil-trading-system
+              component: api
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow traffic from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9187
+
+---
+# Network Policy for Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-netpol
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: cache
+spec:
+  podSelector:
+    matchLabels:
+      app: oil-trading-system
+      component: cache
+  policyTypes:
+    - Ingress
+  
+  ingress:
+    # Allow traffic from API
+    - from:
+        - podSelector:
+            matchLabels:
+              app: oil-trading-system
+              component: api
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow traffic from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9121
+
+---
+# Default deny all ingress traffic (security baseline)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: oil-trading
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

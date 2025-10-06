@@ -1,0 +1,170 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'oil-trading-production'
+    environment: 'production'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Oil Trading API instances
+  - job_name: 'oil-trading-api'
+    static_configs:
+      - targets: 
+        - 'oil-trading-api-1:8080'
+        - 'oil-trading-api-2:8080'
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: oil-trading-api:8080
+
+  # PostgreSQL Master Database
+  - job_name: 'postgres-master'
+    static_configs:
+      - targets: ['postgres-master:5432']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: database_role
+        replacement: 'master'
+
+  # PostgreSQL Replica Database
+  - job_name: 'postgres-replica'
+    static_configs:
+      - targets: ['postgres-replica:5432']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: database_role
+        replacement: 'replica'
+
+  # Redis Master
+  - job_name: 'redis-master'
+    static_configs:
+      - targets: ['redis-master:6379']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+
+  # Nginx Load Balancer
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Application Health Checks
+  - job_name: 'oil-trading-health'
+    static_configs:
+      - targets: 
+        - 'oil-trading-api-1:8080'
+        - 'oil-trading-api-2:8080'
+    metrics_path: /api/health
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    honor_labels: true
+
+  # Custom Business Metrics
+  - job_name: 'oil-trading-business-metrics'
+    static_configs:
+      - targets:
+        - 'oil-trading-api-1:8080'
+        - 'oil-trading-api-2:8080'
+    metrics_path: /api/metrics/business
+    scrape_interval: 60s
+    scrape_timeout: 15s
+
+  # Database Performance Metrics
+  - job_name: 'postgres-performance'
+    static_configs:
+      - targets: ['postgres-master:5432', 'postgres-replica:5432']
+    metrics_path: /metrics
+    scrape_interval: 30s
+    params:
+      collect[]: 
+        - 'pg_stat_database'
+        - 'pg_stat_user_tables'
+        - 'pg_stat_activity'
+        - 'pg_locks'
+        - 'pg_replication'
+
+  # Custom Trading Platform Metrics
+  - job_name: 'trading-platform-metrics'
+    scrape_configs:
+      # Contract Processing Metrics
+      - job_name: 'contract-processing'
+        static_configs:
+          - targets: ['oil-trading-api-1:8080', 'oil-trading-api-2:8080']
+        metrics_path: /api/metrics/contracts
+        scrape_interval: 30s
+        
+      # Risk Management Metrics  
+      - job_name: 'risk-management'
+        static_configs:
+          - targets: ['oil-trading-api-1:8080', 'oil-trading-api-2:8080']
+        metrics_path: /api/metrics/risk
+        scrape_interval: 60s
+        
+      # Market Data Metrics
+      - job_name: 'market-data'
+        static_configs:
+          - targets: ['oil-trading-api-1:8080', 'oil-trading-api-2:8080']
+        metrics_path: /api/metrics/market-data
+        scrape_interval: 30s
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "http://prometheus-remote-storage:9201/write"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
+
+# Remote read configuration
+remote_read:
+  - url: "http://prometheus-remote-storage:9201/read"
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention.time: 90d
+    retention.size: 50GB
+    wal-compression: true

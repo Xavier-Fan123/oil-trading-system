@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#1976d2"/>
+  
+  <!-- Oil drop shape -->
+  <path d="M256 100 C220 130, 180 170, 180 220 C180 260, 210 290, 256 290 C302 290, 332 260, 332 220 C332 170, 292 130, 256 100 Z" fill="#ffffff"/>
+  
+  <!-- Inner highlight -->
+  <ellipse cx="240" cy="200" rx="15" ry="25" fill="#1976d2" opacity="0.3"/>
+  
+  <!-- Text: OT (Oil Trading) -->
+  <text x="256" y="380" font-family="Arial, sans-serif" font-size="80" font-weight="bold" text-anchor="middle" fill="#ffffff">OT</text>
+</svg>

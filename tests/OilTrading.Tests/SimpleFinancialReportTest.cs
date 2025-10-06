@@ -1,0 +1,100 @@
+using FluentAssertions;
+using OilTrading.Core.Entities;
+using Xunit;
+
+namespace OilTrading.Tests;
+
+public class SimpleFinancialReportTest
+{
+    [Fact]
+    public void FinancialReport_ShouldBeCreated_WithValidData()
+    {
+        // Arrange
+        var tradingPartnerId = Guid.NewGuid();
+        var startDate = new DateTime(2023, 1, 1);
+        var endDate = new DateTime(2023, 12, 31);
+
+        // Act
+        var report = new FinancialReport(tradingPartnerId, startDate, endDate);
+
+        // Assert
+        report.Should().NotBeNull();
+        report.TradingPartnerId.Should().Be(tradingPartnerId);
+        report.ReportStartDate.Should().Be(startDate);
+        report.ReportEndDate.Should().Be(endDate);
+        report.ReportYear.Should().Be(2023);
+        report.IsAnnualReport.Should().BeTrue();
+    }
+
+    [Fact]
+    public void FinancialReport_ShouldCalculateCurrentRatio_Correctly()
+    {
+        // Arrange
+        var tradingPartnerId = Guid.NewGuid();
+        var startDate = new DateTime(2023, 1, 1);
+        var endDate = new DateTime(2023, 12, 31);
+        var report = new FinancialReport(tradingPartnerId, startDate, endDate);
+
+        // Act
+        report.UpdateFinancialPosition(
+            totalAssets: 1000000,
+            totalLiabilities: 600000,
+            netAssets: 400000,
+            currentAssets: 500000,
+            currentLiabilities: 250000);
+
+        // Assert
+        report.CurrentRatio.Should().Be(2.0m); // 500000 / 250000
+        report.DebtToAssetRatio.Should().Be(0.6m); // 600000 / 1000000
+    }
+
+    [Fact]
+    public void FinancialReport_ShouldCalculateROE_Correctly()
+    {
+        // Arrange
+        var tradingPartnerId = Guid.NewGuid();
+        var startDate = new DateTime(2023, 1, 1);
+        var endDate = new DateTime(2023, 12, 31);
+        var report = new FinancialReport(tradingPartnerId, startDate, endDate);
+
+        // Act
+        report.UpdateFinancialPosition(
+            totalAssets: 1000000,
+            totalLiabilities: 600000,
+            netAssets: 400000,
+            currentAssets: 500000,
+            currentLiabilities: 250000);
+            
+        report.UpdatePerformanceData(
+            revenue: 2000000,
+            netProfit: 200000,
+            operatingCashFlow: 250000);
+
+        // Assert
+        report.ROE.Should().Be(0.5m); // 200000 / 400000
+        report.ROA.Should().Be(0.2m); // 200000 / 1000000
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(100000, 0)]
+    public void FinancialReport_ShouldReturnNull_ForInvalidRatioCalculation(decimal? currentAssets, decimal? currentLiabilities)
+    {
+        // Arrange
+        var tradingPartnerId = Guid.NewGuid();
+        var startDate = new DateTime(2023, 1, 1);
+        var endDate = new DateTime(2023, 12, 31);
+        var report = new FinancialReport(tradingPartnerId, startDate, endDate);
+
+        // Act
+        report.UpdateFinancialPosition(
+            totalAssets: 1000000,
+            totalLiabilities: 600000,
+            netAssets: 400000,
+            currentAssets: currentAssets,
+            currentLiabilities: currentLiabilities);
+
+        // Assert
+        report.CurrentRatio.Should().BeNull();
+    }
+}

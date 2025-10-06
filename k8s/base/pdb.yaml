@@ -1,0 +1,67 @@
+---
+# Pod Disruption Budget for Oil Trading API
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oil-trading-api-pdb
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: api
+
+---
+# Pod Disruption Budget for Oil Trading Frontend
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oil-trading-frontend-pdb
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: frontend
+
+---
+# Pod Disruption Budget for PostgreSQL
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgresql-pdb
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: database
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: database
+
+---
+# Pod Disruption Budget for Redis
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: cache
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: cache

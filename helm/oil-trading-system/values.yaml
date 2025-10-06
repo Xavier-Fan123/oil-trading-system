@@ -1,0 +1,322 @@
+# Default values for oil-trading-system.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  imageRegistry: "ghcr.io"
+  imagePullSecrets:
+    - name: regcred
+  storageClass: "fast-ssd"
+  postgresql:
+    auth:
+      postgresPassword: "changeme"
+      database: "OilTradingDb"
+  redis:
+    auth:
+      password: "changeme"
+
+# Namespace settings
+namespaceOverride: ""
+
+# Image settings
+image:
+  registry: ghcr.io
+  repository: your-org
+  tag: "v1.0.0"
+  pullPolicy: IfNotPresent
+
+# API application settings
+api:
+  enabled: true
+  replicaCount: 3
+  
+  image:
+    repository: your-org/oil-trading-api
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    annotations: {}
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  
+  # Auto-scaling
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  # Environment variables
+  env:
+    ASPNETCORE_ENVIRONMENT: "Production"
+    TZ: "UTC"
+    DOTNET_RUNNING_IN_CONTAINER: "true"
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 2000
+    runAsGroup: 2000
+    fsGroup: 2000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# Frontend application settings
+frontend:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: your-org/oil-trading-frontend
+    tag: "v1.0.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    annotations: {}
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  # Auto-scaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 2000
+    runAsGroup: 2000
+    fsGroup: 2000
+    readOnlyRootFilesystem: true
+
+# PostgreSQL settings (using Bitnami chart)
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "changeme"
+    database: "OilTradingDb"
+  
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: "fast-ssd"
+    
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Redis settings (using Bitnami chart)
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "changeme"
+  
+  master:
+    persistence:
+      enabled: false
+    
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Ingress settings
+ingress:
+  enabled: true
+  className: "nginx"
+  
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  
+  hosts:
+    - host: oiltrading.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.oiltrading.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+  
+  tls:
+    - secretName: oil-trading-tls
+      hosts:
+        - oiltrading.example.com
+        - api.oiltrading.example.com
+
+# Service Account settings
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC settings
+rbac:
+  create: true
+
+# Pod Security Policy settings
+podSecurityPolicy:
+  enabled: false
+
+# Network Policy settings
+networkPolicy:
+  enabled: true
+
+# Monitoring settings
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+  
+  grafana:
+    enabled: true
+    adminPassword: "admin123"
+    dashboards:
+      enabled: true
+
+# External secrets (for production)
+externalSecrets:
+  enabled: false
+  secretStore:
+    provider: vault
+    vault:
+      server: "https://vault.example.com"
+      path: "secret"
+      version: "v2"
+
+# Backup settings
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  retention: "7d"
+
+# Security settings
+security:
+  podSecurityStandards:
+    enforced: true
+    profile: "restricted"
+  
+  networkPolicies:
+    enabled: true
+    denyAll: true
+
+# Resource quotas
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    persistentvolumeclaims: "10"
+
+# Node affinity and tolerations
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - oil-trading-system
+          topologyKey: kubernetes.io/hostname
+
+# Additional labels and annotations
+additionalLabels: {}
+additionalAnnotations: {}

@@ -1,0 +1,15 @@
+{
+  "name": "Oil Trading System",
+  "short_name": "OilTrading",
+  "description": "Enterprise Oil Trading and Risk Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1976d2",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [],
+  "categories": ["business", "finance", "productivity"],
+  "lang": "en",
+  "dir": "ltr"
+}

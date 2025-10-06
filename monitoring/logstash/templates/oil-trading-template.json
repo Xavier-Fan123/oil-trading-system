@@ -1,0 +1,142 @@
+{
+  "order": 0,
+  "version": 1,
+  "index_patterns": ["oil-trading-*"],
+  "settings": {
+    "index": {
+      "number_of_shards": 2,
+      "number_of_replicas": 0,
+      "refresh_interval": "5s",
+      "codec": "best_compression",
+      "mapping": {
+        "total_fields": {
+          "limit": 2000
+        }
+      },
+      "lifecycle": {
+        "name": "oil-trading-policy",
+        "rollover_alias": "oil-trading"
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "message": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "log_level": {
+        "type": "keyword"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "service_name": {
+        "type": "keyword"
+      },
+      "service_version": {
+        "type": "keyword"
+      },
+      "environment": {
+        "type": "keyword"
+      },
+      "request_path": {
+        "type": "keyword"
+      },
+      "api_controller": {
+        "type": "keyword"
+      },
+      "api_action": {
+        "type": "keyword"
+      },
+      "response_time_ms": {
+        "type": "float"
+      },
+      "response_category": {
+        "type": "keyword"
+      },
+      "exception_type": {
+        "type": "keyword"
+      },
+      "exception_message": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "stack_trace": {
+        "type": "text",
+        "analyzer": "whitespace"
+      },
+      "business_contract_id": {
+        "type": "keyword"
+      },
+      "business_partner_id": {
+        "type": "keyword"
+      },
+      "business_product_type": {
+        "type": "keyword"
+      },
+      "business_user_id": {
+        "type": "keyword"
+      },
+      "risk_metric_type": {
+        "type": "keyword"
+      },
+      "risk_var_value": {
+        "type": "float"
+      },
+      "client_ip": {
+        "type": "ip"
+      },
+      "user_agent": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "geoip": {
+        "properties": {
+          "city_name": {
+            "type": "keyword"
+          },
+          "country_code2": {
+            "type": "keyword"
+          },
+          "country_name": {
+            "type": "keyword"
+          },
+          "location": {
+            "type": "geo_point"
+          },
+          "region_name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "parsed_at": {
+        "type": "date"
+      },
+      "parse_error": {
+        "type": "boolean"
+      }
+    }
+  },
+  "aliases": {
+    "oil-trading": {}
+  }
+}

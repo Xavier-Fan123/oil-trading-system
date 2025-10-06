@@ -1,0 +1,88 @@
+apiVersion: v2
+name: oil-trading-system
+description: |
+  Enterprise Oil Trading and Risk Management System
+  A comprehensive trading platform with purchase contracts, sales contracts, 
+  shipping operations, and advanced risk management capabilities.
+
+# Chart Type
+type: application
+
+# Chart Version (SemVer)
+version: 1.0.0
+
+# Application Version
+appVersion: "1.0.0"
+
+# Keywords for chart discovery
+keywords:
+  - oil-trading
+  - trading
+  - risk-management
+  - energy
+  - commodities
+  - enterprise
+
+# Chart maintainers
+maintainers:
+  - name: DevOps Team
+    email: devops@oiltrading.example.com
+    url: https://github.com/your-org/oil-trading-system
+
+# Home page
+home: https://oiltrading.example.com
+
+# Sources
+sources:
+  - https://github.com/your-org/oil-trading-system
+  - https://docs.oiltrading.example.com
+
+# Icon URL
+icon: https://oiltrading.example.com/images/logo.png
+
+# Minimum Kubernetes version required
+kubeVersion: ">=1.25.0"
+
+# Chart annotations
+annotations:
+  category: Trading
+  licenses: Proprietary
+  images: |
+    - name: oil-trading-api
+      image: ghcr.io/your-org/oil-trading-api:1.0.0
+    - name: oil-trading-frontend
+      image: ghcr.io/your-org/oil-trading-frontend:1.0.0
+    - name: postgresql
+      image: postgres:15-alpine
+    - name: redis
+      image: redis:7-alpine
+
+# Dependencies
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - database
+  
+  - name: redis
+    version: 17.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+  
+  - name: prometheus
+    version: 23.x.x
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.prometheus.enabled
+    tags:
+      - monitoring
+  
+  - name: grafana
+    version: 6.x.x
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.grafana.enabled
+    tags:
+      - monitoring

@@ -1,0 +1,30 @@
+---
+# Oil Trading Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: oil-trading-frontend
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+    version: v1.0.0
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9113"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: metrics
+      port: 9113
+      targetPort: 9113
+      protocol: TCP
+  selector:
+    app: oil-trading-system
+    component: frontend

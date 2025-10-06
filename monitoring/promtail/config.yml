@@ -1,0 +1,194 @@
+# Promtail Configuration for Oil Trading System
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Oil Trading Application Logs
+  - job_name: oil-trading-api
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: oil-trading-api
+          service: oil-trading
+          environment: production
+          __path__: /var/log/oiltrading/oil-trading-*.txt
+
+    pipeline_stages:
+      # Parse JSON logs from Serilog
+      - json:
+          expressions:
+            timestamp: Timestamp
+            level: Level
+            message: MessageTemplate
+            exception: Exception
+            request_id: Properties.RequestId
+            user_id: Properties.UserId
+            contract_id: Properties.ContractId
+            
+      # Extract timestamp
+      - timestamp:
+          source: timestamp
+          format: "2006-01-02T15:04:05.0000000Z"
+          
+      # Extract log level
+      - labels:
+          level:
+          
+      # Extract business context
+      - labels:
+          request_id:
+          user_id:
+          contract_id:
+          
+      # Parse request logs
+      - regex:
+          expression: '^HTTP (?P<method>\w+) (?P<path>\/[^\s]*) responded (?P<status>\d+) in (?P<duration>[\d\.]+) ms$'
+          source: message
+          
+      - labels:
+          method:
+          path:
+          status:
+          
+      # Categorize response times
+      - template:
+          source: response_category
+          template: |
+            {{ if gt .duration 2000 }}very_slow
+            {{ else if gt .duration 500 }}slow  
+            {{ else if gt .duration 100 }}normal
+            {{ else }}fast{{ end }}
+            
+      - labels:
+          response_category:
+
+  # System Logs
+  - job_name: system-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          service: system
+          __path__: /var/log/syslog
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\S+)\s+(?P<service>\S+):\s*(?P<message>.*)$'
+          
+      - timestamp:
+          source: timestamp
+          format: "Jan 2 15:04:05"
+          
+      - labels:
+          hostname:
+          service:
+
+  # Docker Container Logs
+  - job_name: docker-containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          service: docker
+          __path__: /var/lib/docker/containers/*/*.log
+
+    pipeline_stages:
+      - json:
+          expressions:
+            log: log
+            stream: stream
+            time: time
+            
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          
+      - labels:
+          stream:
+          
+      - output:
+          source: log
+
+  # Nginx Access Logs
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx-access
+          service: nginx
+          __path__: /var/log/nginx/access.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<method>\S+) (?P<request>\S+) (?P<protocol>\S+)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)".*$'
+          
+      - timestamp:
+          source: time_local
+          format: "02/Jan/2006:15:04:05 -0700"
+          
+      - labels:
+          method:
+          status:
+          remote_addr:
+
+  # Nginx Error Logs  
+  - job_name: nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx-error
+          service: nginx
+          __path__: /var/log/nginx/error.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<time>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>\w+)\] (?P<message>.*)$'
+          
+      - timestamp:
+          source: time
+          format: "2006/01/02 15:04:05"
+          
+      - labels:
+          level:
+
+  # PostgreSQL Logs
+  - job_name: postgresql
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: postgresql
+          service: postgresql
+          __path__: /var/log/postgresql/*.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \w+) \[(?P<pid>\d+)\] (?P<level>\w+):\s*(?P<message>.*)$'
+          
+      - timestamp:
+          source: timestamp
+          format: "2006-01-02 15:04:05.000 MST"
+          
+      - labels:
+          level:
+          pid:
+
+# Global configuration
+global:
+  scrape_timeout: 10s
+
+# Target configuration
+target_config:
+  sync_period: 10s

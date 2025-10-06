@@ -1,0 +1,223 @@
+# OpenTelemetry Collector Configuration for Oil Trading System
+receivers:
+  # OTLP receiver for application traces
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "http://localhost:3000"
+            - "http://localhost:8080"
+            - "https://*"
+          allowed_headers:
+            - "*"
+
+  # Prometheus receiver for metrics scraping
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['localhost:8888']
+
+  # Jaeger receiver for legacy Jaeger agents
+  jaeger:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14250
+      thrift_http:
+        endpoint: 0.0.0.0:14268
+      thrift_binary:
+        endpoint: 0.0.0.0:6832
+      thrift_compact:
+        endpoint: 0.0.0.0:6831
+
+  # Zipkin receiver
+  zipkin:
+    endpoint: 0.0.0.0:9411
+
+processors:
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    limit_mib: 512
+    spike_limit_mib: 128
+    check_interval: 5s
+
+  # Batch processor for better throughput
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Resource processor to add environment info
+  resource:
+    attributes:
+      - key: environment
+        value: "production"
+        action: upsert
+      - key: service.namespace
+        value: "oil-trading"
+        action: upsert
+      - key: service.instance.id
+        from_attribute: host.name
+        action: upsert
+
+  # Span processor for trace enhancement
+  span:
+    name:
+      to_attributes:
+        rules:
+          - ^\/api\/(?P<endpoint>.*)$
+      from_attributes: ["http.target"]
+
+  # Tail sampling for trace filtering
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 50000
+    expected_new_traces_per_sec: 10
+    policies:
+      # Always sample errors
+      - name: error-sampling
+        type: status_code
+        status_code: {status_codes: [ERROR]}
+      # Sample 10% of successful traces
+      - name: probabilistic-sampling
+        type: probabilistic
+        probabilistic: {sampling_percentage: 10}
+      # Always sample long-running operations
+      - name: latency-sampling
+        type: latency
+        latency: {threshold_ms: 1000}
+      # Sample specific services at higher rate
+      - name: service-sampling
+        type: string_attribute
+        string_attribute:
+          key: service.name
+          values: ["oil-trading-api", "oil-trading-risk"]
+          enabled_regex_matching: true
+          invert_match: false
+
+  # Attributes processor for PII removal
+  attributes:
+    actions:
+      # Remove sensitive data
+      - key: http.request.header.authorization
+        action: delete
+      - key: http.request.header.cookie
+        action: delete
+      - key: db.statement
+        action: update
+        from_attribute: db.statement
+        # Simple regex to mask sensitive SQL data
+      # Add custom business attributes
+      - key: business.contract_type
+        from_attribute: contract.type
+        action: upsert
+      - key: business.trading_partner
+        from_attribute: trading.partner
+        action: upsert
+
+exporters:
+  # Jaeger exporter for trace visualization
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    const_labels:
+      environment: "production"
+      service: "oil-trading"
+
+  # OTLP exporter for Grafana Tempo
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  # Logging exporter for debugging
+  logging:
+    loglevel: info
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # File exporter for local storage
+  file:
+    path: /tmp/otel-traces.json
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 3
+
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # pprof extension for performance profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zpages extension for live debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+  # Memory ballast extension
+  memory_ballast:
+    size_mib: 256
+
+service:
+  extensions: [health_check, pprof, zpages, memory_ballast]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp, jaeger, zipkin]
+      processors: [memory_limiter, resource, span, attributes, tail_sampling, batch]
+      exporters: [jaeger, otlp/tempo, logging, file]
+
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, logging]
+
+    # Logs pipeline
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [logging, file]
+
+  telemetry:
+    logs:
+      level: "info"
+      development: false
+      encoding: "json"
+      disable_caller: false
+      disable_stacktrace: false
+      output_paths: ["stdout"]
+      error_output_paths: ["stderr"]
+    
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888
+      
+    resource:
+      service.name: "otel-collector"
+      service.version: "1.0.0"

@@ -1,0 +1,130 @@
+# Development values for oil-trading-system
+# This overrides the default values.yaml for development environment
+
+# Global development settings
+global:
+  environment: development
+
+# Development API settings
+api:
+  replicaCount: 1
+  
+  # Development resource limits (minimal)
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  # Auto-scaling disabled for development
+  autoscaling:
+    enabled: false
+  
+  # Development environment variables
+  env:
+    ASPNETCORE_ENVIRONMENT: "Development"
+    Features__EnableRealTimeRisk: "false"
+    Features__EnableAdvancedAnalytics: "false"
+    Logging__LogLevel__Default: "Debug"
+    Logging__LogLevel__OilTrading: "Debug"
+    Database__EnableSensitiveDataLogging: "true"
+
+# Development frontend settings
+frontend:
+  replicaCount: 1
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  autoscaling:
+    enabled: false
+
+# Development PostgreSQL settings
+postgresql:
+  primary:
+    persistence:
+      size: 5Gi
+      storageClass: "standard"
+    
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# Development Redis settings
+redis:
+  master:
+    persistence:
+      enabled: false
+    
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+# Development ingress settings
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rate-limit: "20"
+  
+  hosts:
+    - host: dev.oiltrading.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: dev-api.oiltrading.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+  
+  tls: []  # No TLS for development
+
+# Development monitoring (minimal)
+monitoring:
+  enabled: false
+
+# External secrets disabled for development
+externalSecrets:
+  enabled: false
+
+# Backup disabled for development
+backup:
+  enabled: false
+
+# Development security (permissive)
+security:
+  podSecurityStandards:
+    enforced: false
+  
+  networkPolicies:
+    enabled: false
+
+# Development resource quotas (minimal)
+resourceQuota:
+  enabled: false
+
+# Development node selection (any node)
+nodeSelector: {}
+
+# No tolerations for development
+tolerations: []
+
+# No special affinity for development
+affinity: {}

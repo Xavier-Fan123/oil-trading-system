@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>
+            <!-- Exclude test projects -->
+            [*Tests*]*
+            [*TestHelpers*]*
+            [*Benchmarks*]*
+            
+            <!-- Exclude generated files -->
+            [*.migrations]*
+            [*AssemblyInfo]*
+            [*GlobalAssemblyInfo]*
+            
+            <!-- Exclude third-party -->
+            [Microsoft.*]*
+            [System.*]*
+            [Newtonsoft.*]*
+            [AutoMapper*]*
+            [FluentValidation*]*
+            
+            <!-- Exclude specific patterns -->
+            [OilTrading.*.Tests*]*
+            [OilTrading.*.Benchmarks*]*
+            
+            <!-- Exclude auto-generated -->
+            [*]*.Designer
+            [*]*.designer.cs
+            [*]*AssemblyAttributes.cs
+            [*]Program.cs
+            
+            <!-- Exclude specific namespaces -->
+            [*]OilTrading.*.Migrations.*
+            [*]OilTrading.*.Extensions.*
+            [*]OilTrading.Api.Controllers.SimpleMockDashboardController
+          </Exclude>
+          <Include>
+            <!-- Include main projects -->
+            [OilTrading.Core]*
+            [OilTrading.Application]*
+            [OilTrading.Infrastructure]*
+            [OilTrading.Api]*
+          </Include>
+          <ExcludeByAttribute>
+            <Attribute>Obsolete</Attribute>
+            <Attribute>GeneratedCodeAttribute</Attribute>
+            <Attribute>CompilerGeneratedAttribute</Attribute>
+            <Attribute>ExcludeFromCodeCoverageAttribute</Attribute>
+            <Attribute>DebuggerNonUserCodeAttribute</Attribute>
+          </ExcludeByAttribute>
+          <ExcludeByFile>
+            <!-- Exclude specific files -->
+            <File>**/Migrations/**</File>
+            <File>**/bin/**</File>
+            <File>**/obj/**</File>
+            <File>**/*AssemblyInfo.cs</File>
+            <File>**/Program.cs</File>
+            <File>**/*.Designer.cs</File>
+            <File>**/*.designer.cs</File>
+            <File>**/*.generated.cs</File>
+            <File>**/GlobalUsings.cs</File>
+          </ExcludeByFile>
+          <IncludeDirectory>
+            <Directory>../src/**</Directory>
+          </IncludeDirectory>
+          <SingleHit>false</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <SkipAutoProps>true</SkipAutoProps>
+          <DeterministicReport>true</DeterministicReport>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+  
+  <TestRunParameters>
+    <!-- Database configuration for tests -->
+    <Parameter name="DatabaseProvider" value="InMemory" />
+    <Parameter name="EnableLogging" value="false" />
+    <Parameter name="EnableSensitiveDataLogging" value="false" />
+    
+    <!-- Test timeouts -->
+    <Parameter name="DefaultTestTimeout" value="30000" />
+    <Parameter name="LongRunningTestTimeout" value="120000" />
+    
+    <!-- Performance test settings -->
+    <Parameter name="EnablePerformanceTests" value="true" />
+    <Parameter name="MaxConcurrentTests" value="4" />
+    
+    <!-- Integration test settings -->
+    <Parameter name="EnableIntegrationTests" value="true" />
+    <Parameter name="ApiBaseUrl" value="http://localhost:5000" />
+    
+    <!-- Risk calculation settings -->
+    <Parameter name="VaRCalculationMethod" value="HistoricalSimulation" />
+    <Parameter name="MonteCarloSimulations" value="10000" />
+    
+    <!-- Cache settings for tests -->
+    <Parameter name="EnableCaching" value="false" />
+    <Parameter name="CacheExpirationMinutes" value="5" />
+  </TestRunParameters>
+  
+  <LoggerRunSettings>
+    <Loggers>
+      <Logger friendlyName="trx" enabled="true">
+        <Configuration>
+          <LogFileName>TestResults_{DateTime:yyyyMMdd_HHmmss}.trx</LogFileName>
+        </Configuration>
+      </Logger>
+      <Logger friendlyName="console" enabled="true">
+        <Configuration>
+          <Verbosity>detailed</Verbosity>
+        </Configuration>
+      </Logger>
+      <Logger friendlyName="html" enabled="true">
+        <Configuration>
+          <LogFileName>TestResults_{DateTime:yyyyMMdd_HHmmss}.html</LogFileName>
+        </Configuration>
+      </Logger>
+    </Loggers>
+  </LoggerRunSettings>
+  
+  <RunConfiguration>
+    <!-- Parallel execution settings -->
+    <MaxCpuCount>0</MaxCpuCount>
+    <BatchSize>10</BatchSize>
+    
+    <!-- Test execution settings -->
+    <TestSessionTimeout>1800000</TestSessionTimeout> <!-- 30 minutes -->
+    <TreatNoTestsAsError>false</TreatNoTestsAsError>
+    <TreatTestAdapterErrorsAsWarnings>false</TreatTestAdapterErrorsAsWarnings>
+    
+    <!-- Result settings -->
+    <CollectSourceInformation>true</CollectSourceInformation>
+    <DisableAppDomain>false</DisableAppDomain>
+    <DisableParallelization>false</DisableParallelization>
+    
+    <!-- Target platform and framework -->
+    <TargetPlatform>x64</TargetPlatform>
+    <TargetFrameworkVersion>net9.0</TargetFrameworkVersion>
+    
+    <!-- Environment variables for tests -->
+    <EnvironmentVariables>
+      <ASPNETCORE_ENVIRONMENT>Testing</ASPNETCORE_ENVIRONMENT>
+      <DOTNET_ENVIRONMENT>Testing</DOTNET_ENVIRONMENT>
+      <ConnectionStrings__DefaultConnection>Data Source=:memory:</ConnectionStrings__DefaultConnection>
+      <Logging__LogLevel__Default>Warning</Logging__LogLevel__Default>
+      <Logging__LogLevel__Microsoft>Warning</Logging__LogLevel__Microsoft>
+      <Redis__Enabled>false</Redis__Enabled>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

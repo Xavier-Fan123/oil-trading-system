@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oil-trading-config
+  namespace: oil-trading
+data:
+  # Application settings
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:8080"
+  
+  # Logging configuration
+  Logging__LogLevel__Default: "Information"
+  Logging__LogLevel__Microsoft: "Warning"
+  Logging__LogLevel__System: "Warning"
+  
+  # Database configuration
+  ConnectionStrings__DefaultConnection: "Host=postgres-service;Database=OilTradingDb;Username=oiltrading"
+  ConnectionStrings__RedisConnection: "redis-service:6379"
+  
+  # Monitoring
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger-collector:14268"
+  OTEL_SERVICE_NAME: "oil-trading-api"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: oil-trading
+data:
+  nginx.conf: |
+    upstream oiltrading_backend {
+        server oil-trading-api-service:8080;
+    }
+    
+    server {
+        listen 80;
+        server_name _;
+        
+        location /api/ {
+            proxy_pass http://oiltrading_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        location /graphql {
+            proxy_pass http://oiltrading_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+        location / {
+            root /usr/share/nginx/html;
+            try_files $uri $uri/ /index.html;
+        }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: oil-trading
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    
+    scrape_configs:
+      - job_name: 'oil-trading-api'
+        static_configs:
+          - targets: ['oil-trading-api-service:8080']
+        scrape_interval: 15s
+        metrics_path: /metrics
+      
+      - job_name: 'postgres'
+        static_configs:
+          - targets: ['postgres-exporter-service:9187']
+        scrape_interval: 30s
+      
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis-exporter-service:9121']
+        scrape_interval: 30s
+      
+      - job_name: 'nginx'
+        static_configs:
+          - targets: ['nginx-service:9113']
+        scrape_interval: 30s

@@ -1,0 +1,525 @@
+using FluentAssertions;
+using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Common;
+using Xunit;
+
+namespace OilTrading.Tests.Domain.ValueObjects;
+
+public class QuantityCompleteTests
+{
+    #region Constructor Tests
+
+    [Theory]
+    [InlineData(1000.50, QuantityUnit.MT)]
+    [InlineData(7600.25, QuantityUnit.BBL)]
+    [InlineData(0, QuantityUnit.GAL)]
+    [InlineData(999999.99, QuantityUnit.LOTS)]
+    [InlineData(0.01, QuantityUnit.MT)]
+    public void Constructor_ShouldCreateValidQuantity_WhenValidInputProvided(decimal value, QuantityUnit unit)
+    {
+        // Act
+        var quantity = new Quantity(value, unit);
+
+        // Assert
+        quantity.Value.Should().Be(value);
+        quantity.Unit.Should().Be(unit);
+        quantity.IsZero().Should().Be(value == 0);
+        quantity.IsNegative().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-1000.50)]
+    [InlineData(-0.01)]
+    public void Constructor_ShouldThrowDomainException_WhenValueIsNegative(decimal negativeValue)
+    {
+        // Act & Assert
+        var exception = Assert.Throws<DomainException>(() => new Quantity(negativeValue, QuantityUnit.MT));
+        exception.Message.Should().Be("Quantity value cannot be negative");
+    }
+
+    #endregion
+
+    #region Static Factory Methods Tests
+
+    [Theory]
+    [InlineData(1000)]
+    [InlineData(0)]
+    [InlineData(999999.99)]
+    [InlineData(0.01)]
+    public void MetricTons_ShouldCreateQuantityInMT(decimal value)
+    {
+        // Act
+        var quantity = Quantity.MetricTons(value);
+
+        // Assert
+        quantity.Value.Should().Be(value);
+        quantity.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Theory]
+    [InlineData(7600)]
+    [InlineData(0)]
+    [InlineData(76000.50)]
+    [InlineData(1.5)]
+    public void Barrels_ShouldCreateQuantityInBBL(decimal value)
+    {
+        // Act
+        var quantity = Quantity.Barrels(value);
+
+        // Assert
+        quantity.Value.Should().Be(value);
+        quantity.Unit.Should().Be(QuantityUnit.BBL);
+    }
+
+    [Theory]
+    [InlineData(QuantityUnit.MT)]
+    [InlineData(QuantityUnit.BBL)]
+    [InlineData(QuantityUnit.GAL)]
+    [InlineData(QuantityUnit.LOTS)]
+    public void Zero_ShouldCreateZeroQuantity_ForAnyUnit(QuantityUnit unit)
+    {
+        // Act
+        var quantity = Quantity.Zero(unit);
+
+        // Assert
+        quantity.Value.Should().Be(0);
+        quantity.Unit.Should().Be(unit);
+        quantity.IsZero().Should().BeTrue();
+        quantity.IsNegative().Should().BeFalse();
+    }
+
+    #endregion
+
+    #region Conversion Tests
+
+    [Theory]
+    [InlineData(100, 760)]  // 100 MT * 7.6 = 760 BBL
+    [InlineData(1, 7.6)]    // 1 MT * 7.6 = 7.6 BBL
+    [InlineData(10.5, 79.8)] // 10.5 MT * 7.6 = 79.8 BBL
+    [InlineData(0, 0)]      // Edge case: 0 MT = 0 BBL
+    public void ConvertTo_ShouldConvertMTToBBL_WithDefaultRatio(decimal mtValue, decimal expectedBblValue)
+    {
+        // Arrange
+        var mtQuantity = Quantity.MetricTons(mtValue);
+
+        // Act
+        var bblQuantity = mtQuantity.ConvertTo(QuantityUnit.BBL);
+
+        // Assert
+        bblQuantity.Value.Should().Be(expectedBblValue);
+        bblQuantity.Unit.Should().Be(QuantityUnit.BBL);
+    }
+
+    [Theory]
+    [InlineData(760, 100)]    // 760 BBL / 7.6 = 100 MT
+    [InlineData(7.6, 1)]      // 7.6 BBL / 7.6 = 1 MT
+    [InlineData(79.8, 10.5)]  // 79.8 BBL / 7.6 = 10.5 MT
+    [InlineData(0, 0)]        // Edge case: 0 BBL = 0 MT
+    public void ConvertTo_ShouldConvertBBLToMT_WithDefaultRatio(decimal bblValue, decimal expectedMtValue)
+    {
+        // Arrange
+        var bblQuantity = Quantity.Barrels(bblValue);
+
+        // Act
+        var mtQuantity = bblQuantity.ConvertTo(QuantityUnit.MT);
+
+        // Assert
+        mtQuantity.Value.Should().BeApproximately(expectedMtValue, 0.01m);
+        mtQuantity.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Theory]
+    [InlineData(100, 8.0, 800)]   // 100 MT * 8.0 = 800 BBL (custom ratio)
+    [InlineData(100, 6.5, 650)]   // 100 MT * 6.5 = 650 BBL (custom ratio)
+    [InlineData(50, 7.2, 360)]    // 50 MT * 7.2 = 360 BBL (custom ratio)
+    public void ConvertTo_ShouldUseCustomConversionRatio_WhenProvided(decimal mtValue, decimal customRatio, decimal expectedBblValue)
+    {
+        // Arrange
+        var mtQuantity = Quantity.MetricTons(mtValue);
+
+        // Act
+        var bblQuantity = mtQuantity.ConvertTo(QuantityUnit.BBL, customRatio);
+
+        // Assert
+        bblQuantity.Value.Should().Be(expectedBblValue);
+        bblQuantity.Unit.Should().Be(QuantityUnit.BBL);
+    }
+
+    [Theory]
+    [InlineData(QuantityUnit.MT)]
+    [InlineData(QuantityUnit.BBL)]
+    [InlineData(QuantityUnit.GAL)]
+    [InlineData(QuantityUnit.LOTS)]
+    public void ConvertTo_ShouldReturnSameQuantity_WhenTargetUnitIsSame(QuantityUnit unit)
+    {
+        // Arrange
+        var originalQuantity = new Quantity(100, unit);
+
+        // Act
+        var convertedQuantity = originalQuantity.ConvertTo(unit);
+
+        // Assert
+        convertedQuantity.Should().Be(originalQuantity);
+        convertedQuantity.Value.Should().Be(100);
+        convertedQuantity.Unit.Should().Be(unit);
+    }
+
+    [Theory]
+    [InlineData(QuantityUnit.MT, QuantityUnit.GAL)]
+    [InlineData(QuantityUnit.BBL, QuantityUnit.LOTS)]
+    [InlineData(QuantityUnit.GAL, QuantityUnit.MT)]
+    [InlineData(QuantityUnit.LOTS, QuantityUnit.BBL)]
+    public void ConvertTo_ShouldThrowDomainException_ForUnsupportedConversions(QuantityUnit fromUnit, QuantityUnit toUnit)
+    {
+        // Arrange
+        var quantity = new Quantity(100, fromUnit);
+
+        // Act & Assert
+        var exception = Assert.Throws<DomainException>(() => quantity.ConvertTo(toUnit));
+        exception.Message.Should().Be($"Cannot convert from {fromUnit} to {toUnit}");
+    }
+
+    #endregion
+
+    #region Arithmetic Operations Tests
+
+    [Theory]
+    [InlineData(100, 50, 150)]
+    [InlineData(0, 100, 100)]
+    [InlineData(75.5, 24.5, 100)]
+    [InlineData(999.99, 0.01, 1000)]
+    public void Add_ShouldAddQuantitiesCorrectly_WhenSameUnit(decimal value1, decimal value2, decimal expectedSum)
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(value1);
+        var quantity2 = Quantity.MetricTons(value2);
+
+        // Act
+        var result = quantity1.Add(quantity2);
+
+        // Assert
+        result.Value.Should().Be(expectedSum);
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Fact]
+    public void Add_ShouldThrowDomainException_WhenDifferentUnits()
+    {
+        // Arrange
+        var mtQuantity = Quantity.MetricTons(100);
+        var bblQuantity = Quantity.Barrels(760);
+
+        // Act & Assert
+        var exception = Assert.Throws<DomainException>(() => mtQuantity.Add(bblQuantity));
+        exception.Message.Should().Be("Cannot add different quantity units: MT and BBL");
+    }
+
+    [Theory]
+    [InlineData(100, 50, 50)]
+    [InlineData(150, 100, 50)]
+    [InlineData(100, 0, 100)]
+    [InlineData(1000, 999.99, 0.01)]
+    public void Subtract_ShouldSubtractQuantitiesCorrectly_WhenSameUnit(decimal value1, decimal value2, decimal expectedDifference)
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(value1);
+        var quantity2 = Quantity.MetricTons(value2);
+
+        // Act
+        var result = quantity1.Subtract(quantity2);
+
+        // Assert
+        result.Value.Should().BeApproximately(expectedDifference, 0.001m);
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Fact]
+    public void Subtract_ShouldThrowDomainException_WhenDifferentUnits()
+    {
+        // Arrange
+        var mtQuantity = Quantity.MetricTons(100);
+        var bblQuantity = Quantity.Barrels(760);
+
+        // Act & Assert
+        var exception = Assert.Throws<DomainException>(() => mtQuantity.Subtract(bblQuantity));
+        exception.Message.Should().Be("Cannot subtract different quantity units: MT and BBL");
+    }
+
+    [Theory]
+    [InlineData(100, 2, 200)]
+    [InlineData(100, 0.5, 50)]
+    [InlineData(75.5, 2.5, 188.75)]
+    [InlineData(100, 0, 0)]
+    [InlineData(100, 1, 100)]
+    public void Multiply_ShouldMultiplyCorrectly(decimal originalValue, decimal multiplier, decimal expectedResult)
+    {
+        // Arrange
+        var quantity = Quantity.MetricTons(originalValue);
+
+        // Act
+        var result = quantity.Multiply(multiplier);
+
+        // Assert
+        result.Value.Should().Be(expectedResult);
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    #endregion
+
+    #region Operator Overloads Tests
+
+    [Fact]
+    public void AddOperator_ShouldWorkLikeAddMethod()
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(100);
+        var quantity2 = Quantity.MetricTons(50);
+
+        // Act
+        var result = quantity1 + quantity2;
+
+        // Assert
+        result.Value.Should().Be(150);
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Fact]
+    public void SubtractOperator_ShouldWorkLikeSubtractMethod()
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(100);
+        var quantity2 = Quantity.MetricTons(30);
+
+        // Act
+        var result = quantity1 - quantity2;
+
+        // Assert
+        result.Value.Should().Be(70);
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Fact]
+    public void MultiplyOperator_ShouldWorkLikeMultiplyMethod()
+    {
+        // Arrange
+        var quantity = Quantity.MetricTons(100);
+
+        // Act
+        var result = quantity * 2.5m;
+
+        // Assert
+        result.Value.Should().Be(250);
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    #endregion
+
+    #region State Check Methods Tests
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(0.0, true)]
+    [InlineData(100, false)]
+    [InlineData(0.01, false)]
+    public void IsZero_ShouldReturnCorrectResult(decimal value, bool expectedIsZero)
+    {
+        // Arrange
+        var quantity = Quantity.MetricTons(value);
+
+        // Act & Assert
+        quantity.IsZero().Should().Be(expectedIsZero);
+    }
+
+    [Fact]
+    public void IsNegative_ShouldAlwaysReturnFalse_SinceNegativeValuesNotAllowed()
+    {
+        // Arrange - Test various positive values and zero
+        var testValues = new[] { 0m, 0.01m, 100m, 999999.99m };
+
+        foreach (var value in testValues)
+        {
+            var quantity = Quantity.MetricTons(value);
+
+            // Act & Assert
+            quantity.IsNegative().Should().BeFalse();
+        }
+    }
+
+    #endregion
+
+    #region Equality and Value Object Tests
+
+    [Fact]
+    public void Equality_ShouldWork_ForSameQuantities()
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(100);
+        var quantity2 = Quantity.MetricTons(100);
+
+        // Assert
+        quantity1.Should().Be(quantity2);
+        quantity1.Equals(quantity2).Should().BeTrue();
+        quantity1.GetHashCode().Should().Be(quantity2.GetHashCode());
+    }
+
+    [Fact]
+    public void Equality_ShouldFail_ForDifferentQuantities()
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(100);
+        var quantity2 = Quantity.MetricTons(200);
+        var quantity3 = Quantity.Barrels(100);
+
+        // Assert
+        quantity1.Should().NotBe(quantity2);  // Different values
+        quantity1.Should().NotBe(quantity3);  // Different units
+        quantity2.Should().NotBe(quantity3);  // Different values and units
+    }
+
+    [Fact]
+    public void ValueObjectSemantics_ShouldBeMaintained()
+    {
+        // Arrange
+        var quantity1 = Quantity.MetricTons(100);
+        var quantity2 = Quantity.MetricTons(100);
+
+        // Assert - Value object equality
+        quantity1.Should().Be(quantity2);
+        quantity1.Equals(quantity2).Should().BeTrue();
+        quantity1.GetHashCode().Should().Be(quantity2.GetHashCode());
+        
+        // Reference equality should be false
+        ReferenceEquals(quantity1, quantity2).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(100, QuantityUnit.MT, 100, QuantityUnit.MT, true)]
+    [InlineData(100, QuantityUnit.MT, 200, QuantityUnit.MT, false)]
+    [InlineData(100, QuantityUnit.MT, 100, QuantityUnit.BBL, false)]
+    [InlineData(0, QuantityUnit.MT, 0, QuantityUnit.MT, true)]
+    [InlineData(0, QuantityUnit.MT, 0, QuantityUnit.BBL, false)]
+    public void ValueObjectEquality_ShouldWorkCorrectly(
+        decimal value1, QuantityUnit unit1,
+        decimal value2, QuantityUnit unit2,
+        bool expectedEqual)
+    {
+        // Arrange
+        var quantity1 = new Quantity(value1, unit1);
+        var quantity2 = new Quantity(value2, unit2);
+
+        // Act & Assert
+        quantity1.Equals(quantity2).Should().Be(expectedEqual);
+        
+        if (expectedEqual)
+        {
+            quantity1.GetHashCode().Should().Be(quantity2.GetHashCode());
+        }
+    }
+
+    #endregion
+
+    #region ToString Tests
+
+    [Theory]
+    [InlineData(1000.50, QuantityUnit.MT, "1,000.50 MT")]
+    [InlineData(7600.25, QuantityUnit.BBL, "7,600.25 BBL")]
+    [InlineData(0, QuantityUnit.GAL, "0.00 GAL")]
+    [InlineData(1, QuantityUnit.LOTS, "1.00 LOTS")]
+    [InlineData(999999.99, QuantityUnit.MT, "999,999.99 MT")]
+    public void ToString_ShouldFormatCorrectly(decimal value, QuantityUnit unit, string expectedFormat)
+    {
+        // Arrange
+        var quantity = new Quantity(value, unit);
+
+        // Act
+        var result = quantity.ToString();
+
+        // Assert
+        result.Should().Be(expectedFormat);
+    }
+
+    #endregion
+
+    #region Edge Cases and Complex Scenarios
+
+    [Fact]
+    public void ChainedOperations_ShouldWorkCorrectly()
+    {
+        // Arrange
+        var initial = Quantity.MetricTons(1000);
+        var addition = Quantity.MetricTons(200);
+        var subtraction = Quantity.MetricTons(150);
+
+        // Act
+        var result = (initial + addition - subtraction) * 0.8m;
+
+        // Assert
+        result.Value.Should().Be(840); // (1000 + 200 - 150) * 0.8 = 1050 * 0.8 = 840
+        result.Unit.Should().Be(QuantityUnit.MT);
+    }
+
+    [Fact]
+    public void ConversionRoundTrip_ShouldMaintainOriginalValue()
+    {
+        // Arrange
+        var originalMT = Quantity.MetricTons(100);
+
+        // Act
+        var convertedToBBL = originalMT.ConvertTo(QuantityUnit.BBL);
+        var convertedBackToMT = convertedToBBL.ConvertTo(QuantityUnit.MT);
+
+        // Assert
+        convertedBackToMT.Value.Should().BeApproximately(originalMT.Value, 0.001m);
+        convertedBackToMT.Unit.Should().Be(originalMT.Unit);
+    }
+
+    [Fact]
+    public void AllQuantityUnits_ShouldBeHandledInConstructor()
+    {
+        // Test that all enum values can be used
+        var testValue = 100m;
+        var allUnits = Enum.GetValues<QuantityUnit>();
+
+        foreach (var unit in allUnits)
+        {
+            // Act
+            var quantity = new Quantity(testValue, unit);
+
+            // Assert
+            quantity.Value.Should().Be(testValue);
+            quantity.Unit.Should().Be(unit);
+        }
+    }
+
+    [Theory]
+    [InlineData(0.001)]
+    [InlineData(0.000001)]
+    [InlineData(0.1)]
+    public void SmallValues_ShouldBeHandledCorrectly(decimal smallValue)
+    {
+        // Act
+        var quantity = Quantity.MetricTons(smallValue);
+
+        // Assert
+        quantity.Value.Should().Be(smallValue);
+        quantity.IsZero().Should().BeFalse();
+        quantity.IsNegative().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(999999.99)]
+    [InlineData(1000000)]
+    public void LargeValues_ShouldBeHandledCorrectly(decimal largeValue)
+    {
+        // Act
+        var quantity = Quantity.MetricTons(largeValue);
+
+        // Assert
+        quantity.Value.Should().Be(largeValue);
+        quantity.IsZero().Should().BeFalse();
+        quantity.IsNegative().Should().BeFalse();
+    }
+
+    #endregion
+}

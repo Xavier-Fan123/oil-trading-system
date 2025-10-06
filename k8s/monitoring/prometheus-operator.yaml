@@ -1,0 +1,647 @@
+# Prometheus Operator Configuration for Oil Trading System
+# Comprehensive monitoring and alerting setup
+
+---
+# Monitoring Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    app: monitoring-stack
+
+---
+# Prometheus Instance
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: oil-trading-prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: monitoring
+spec:
+  replicas: 2
+  retention: 30d
+  retentionSize: 50GB
+  
+  # Storage configuration
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: fast-ssd
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: 500m
+    limits:
+      memory: 4Gi
+      cpu: 2000m
+  
+  # Service account
+  serviceAccountName: prometheus
+  
+  # Security context
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+  
+  # Service discovery
+  serviceMonitorSelector:
+    matchLabels:
+      app: oil-trading-system
+  
+  ruleSelector:
+    matchLabels:
+      app: oil-trading-system
+  
+  # External labels
+  externalLabels:
+    cluster: oil-trading-production
+    environment: production
+  
+  # Alerting configuration
+  alerting:
+    alertmanagers:
+    - name: alertmanager
+      namespace: monitoring
+      port: web
+  
+  # Additional configurations
+  enableAdminAPI: false
+  logLevel: info
+  logFormat: logfmt
+  
+  # Scrape configuration
+  scrapeInterval: 30s
+  evaluationInterval: 30s
+  
+  # Node selector for specific nodes
+  nodeSelector:
+    node-type: monitoring
+
+---
+# Alertmanager Instance
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+    component: monitoring
+spec:
+  replicas: 3
+  
+  # Storage configuration
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: fast-ssd
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+  
+  # Resource allocation
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  
+  # Security context
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+  
+  # Configuration
+  configSecret: alertmanager-config
+  
+  # Node selector
+  nodeSelector:
+    node-type: monitoring
+
+---
+# ServiceMonitor for Oil Trading API
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: oil-trading-api
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: api
+spec:
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: api
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'http_request_duration_seconds.*'
+      targetLabel: __tmp_duration
+    - sourceLabels: [__tmp_duration]
+      targetLabel: __name__
+      replacement: 'oil_trading_${1}'
+
+---
+# ServiceMonitor for Frontend (Nginx)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: oil-trading-frontend
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+spec:
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: frontend
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+
+---
+# ServiceMonitor for PostgreSQL
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: oil-trading-postgresql
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: database
+spec:
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: database
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+
+---
+# ServiceMonitor for Redis
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: oil-trading-redis
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: cache
+spec:
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: cache
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+
+---
+# PrometheusRule for Oil Trading System Alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: oil-trading-alerts
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: alerts
+spec:
+  groups:
+  - name: oil-trading-api
+    interval: 30s
+    rules:
+    # High error rate
+    - alert: HighErrorRate
+      expr: |
+        (
+          rate(http_requests_total{job="oil-trading-api",code=~"5.."}[5m]) /
+          rate(http_requests_total{job="oil-trading-api"}[5m])
+        ) * 100 > 5
+      for: 2m
+      labels:
+        severity: critical
+        component: api
+        service: oil-trading-system
+      annotations:
+        summary: "High error rate detected"
+        description: "API error rate is {{ $value }}% which is above the 5% threshold"
+        runbook: "https://docs.oiltrading.example.com/runbooks/high-error-rate"
+    
+    # High response time
+    - alert: HighResponseTime
+      expr: |
+        histogram_quantile(0.95,
+          rate(http_request_duration_seconds_bucket{job="oil-trading-api"}[5m])
+        ) > 1
+      for: 5m
+      labels:
+        severity: warning
+        component: api
+        service: oil-trading-system
+      annotations:
+        summary: "High response time detected"
+        description: "95th percentile response time is {{ $value }}s"
+        runbook: "https://docs.oiltrading.example.com/runbooks/high-response-time"
+    
+    # High CPU usage
+    - alert: HighCPUUsage
+      expr: |
+        rate(container_cpu_usage_seconds_total{pod=~"oil-trading-api-.*"}[5m]) * 100 > 80
+      for: 10m
+      labels:
+        severity: warning
+        component: api
+        service: oil-trading-system
+      annotations:
+        summary: "High CPU usage detected"
+        description: "CPU usage is {{ $value }}% on pod {{ $labels.pod }}"
+        runbook: "https://docs.oiltrading.example.com/runbooks/high-cpu"
+    
+    # High memory usage
+    - alert: HighMemoryUsage
+      expr: |
+        (
+          container_memory_working_set_bytes{pod=~"oil-trading-api-.*"} /
+          container_spec_memory_limit_bytes{pod=~"oil-trading-api-.*"}
+        ) * 100 > 85
+      for: 10m
+      labels:
+        severity: warning
+        component: api
+        service: oil-trading-system
+      annotations:
+        summary: "High memory usage detected"
+        description: "Memory usage is {{ $value }}% on pod {{ $labels.pod }}"
+        runbook: "https://docs.oiltrading.example.com/runbooks/high-memory"
+    
+    # Pod restart rate
+    - alert: HighPodRestartRate
+      expr: |
+        rate(kube_pod_container_status_restarts_total{pod=~"oil-trading-.*"}[1h]) > 0.1
+      for: 15m
+      labels:
+        severity: warning
+        component: pods
+        service: oil-trading-system
+      annotations:
+        summary: "High pod restart rate"
+        description: "Pod {{ $labels.pod }} is restarting frequently"
+        runbook: "https://docs.oiltrading.example.com/runbooks/pod-restarts"
+
+  - name: oil-trading-database
+    interval: 30s
+    rules:
+    # Database connection issues
+    - alert: DatabaseConnectionFailure
+      expr: |
+        up{job="oil-trading-postgresql"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: database
+        service: oil-trading-system
+      annotations:
+        summary: "Database is down"
+        description: "PostgreSQL database is not responding"
+        runbook: "https://docs.oiltrading.example.com/runbooks/database-down"
+    
+    # High database connections
+    - alert: HighDatabaseConnections
+      expr: |
+        pg_stat_database_numbackends{datname="OilTradingDb"} > 150
+      for: 5m
+      labels:
+        severity: warning
+        component: database
+        service: oil-trading-system
+      annotations:
+        summary: "High database connections"
+        description: "Database has {{ $value }} active connections"
+        runbook: "https://docs.oiltrading.example.com/runbooks/high-db-connections"
+    
+    # Database disk usage
+    - alert: HighDatabaseDiskUsage
+      expr: |
+        (
+          node_filesystem_avail_bytes{mountpoint="/var/lib/postgresql"} /
+          node_filesystem_size_bytes{mountpoint="/var/lib/postgresql"}
+        ) * 100 < 20
+      for: 10m
+      labels:
+        severity: critical
+        component: database
+        service: oil-trading-system
+      annotations:
+        summary: "Database disk space low"
+        description: "Database disk usage is above 80%"
+        runbook: "https://docs.oiltrading.example.com/runbooks/disk-space"
+
+  - name: oil-trading-business-logic
+    interval: 60s
+    rules:
+    # Risk calculation failures
+    - alert: RiskCalculationFailures
+      expr: |
+        rate(oil_trading_risk_calculation_failures_total[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: critical
+        component: risk-engine
+        service: oil-trading-system
+      annotations:
+        summary: "Risk calculation failures detected"
+        description: "Risk calculation failure rate is {{ $value }} per second"
+        runbook: "https://docs.oiltrading.example.com/runbooks/risk-failures"
+    
+    # Contract processing delays
+    - alert: ContractProcessingDelay
+      expr: |
+        oil_trading_contract_processing_duration_seconds > 300
+      for: 1m
+      labels:
+        severity: warning
+        component: contracts
+        service: oil-trading-system
+      annotations:
+        summary: "Contract processing delays"
+        description: "Contract processing taking {{ $value }}s"
+        runbook: "https://docs.oiltrading.example.com/runbooks/contract-delays"
+    
+    # Price feed staleness
+    - alert: StalePriceFeed
+      expr: |
+        (time() - oil_trading_last_price_update_timestamp) > 600
+      for: 1m
+      labels:
+        severity: critical
+        component: price-feed
+        service: oil-trading-system
+      annotations:
+        summary: "Stale price feed detected"
+        description: "Price feed has not been updated for {{ $value }}s"
+        runbook: "https://docs.oiltrading.example.com/runbooks/stale-prices"
+
+---
+# Grafana Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config
+  namespace: monitoring
+  labels:
+    app: grafana
+data:
+  grafana.ini: |
+    [analytics]
+    check_for_updates = false
+    reporting_enabled = false
+    
+    [security]
+    admin_user = admin
+    admin_password = admin123
+    disable_gravatar = true
+    
+    [users]
+    allow_sign_up = false
+    auto_assign_org = true
+    auto_assign_org_role = Viewer
+    
+    [auth.anonymous]
+    enabled = false
+    
+    [dashboards]
+    default_home_dashboard_path = /var/lib/grafana/dashboards/oil-trading-overview.json
+    
+    [alerting]
+    enabled = true
+    execute_alerts = true
+
+---
+# Grafana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      serviceAccountName: grafana
+      securityContext:
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+      containers:
+      - name: grafana
+        image: grafana/grafana:10.2.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: GF_SECURITY_ADMIN_USER
+          value: admin
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-admin-credentials
+              key: password
+        - name: GF_INSTALL_PLUGINS
+          value: "grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,grafana-piechart-panel"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/grafana/grafana.ini
+          subPath: grafana.ini
+        - name: storage
+          mountPath: /var/lib/grafana
+        - name: dashboards
+          mountPath: /var/lib/grafana/dashboards
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+      volumes:
+      - name: config
+        configMap:
+          name: grafana-config
+      - name: storage
+        persistentVolumeClaim:
+          claimName: grafana-storage
+      - name: dashboards
+        configMap:
+          name: grafana-dashboards
+
+---
+# Grafana Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+
+---
+# Grafana PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+
+---
+# Alertmanager Configuration Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  labels:
+    app: alertmanager
+type: Opaque
+stringData:
+  alertmanager.yml: |
+    global:
+      smtp_smarthost: 'smtp.example.com:587'
+      smtp_from: 'alerts@oiltrading.example.com'
+      smtp_auth_username: 'alerts@oiltrading.example.com'
+      smtp_auth_password: 'smtp-password'
+      slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'default'
+      routes:
+      - match:
+          severity: critical
+        receiver: 'critical-alerts'
+        continue: true
+      - match:
+          component: database
+        receiver: 'database-team'
+        continue: true
+      - match:
+          component: api
+        receiver: 'api-team'
+        continue: true
+    
+    receivers:
+    - name: 'default'
+      slack_configs:
+      - channel: '#oil-trading-alerts'
+        title: 'Oil Trading System Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        color: 'warning'
+    
+    - name: 'critical-alerts'
+      email_configs:
+      - to: 'oncall@oiltrading.example.com'
+        subject: 'CRITICAL: Oil Trading System Alert'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Runbook: {{ .Annotations.runbook }}
+          {{ end }}
+      slack_configs:
+      - channel: '#oil-trading-critical'
+        title: 'CRITICAL: Oil Trading System'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        color: 'danger'
+    
+    - name: 'database-team'
+      email_configs:
+      - to: 'database-team@oiltrading.example.com'
+        subject: 'Database Alert: Oil Trading System'
+    
+    - name: 'api-team'
+      email_configs:
+      - to: 'api-team@oiltrading.example.com'
+        subject: 'API Alert: Oil Trading System'
+    
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'instance']
+
+---
+# Grafana Admin Credentials Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin-credentials
+  namespace: monitoring
+  labels:
+    app: grafana
+type: Opaque
+data:
+  password: YWRtaW4xMjM=  # admin123 base64 encoded

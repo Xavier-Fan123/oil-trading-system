@@ -1,0 +1,475 @@
+# Grafana Dashboards Configuration for Oil Trading System
+# Comprehensive monitoring dashboards
+
+---
+# ConfigMap for Grafana Dashboards
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: dashboards
+data:
+  # Oil Trading System Overview Dashboard
+  oil-trading-overview.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Oil Trading System Overview",
+        "tags": ["oil-trading", "overview"],
+        "timezone": "UTC",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "System Health",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=~\"oil-trading-.*\"}",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {
+                    "options": {
+                      "0": {"text": "DOWN", "color": "red"},
+                      "1": {"text": "UP", "color": "green"}
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            },
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"oil-trading-api\"}[5m])",
+                "legendFormat": "{{method}} {{code}}"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Response Time (95th percentile)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"oil-trading-api\"}[5m]))",
+                "legendFormat": "95th percentile"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"oil-trading-api\",code=~\"5..\"}[5m]) / rate(http_requests_total{job=\"oil-trading-api\"}[5m]) * 100",
+                "legendFormat": "Error Rate %"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6}
+          },
+          {
+            "id": 5,
+            "title": "Active Contracts",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "oil_trading_active_contracts_total",
+                "legendFormat": "Active Contracts"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 12}
+          },
+          {
+            "id": 6,
+            "title": "Risk Metrics",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "oil_trading_var_95_percent",
+                "legendFormat": "VaR 95%"
+              },
+              {
+                "expr": "oil_trading_var_99_percent",
+                "legendFormat": "VaR 99%"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 6, "y": 12}
+          }
+        ]
+      }
+    }
+
+  # Infrastructure Dashboard
+  infrastructure-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Oil Trading Infrastructure",
+        "tags": ["oil-trading", "infrastructure"],
+        "timezone": "UTC",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(container_cpu_usage_seconds_total{pod=~\"oil-trading-.*\"}[5m]) * 100",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "container_memory_working_set_bytes{pod=~\"oil-trading-.*\"} / 1024 / 1024",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Network I/O",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(container_network_receive_bytes_total{pod=~\"oil-trading-.*\"}[5m])",
+                "legendFormat": "{{pod}} RX"
+              },
+              {
+                "expr": "rate(container_network_transmit_bytes_total{pod=~\"oil-trading-.*\"}[5m])",
+                "legendFormat": "{{pod}} TX"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Disk I/O",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(container_fs_reads_bytes_total{pod=~\"oil-trading-.*\"}[5m])",
+                "legendFormat": "{{pod}} Read"
+              },
+              {
+                "expr": "rate(container_fs_writes_bytes_total{pod=~\"oil-trading-.*\"}[5m])",
+                "legendFormat": "{{pod}} Write"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6}
+          }
+        ]
+      }
+    }
+
+  # Database Dashboard
+  database-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Oil Trading Database Metrics",
+        "tags": ["oil-trading", "database", "postgresql"],
+        "timezone": "UTC",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Database Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{datname=\"OilTradingDb\"}",
+                "legendFormat": "Active Connections"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Database Size",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_database_size_bytes{datname=\"OilTradingDb\"} / 1024 / 1024 / 1024",
+                "legendFormat": "Database Size (GB)"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Query Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(pg_stat_database_xact_commit{datname=\"OilTradingDb\"}[5m])",
+                "legendFormat": "Commits/sec"
+              },
+              {
+                "expr": "rate(pg_stat_database_xact_rollback{datname=\"OilTradingDb\"}[5m])",
+                "legendFormat": "Rollbacks/sec"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Cache Hit Ratio",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "pg_stat_database_blks_hit{datname=\"OilTradingDb\"} / (pg_stat_database_blks_hit{datname=\"OilTradingDb\"} + pg_stat_database_blks_read{datname=\"OilTradingDb\"}) * 100",
+                "legendFormat": "Cache Hit Ratio %"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6}
+          }
+        ]
+      }
+    }
+
+  # Business Metrics Dashboard
+  business-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Oil Trading Business Metrics",
+        "tags": ["oil-trading", "business", "trading"],
+        "timezone": "UTC",
+        "refresh": "30s",
+        "time": {
+          "from": "now-24h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Total Portfolio Value",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "oil_trading_portfolio_value_usd",
+                "legendFormat": "Portfolio Value (USD)"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currencyUSD"
+              }
+            },
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Daily Trading Volume",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "increase(oil_trading_volume_barrels_total[1d])",
+                "legendFormat": "Volume (Barrels)"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Risk Metrics",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "oil_trading_var_95_percent",
+                "legendFormat": "VaR 95%"
+              },
+              {
+                "expr": "oil_trading_var_99_percent",
+                "legendFormat": "VaR 99%"
+              },
+              {
+                "expr": "oil_trading_expected_shortfall",
+                "legendFormat": "Expected Shortfall"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Contract Status Distribution",
+            "type": "piechart",
+            "targets": [
+              {
+                "expr": "oil_trading_contracts_by_status",
+                "legendFormat": "{{status}}"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6}
+          },
+          {
+            "id": 5,
+            "title": "Price Movements",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "oil_trading_price_brent_usd",
+                "legendFormat": "Brent (USD/BBL)"
+              },
+              {
+                "expr": "oil_trading_price_wti_usd",
+                "legendFormat": "WTI (USD/BBL)"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 24, "x": 0, "y": 12}
+          }
+        ]
+      }
+    }
+
+  # Security Dashboard
+  security-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Oil Trading Security Metrics",
+        "tags": ["oil-trading", "security"],
+        "timezone": "UTC",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Authentication Failures",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(oil_trading_auth_failures_total[5m])",
+                "legendFormat": "Auth Failures/sec"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "API Rate Limiting",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(oil_trading_rate_limit_exceeded_total[5m])",
+                "legendFormat": "Rate Limit Exceeded/sec"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "TLS Certificate Expiry",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "(cert_expiry_timestamp - time()) / 86400",
+                "legendFormat": "Days until expiry"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 6}
+          },
+          {
+            "id": 4,
+            "title": "Failed Login Attempts by IP",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "topk(10, rate(oil_trading_failed_logins_by_ip[5m]))",
+                "legendFormat": "{{source_ip}}"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 18, "x": 6, "y": 6}
+          }
+        ]
+      }
+    }
+
+---
+# Dashboard Provisioning ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provisioning
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: provisioning
+data:
+  dashboard.yaml: |
+    apiVersion: 1
+    providers:
+    - name: 'oil-trading-dashboards'
+      orgId: 1
+      folder: 'Oil Trading System'
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 30
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana/dashboards
+
+---
+# Datasource Provisioning ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource-provisioning
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: provisioning
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus-operated:9090
+      isDefault: true
+      editable: true
+    - name: Alertmanager
+      type: alertmanager
+      access: proxy
+      url: http://alertmanager-operated:9093
+      editable: true

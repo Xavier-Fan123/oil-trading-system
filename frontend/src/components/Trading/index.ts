@@ -1,0 +1,1 @@
+export { FuturesSpotIntegration } from './FuturesSpotIntegration';

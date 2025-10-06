@@ -1,0 +1,392 @@
+name: Automated Testing Suite
+
+on:
+  schedule:
+    # Run comprehensive tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: 'Environment to test'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - api
+        - ui
+        - performance
+        - security
+
+env:
+  DOTNET_VERSION: '9.0'
+  NODE_VERSION: '18'
+
+jobs:
+  # API Integration Tests
+  api-integration-tests:
+    runs-on: ubuntu-latest
+    name: API Integration Tests
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'api' || github.event_name == 'schedule' }}
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+
+    environment: ${{ matrix.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Setup test environment variables
+      run: |
+        if [ "${{ matrix.environment }}" = "staging" ]; then
+          echo "BASE_URL=https://staging.oil-trading.yourdomain.com" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.STAGING_API_KEY }}" >> $GITHUB_ENV
+        else
+          echo "BASE_URL=https://oil-trading.yourdomain.com" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.PRODUCTION_API_KEY }}" >> $GITHUB_ENV
+        fi
+
+    - name: Run API health checks
+      run: |
+        # Basic health check
+        curl -f $BASE_URL/health || exit 1
+        
+        # API endpoint availability
+        curl -f $BASE_URL/api/products || exit 1
+        curl -f $BASE_URL/api/purchase-contracts || exit 1
+        curl -f $BASE_URL/api/risk/calculate || exit 1
+        
+        # GraphQL endpoint
+        curl -f $BASE_URL/graphql -H "Content-Type: application/json" -d '{"query":"query { __schema { types { name } } }"}' || exit 1
+
+    - name: Run comprehensive API tests
+      run: |
+        cd tests/OilTrading.ApiTests
+        dotnet test --configuration Release --logger "trx;LogFileName=api-tests-${{ matrix.environment }}.trx"
+      env:
+        TEST_BASE_URL: ${{ env.BASE_URL }}
+        TEST_API_KEY: ${{ env.API_KEY }}
+
+    - name: Upload API test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: api-test-results-${{ matrix.environment }}
+        path: tests/OilTrading.ApiTests/TestResults/
+
+  # UI End-to-End Tests
+  ui-e2e-tests:
+    runs-on: ubuntu-latest
+    name: UI End-to-End Tests
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'ui' || github.event_name == 'schedule' }}
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+        browser: [chromium, firefox]
+
+    environment: ${{ matrix.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install Playwright
+      run: |
+        cd tests/ui-tests
+        npm ci
+        npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Setup test environment
+      run: |
+        if [ "${{ matrix.environment }}" = "staging" ]; then
+          echo "BASE_URL=https://staging.oil-trading.yourdomain.com" >> $GITHUB_ENV
+        else
+          echo "BASE_URL=https://oil-trading.yourdomain.com" >> $GITHUB_ENV
+        fi
+
+    - name: Run Playwright tests
+      run: |
+        cd tests/ui-tests
+        npx playwright test --project=${{ matrix.browser }}
+      env:
+        PLAYWRIGHT_BASE_URL: ${{ env.BASE_URL }}
+        TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: ui-test-results-${{ matrix.environment }}-${{ matrix.browser }}
+        path: |
+          tests/ui-tests/test-results/
+          tests/ui-tests/playwright-report/
+
+  # Performance Tests
+  performance-tests:
+    runs-on: ubuntu-latest
+    name: Performance Tests
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'performance' || github.event_name == 'schedule' }}
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+        test_type: [load, stress, spike]
+
+    environment: ${{ matrix.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install k6
+      run: |
+        sudo gpg -k
+        sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: Setup test environment
+      run: |
+        if [ "${{ matrix.environment }}" = "staging" ]; then
+          echo "BASE_URL=https://staging.oil-trading.yourdomain.com" >> $GITHUB_ENV
+        else
+          echo "BASE_URL=https://oil-trading.yourdomain.com" >> $GITHUB_ENV
+        fi
+
+    - name: Run performance tests
+      run: |
+        cd tests/performance
+        k6 run ${{ matrix.test_type }}-test.js \
+          --env BASE_URL=$BASE_URL \
+          --out json=results-${{ matrix.environment }}-${{ matrix.test_type }}.json
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-results-${{ matrix.environment }}-${{ matrix.test_type }}
+        path: tests/performance/results-*.json
+
+    - name: Analyze performance results
+      run: |
+        cd tests/performance
+        python3 analyze_results.py results-${{ matrix.environment }}-${{ matrix.test_type }}.json
+
+  # Security Tests
+  security-tests:
+    runs-on: ubuntu-latest
+    name: Security Tests
+    if: ${{ github.event.inputs.test_suite == 'all' || github.event.inputs.test_suite == 'security' || github.event_name == 'schedule' }}
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+
+    environment: ${{ matrix.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup test environment
+      run: |
+        if [ "${{ matrix.environment }}" = "staging" ]; then
+          echo "BASE_URL=https://staging.oil-trading.yourdomain.com" >> $GITHUB_ENV
+        else
+          echo "BASE_URL=https://oil-trading.yourdomain.com" >> $GITHUB_ENV
+        fi
+
+    - name: Run OWASP ZAP security scan
+      uses: zaproxy/action-full-scan@v0.4.0
+      with:
+        target: ${{ env.BASE_URL }}
+        rules_file_name: '.zap/rules.tsv'
+        cmd_options: '-a'
+
+    - name: Run SSL/TLS security check
+      run: |
+        # Check SSL configuration
+        curl -I $BASE_URL | grep -i "strict-transport-security" || exit 1
+        
+        # Check for security headers
+        curl -I $BASE_URL | grep -i "x-frame-options" || exit 1
+        curl -I $BASE_URL | grep -i "x-content-type-options" || exit 1
+        curl -I $BASE_URL | grep -i "x-xss-protection" || exit 1
+
+    - name: Run API security tests
+      run: |
+        # Test rate limiting
+        for i in {1..20}; do
+          curl -s -o /dev/null -w "%{http_code}\n" $BASE_URL/api/products
+        done | grep -q "429" || exit 1
+        
+        # Test authentication
+        curl -s -o /dev/null -w "%{http_code}\n" $BASE_URL/api/admin/users | grep -q "401\|403" || exit 1
+
+  # Database Tests
+  database-tests:
+    runs-on: ubuntu-latest
+    name: Database Tests
+    if: ${{ github.event_name == 'schedule' || github.event.inputs.test_suite == 'all' }}
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+
+    environment: ${{ matrix.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Run database health checks
+      run: |
+        cd tests/OilTrading.DatabaseTests
+        dotnet test --configuration Release --logger "trx;LogFileName=db-tests-${{ matrix.environment }}.trx"
+      env:
+        TEST_ENVIRONMENT: ${{ matrix.environment }}
+        CONNECTION_STRING: ${{ secrets.TEST_DB_CONNECTION_STRING }}
+
+    - name: Upload database test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: database-test-results-${{ matrix.environment }}
+        path: tests/OilTrading.DatabaseTests/TestResults/
+
+  # Monitoring and Alerting Tests
+  monitoring-tests:
+    runs-on: ubuntu-latest
+    name: Monitoring Tests
+    if: ${{ github.event_name == 'schedule' || github.event.inputs.test_suite == 'all' }}
+
+    strategy:
+      matrix:
+        environment: [staging, production]
+
+    environment: ${{ matrix.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Test Prometheus metrics
+      run: |
+        if [ "${{ matrix.environment }}" = "staging" ]; then
+          PROMETHEUS_URL="https://prometheus-staging.oil-trading.yourdomain.com"
+        else
+          PROMETHEUS_URL="https://prometheus.oil-trading.yourdomain.com"
+        fi
+        
+        # Check if Prometheus is up
+        curl -f $PROMETHEUS_URL/-/healthy || exit 1
+        
+        # Check if metrics are being collected
+        curl -f "$PROMETHEUS_URL/api/v1/query?query=up" | grep -q '"status":"success"' || exit 1
+        
+        # Check specific application metrics
+        curl -f "$PROMETHEUS_URL/api/v1/query?query=http_requests_total" | grep -q '"status":"success"' || exit 1
+
+    - name: Test Grafana dashboards
+      run: |
+        if [ "${{ matrix.environment }}" = "staging" ]; then
+          GRAFANA_URL="https://grafana-staging.oil-trading.yourdomain.com"
+        else
+          GRAFANA_URL="https://grafana.oil-trading.yourdomain.com"
+        fi
+        
+        # Check if Grafana is accessible
+        curl -f $GRAFANA_URL/api/health || exit 1
+
+    - name: Test alerting rules
+      run: |
+        # This would test if alerting rules are properly configured
+        echo "Testing alerting rules..."
+        # Add specific tests for your alerting configuration
+
+  # Generate Test Report
+  generate-report:
+    runs-on: ubuntu-latest
+    name: Generate Test Report
+    needs: [api-integration-tests, ui-e2e-tests, performance-tests, security-tests, database-tests, monitoring-tests]
+    if: always()
+
+    steps:
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate comprehensive test report
+      run: |
+        cat > test-report.md << 'EOF'
+        # Automated Testing Report
+        
+        **Date:** $(date)
+        **Environment:** ${{ github.event.inputs.test_environment || 'all' }}
+        **Test Suite:** ${{ github.event.inputs.test_suite || 'all' }}
+        
+        ## Test Results Summary
+        
+        ### API Integration Tests
+        - Staging: ${{ needs.api-integration-tests.result }}
+        - Production: ${{ needs.api-integration-tests.result }}
+        
+        ### UI End-to-End Tests
+        - Result: ${{ needs.ui-e2e-tests.result }}
+        
+        ### Performance Tests
+        - Result: ${{ needs.performance-tests.result }}
+        
+        ### Security Tests
+        - Result: ${{ needs.security-tests.result }}
+        
+        ### Database Tests
+        - Result: ${{ needs.database-tests.result }}
+        
+        ### Monitoring Tests
+        - Result: ${{ needs.monitoring-tests.result }}
+        
+        EOF
+
+    - name: Upload test report
+      uses: actions/upload-artifact@v3
+      with:
+        name: comprehensive-test-report
+        path: test-report.md
+
+    - name: Notify on test failures
+      if: ${{ needs.api-integration-tests.result == 'failure' || needs.ui-e2e-tests.result == 'failure' || needs.performance-tests.result == 'failure' || needs.security-tests.result == 'failure' }}
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: 'Automated testing failed! Check the test report for details.'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

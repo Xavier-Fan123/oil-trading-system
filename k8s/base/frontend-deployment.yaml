@@ -1,0 +1,181 @@
+---
+# Oil Trading Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oil-trading-frontend
+  namespace: oil-trading
+  labels:
+    app: oil-trading-system
+    component: frontend
+    version: v1.0.0
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    description: "Oil Trading System Frontend - React SPA"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: oil-trading-system
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: oil-trading-system
+        component: frontend
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9113"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context
+      securityContext:
+        runAsUser: 2000
+        runAsGroup: 2000
+        runAsNonRoot: true
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+        - name: frontend
+          image: ghcr.io/your-org/oil-trading-frontend:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          
+          # Environment variables
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "UTC"
+            - name: NGINX_ENTRYPOINT_QUIET_LOGS
+              value: "1"
+          
+          # Volume mounts
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-logs
+              mountPath: /var/log/nginx
+            - name: nginx-run
+              mountPath: /var/run
+          
+          # Health checks
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          
+          # Security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 2000
+            runAsGroup: 2000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          
+          # Resource limits
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+        
+        # Nginx Exporter sidecar for monitoring
+        - name: nginx-exporter
+          image: nginx/nginx-prometheus-exporter:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 9113
+              protocol: TCP
+          args:
+            - -nginx.scrape-uri=http://localhost:8080/nginx_status
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 2000
+            runAsGroup: 2000
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+      
+      # Volumes
+      volumes:
+        - name: nginx-cache
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: nginx-logs
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: nginx-run
+          emptyDir:
+            sizeLimit: 10Mi
+      
+      # Node selection
+      nodeSelector:
+        kubernetes.io/os: linux
+      
+      # Affinity rules
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values: ["frontend"]
+                topologyKey: kubernetes.io/hostname
+      
+      # Termination grace period
+      terminationGracePeriodSeconds: 30

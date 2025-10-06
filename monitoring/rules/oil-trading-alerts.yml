@@ -1,0 +1,314 @@
+groups:
+  - name: oil-trading-alerts
+    rules:
+      # API Health Alerts
+      - alert: APIDown
+        expr: up{job="oiltrading-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Oil Trading API is down"
+          description: "The Oil Trading API has been down for more than 1 minute"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time"
+          description: "95th percentile response time is {{ $value }}s"
+
+      # Database Alerts
+      - alert: PostgreSQLDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute"
+
+      - alert: DatabaseConnectionsHigh
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connections"
+          description: "Database connections are at {{ $value }}% of maximum"
+
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_database_blks_read[5m]) / rate(pg_stat_database_blks_hit[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Database cache hit ratio is low: {{ $value }}"
+
+      # Redis Alerts
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute"
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage is at {{ $value }}%"
+
+      # System Resource Alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value }}% full on {{ $labels.instance }}"
+
+      # Business Logic Alerts
+      - alert: HighRiskExposure
+        expr: oil_trading_risk_var_95 > oil_trading_risk_limit
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Risk exposure above limit"
+          description: "VaR 95% is {{ $value }}, above the limit of {{ $labels.limit }}"
+
+      - alert: TradingVolumeAnomaly
+        expr: abs(rate(oil_trading_volume_total[1h]) - rate(oil_trading_volume_total[24h] offset 24h)) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Trading volume anomaly detected"
+          description: "Trading volume deviation: {{ $value }}"
+
+      - alert: PriceVolatilityHigh
+        expr: oil_trading_price_volatility > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High price volatility"
+          description: "Price volatility is {{ $value }}"
+
+      - alert: ContractExpiryAlert
+        expr: oil_trading_contracts_expiring_soon > 10
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Contracts expiring soon"
+          description: "{{ $value }} contracts are expiring within 7 days"
+
+      # Advanced Business Alerts
+      - alert: UnusualTradingVolumeSpike
+        expr: rate(oil_trading_volume_total[5m]) > (rate(oil_trading_volume_total[1d] offset 1d) * 3)
+        for: 2m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Unusual trading volume spike detected"
+          description: "Trading volume is {{ $value }}x higher than usual"
+          runbook_url: "https://wiki.oiltrading.com/runbooks/trading-volume-spike"
+
+      - alert: LargePositionExposure
+        expr: oil_trading_position_exposure_usd > 100000000
+        for: 1m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "Large position exposure detected"
+          description: "Position exposure is ${{ $value }} USD, above $100M limit"
+          action_required: "Immediate review by risk management team"
+
+      - alert: ContractExpiryRisk
+        expr: oil_trading_contracts_expiring_24h > 20
+        for: 5m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "High number of contracts expiring soon"
+          description: "{{ $value }} contracts are expiring within 24 hours"
+          
+      - alert: PriceFeedStale
+        expr: time() - oil_trading_last_price_update > 300
+        for: 1m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "Price feed is stale"
+          description: "Last price update was {{ $value }} seconds ago"
+          
+      - alert: SettlementFailure
+        expr: rate(oil_trading_settlement_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "Settlement failures detected"
+          description: "Settlement failure rate is {{ $value }} per second"
+
+      # Advanced Performance Alerts
+      - alert: DatabaseSlowQueryAlert
+        expr: histogram_quantile(0.95, rate(oil_trading_db_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile query time is {{ $value }}s"
+          current_value: "{{ $value }}s"
+          threshold: "1s"
+
+      - alert: CacheHitRateLow
+        expr: oil_trading_cache_hit_ratio < 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Low cache hit ratio"
+          description: "Cache hit ratio is {{ $value }}%, below 80% threshold"
+          current_value: "{{ $value }}%"
+          threshold: "80%"
+
+      - alert: APIResponseTimeP99High
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="oil-trading-api"}[5m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High API response time (P99)"
+          description: "99th percentile API response time is {{ $value }}s"
+          current_value: "{{ $value }}s"
+          threshold: "3s"
+
+      # Security Alerts
+      - alert: UnauthorizedAccessAttempt
+        expr: rate(oil_trading_unauthorized_requests_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Unauthorized access attempts detected"
+          description: "Unauthorized request rate is {{ $value }} per second"
+
+      - alert: SuspiciousLoginPattern
+        expr: rate(oil_trading_failed_logins_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Suspicious login pattern detected"
+          description: "Failed login rate is {{ $value }} per second"
+
+      # Data Quality Alerts
+      - alert: MissingPriceData
+        expr: oil_trading_missing_price_data_count > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Missing price data detected"
+          description: "{{ $value }} price records are missing"
+
+      - alert: DataValidationFailure
+        expr: rate(oil_trading_data_validation_failures_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          category: data_quality
+        annotations:
+          summary: "Data validation failures detected"
+          description: "Data validation failure rate is {{ $value }} per second"
+
+      # Compliance Alerts
+      - alert: RegulatoryReportingDelay
+        expr: oil_trading_regulatory_report_delay_hours > 2
+        for: 5m
+        labels:
+          severity: critical
+          category: compliance
+        annotations:
+          summary: "Regulatory reporting delay"
+          description: "Regulatory report is delayed by {{ $value }} hours"
+
+      - alert: PositionLimitBreach
+        expr: oil_trading_position_limit_utilization > 0.95
+        for: 1m
+        labels:
+          severity: critical
+          category: compliance
+        annotations:
+          summary: "Position limit near breach"
+          description: "Position limit utilization is {{ $value }}% (>95%)"
+
+      # Container Alerts
+      - alert: ContainerMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container memory usage high"
+          description: "Container {{ $labels.name }} memory usage is {{ $value }}%"
+
+      - alert: ContainerCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container CPU usage high"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value }}%"

@@ -1,0 +1,79 @@
+# Grafana Datasource Configuration
+apiVersion: 1
+
+# Datasources configuration
+datasources:
+  # Prometheus - Primary metrics datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 10s
+      queryTimeout: 60s
+      defaultRegion: us-east-1
+      customQueryParameters: ''
+      
+  # Loki - Logs datasource
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+          
+  # Tempo - Distributed tracing
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: true
+    jsonData:
+      httpMethod: GET
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [{ key: 'service.name', value: 'service' }]
+        mapTagNamesEnabled: false
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: false
+        filterBySpanID: false
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki
+        
+  # Elasticsearch - Alternative logs source
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: oil-trading-*
+    editable: true
+    jsonData:
+      index: oil-trading-*
+      timeField: '@timestamp'
+      esVersion: 8
+      maxConcurrentShardRequests: 5
+      logMessageField: message
+      logLevelField: log_level
+      
+  # TestData - For development and testing
+  - name: TestData
+    type: testdata
+    access: proxy
+    editable: true

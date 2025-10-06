@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate PWA Icons</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        canvas { margin: 10px; border: 1px solid #ccc; }
+        .icon-set { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>PWA Icon Generator</h1>
+    <p>This page generates PNG icons from the SVG. Right-click and save each canvas as PNG.</p>
+    
+    <div class="icon-set">
+        <h3>72x72</h3>
+        <canvas id="icon72" width="72" height="72"></canvas>
+        <button onclick="downloadIcon('icon72', 'icon-72x72.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>96x96</h3>
+        <canvas id="icon96" width="96" height="96"></canvas>
+        <button onclick="downloadIcon('icon96', 'icon-96x96.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>128x128</h3>
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <button onclick="downloadIcon('icon128', 'icon-128x128.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>144x144</h3>
+        <canvas id="icon144" width="144" height="144"></canvas>
+        <button onclick="downloadIcon('icon144', 'icon-144x144.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>152x152</h3>
+        <canvas id="icon152" width="152" height="152"></canvas>
+        <button onclick="downloadIcon('icon152', 'icon-152x152.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>192x192</h3>
+        <canvas id="icon192" width="192" height="192"></canvas>
+        <button onclick="downloadIcon('icon192', 'icon-192x192.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>384x384</h3>
+        <canvas id="icon384" width="384" height="384"></canvas>
+        <button onclick="downloadIcon('icon384', 'icon-384x384.png')">Download</button>
+    </div>
+    
+    <div class="icon-set">
+        <h3>512x512</h3>
+        <canvas id="icon512" width="512" height="512"></canvas>
+        <button onclick="downloadIcon('icon512', 'icon-512x512.png')">Download</button>
+    </div>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Background circle
+            ctx.fillStyle = '#1976d2';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Oil drop shape
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            const centerX = size/2;
+            const centerY = size/2;
+            const scale = size/512;
+            
+            ctx.moveTo(centerX, centerY - 156*scale);
+            ctx.bezierCurveTo(
+                centerX - 36*scale, centerY - 126*scale,
+                centerX - 76*scale, centerY - 86*scale,
+                centerX - 76*scale, centerY - 36*scale
+            );
+            ctx.bezierCurveTo(
+                centerX - 76*scale, centerY + 4*scale,
+                centerX - 46*scale, centerY + 34*scale,
+                centerX, centerY + 34*scale
+            );
+            ctx.bezierCurveTo(
+                centerX + 46*scale, centerY + 34*scale,
+                centerX + 76*scale, centerY + 4*scale,
+                centerX + 76*scale, centerY - 36*scale
+            );
+            ctx.bezierCurveTo(
+                centerX + 76*scale, centerY - 86*scale,
+                centerX + 36*scale, centerY - 126*scale,
+                centerX, centerY - 156*scale
+            );
+            ctx.fill();
+            
+            // Text: OT
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.floor(80*scale)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('OT', centerX, centerY + 124*scale);
+        }
+        
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // Generate all icons when page loads
+        window.onload = function() {
+            drawIcon('icon72', 72);
+            drawIcon('icon96', 96);
+            drawIcon('icon128', 128);
+            drawIcon('icon144', 144);
+            drawIcon('icon152', 152);
+            drawIcon('icon192', 192);
+            drawIcon('icon384', 384);
+            drawIcon('icon512', 512);
+        };
+    </script>
+</body>
+</html>

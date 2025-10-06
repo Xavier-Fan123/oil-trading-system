@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oil-trading
+  labels:
+    name: oil-trading
+    environment: production
+    app: oil-trading-system
+    version: v1.0.0
+    component: namespace
+  annotations:
+    description: "Oil Trading System - Enterprise Trading and Risk Management Platform"
+    contact: "devops@oiltrading.example.com"
+    documentation: "https://docs.oiltrading.example.com"
+spec:
+  finalizers:
+  - kubernetes

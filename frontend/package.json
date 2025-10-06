@@ -1,0 +1,48 @@
+{
+  "name": "oil-trading-dashboard",
+  "version": "1.0.0",
+  "description": "Oil Trading Dashboard Frontend",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:production": "tsc && vite build --config vite.config.production.ts",
+    "serve": "node simple-server.js",
+    "serve:dist": "node production-server.js",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.9.5",
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.18.0",
+    "@mui/material": "^5.15.10",
+    "@mui/x-date-pickers": "^6.19.4",
+    "@tanstack/react-query": "^5.17.15",
+    "@types/ws": "^8.5.10",
+    "axios": "^1.6.7",
+    "date-fns": "^2.30.0",
+    "graphql": "^16.8.1",
+    "graphql-ws": "^5.14.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.3",
+    "recharts": "^2.10.4",
+    "subscriptions-transport-ws": "^0.11.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "typescript": "^5.2.2",
+    "vite": "^7.1.3"
+  }
+}

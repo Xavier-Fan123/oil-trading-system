@@ -1,0 +1,188 @@
+// Shipping Operations Types
+
+export interface ShippingOperation {
+  id: string;
+  shippingNumber: string;
+  contractId: string;
+  vesselName: string;
+  imoNumber?: string;
+  plannedQuantity: Quantity;
+  actualQuantity?: Quantity;
+  loadPort: string;
+  dischargePort: string;
+  status: ShippingStatus;
+  loadPortATA?: string;
+  loadPortATD?: string;
+  dischargePortATA?: string;
+  dischargePortATD?: string;
+  demurrageDays?: number;
+  charterParty?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShippingOperationDto {
+  id: string;
+  shippingNumber: string;
+  contractId: string;
+  contractNumber: string;
+  vesselName: string;
+  imoNumber?: string;
+  vesselCapacity?: number;
+  shippingAgent?: string;
+  plannedQuantity: Quantity;
+  actualQuantity?: Quantity;
+  loadPort: string;
+  dischargePort: string;
+  status: ShippingStatus;
+  loadPortATA?: string;
+  loadPortATD?: string;
+  dischargePortATA?: string;
+  dischargePortATD?: string;
+  demurrageDays?: number;
+  charterParty?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShippingOperationSummaryDto {
+  id: string;
+  shippingNumber: string;
+  contractId: string;
+  contractNumber: string;
+  vesselName: string;
+  status: string;
+  loadPort: string;
+  dischargePort: string;
+  plannedQuantity: number;
+  quantityUnit: string;
+  loadPortETA?: string;
+  dischargePortETA?: string;
+  createdAt: string;
+}
+
+export interface ShippingOperationSummaryDtoPagedResult {
+  items: ShippingOperationSummaryDto[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface CreateShippingOperationDto {
+  contractId: string;
+  vesselName: string;
+  imoNumber?: string;
+  plannedQuantity: number;
+  quantityUnit: string;
+  loadPort: string;
+  dischargePort: string;
+  loadPortETA?: string;
+  dischargePortETA?: string;
+  charterParty?: string;
+  notes?: string;
+}
+
+export interface UpdateShippingOperationDto {
+  vesselName?: string;
+  imoNumber?: string;
+  plannedQuantity?: number;
+  quantityUnit?: string;
+  actualQuantity?: number;
+  actualQuantityUnit?: string;
+  loadPort?: string;
+  dischargePort?: string;
+  loadPortETA?: string;
+  dischargePortETA?: string;
+  loadPortATA?: string;
+  loadPortATD?: string;
+  dischargePortATA?: string;
+  dischargePortATD?: string;
+  demurrageDays?: number;
+  charterParty?: string;
+  notes?: string;
+}
+
+export interface RecordLiftingOperationDto {
+  shippingOperationId: string;
+  norDate: string;
+  actualQuantity: number;
+  quantityUnit: string;
+  demurrageDays?: number;
+  notes?: string;
+}
+
+export interface CancelShippingOperationDto {
+  reason: string;
+}
+
+export enum ShippingStatus {
+  Planned = 1,
+  InTransit = 2,
+  Loading = 3,
+  Loaded = 4,
+  Discharging = 5,
+  Completed = 6,
+  Cancelled = 7,
+}
+
+export interface Quantity {
+  value: number;
+  unit: string;
+}
+
+// Shipping filter options
+export interface ShippingFilters {
+  page?: number;
+  pageSize?: number;
+  shippingNumber?: string;
+  contractId?: string;
+  vesselName?: string;
+  status?: ShippingStatus;
+  loadPort?: string;
+  dischargePort?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+// Status options for UI
+export const SHIPPING_STATUS_OPTIONS = [
+  { value: ShippingStatus.Planned, label: 'Planned', color: 'default' },
+  { value: ShippingStatus.InTransit, label: 'In Transit', color: 'info' },
+  { value: ShippingStatus.Loading, label: 'Loading', color: 'warning' },
+  { value: ShippingStatus.Loaded, label: 'Loaded', color: 'primary' },
+  { value: ShippingStatus.Discharging, label: 'Discharging', color: 'warning' },
+  { value: ShippingStatus.Completed, label: 'Completed', color: 'success' },
+  { value: ShippingStatus.Cancelled, label: 'Cancelled', color: 'error' },
+] as const;
+
+// Common ports for dropdowns
+export const COMMON_PORTS = [
+  'Rotterdam, Netherlands',
+  'Houston, TX, USA',
+  'Singapore',
+  'Fujairah, UAE',
+  'Antwerp, Belgium',
+  'Mumbai, India',
+  'Bremen, Germany',
+  'Le Havre, France',
+  'Algeciras, Spain',
+  'Jebel Ali, UAE',
+  'Shanghai, China',
+  'Busan, South Korea',
+  'Los Angeles, CA, USA',
+  'Long Beach, CA, USA',
+  'Hamburg, Germany',
+] as const;
+
+// Unit options
+export const QUANTITY_UNITS = [
+  { value: 'MT', label: 'Metric Tons' },
+  { value: 'BBL', label: 'Barrels' },
+  { value: 'GAL', label: 'Gallons' },
+  { value: 'LT', label: 'Liters' },
+] as const;
