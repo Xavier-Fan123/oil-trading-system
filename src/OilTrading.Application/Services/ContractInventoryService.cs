@@ -166,6 +166,9 @@ public class ContractInventoryService : IContractInventoryService
 
             foreach (var reservation in activeReservations)
             {
+                // Capture the remaining quantity BEFORE releasing
+                var quantityToRelease = reservation.GetRemainingQuantity();
+
                 reservation.FullRelease(reason, "System");
                 await _reservationRepository.UpdateAsync(reservation);
 
@@ -175,7 +178,7 @@ public class ContractInventoryService : IContractInventoryService
                     var releaseResult = await _inventoryService.ReleaseReservationAsync(new InventoryReleaseRequest
                     {
                         ReservationReference = reservation.Id.ToString(),
-                        Quantity = reservation.GetRemainingQuantity(),
+                        Quantity = quantityToRelease,
                         Reason = reason
                     });
 
@@ -187,7 +190,7 @@ public class ContractInventoryService : IContractInventoryService
                 }
 
                 totalReleasedQuantity = new Quantity(
-                    totalReleasedQuantity.Value + reservation.GetRemainingQuantity().Value,
+                    totalReleasedQuantity.Value + quantityToRelease.Value,
                     totalReleasedQuantity.Unit);
             }
 

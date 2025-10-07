@@ -649,8 +649,15 @@ public class RiskCalculationService : IRiskCalculationService
         List<PaperContract> positions,
         Dictionary<string, List<decimal>> productReturns)
     {
-        if (!positions.Any() || !productReturns.Any())
+        if (!positions.Any())
             return 0;
+
+        // If no return data, use fallback (which includes industry standard)
+        if (!productReturns.Any())
+        {
+            _logger.LogWarning("No return data available for volatility calculation, using fallback method");
+            return CalculateVolatilityFallback(positions, productReturns);
+        }
 
         try
         {
