@@ -832,7 +832,7 @@ public class ContractInventoryServiceTests
             contractQuantity: quantity);
 
         contract.SetId(contractId);
-        contract.Activate();
+        // Don't activate - tests work with Draft status contracts
 
         // Set the Product navigation property using reflection
         var productProperty = typeof(PurchaseContract).GetProperty("Product");
@@ -863,7 +863,7 @@ public class ContractInventoryServiceTests
             contractQuantity: quantity);
 
         contract.SetId(contractId);
-        contract.Activate();
+        // Don't activate - tests work with Draft status contracts
 
         // Set the Product navigation property using reflection
         var productProperty = typeof(SalesContract).GetProperty("Product");

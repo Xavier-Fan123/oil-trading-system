@@ -11,9 +11,12 @@ public class Money : ValueObject
 
     public Money(decimal amount, string currency)
     {
+        if (amount < 0)
+            throw new DomainException("Amount cannot be negative");
+
         if (string.IsNullOrWhiteSpace(currency))
             throw new DomainException("Currency cannot be null or empty");
-        
+
         if (currency.Length != 3)
             throw new DomainException("Currency must be a 3-letter ISO code");
 

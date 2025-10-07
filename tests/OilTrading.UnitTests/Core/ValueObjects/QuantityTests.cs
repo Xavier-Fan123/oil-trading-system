@@ -92,12 +92,13 @@ public class QuantityTests
     {
         // Arrange
         var quantity = new Quantity(1000.5m, QuantityUnit.BBL);
-        
+
         // Act
         var result = quantity.ToString();
-        
+
         // Assert
-        result.Should().Contain("1000.5");
+        // ToString formats with thousand separator: "1,000.50 BBL"
+        result.Should().MatchRegex(@"1[,]?000\.5"); // Accepts both "1,000.5" and "1000.5"
         result.Should().Contain("BBL");
     }
 

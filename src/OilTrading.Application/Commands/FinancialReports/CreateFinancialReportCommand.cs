@@ -74,10 +74,14 @@ public class CreateFinancialReportCommandValidator : AbstractValidator<CreateFin
             .WithMessage("Current liabilities cannot be negative");
 
         // Logical relationships validation
-        RuleFor(x => x)
-            .Must(x => !x.TotalAssets.HasValue || !x.CurrentAssets.HasValue || x.CurrentAssets.Value <= x.TotalAssets.Value)
-            .WithMessage("Current assets cannot exceed total assets")
-            .Must(x => !x.TotalLiabilities.HasValue || !x.CurrentLiabilities.HasValue || x.CurrentLiabilities.Value <= x.TotalLiabilities.Value)
+        RuleFor(x => x.CurrentAssets)
+            .Must((command, currentAssets) => !currentAssets.HasValue || !command.TotalAssets.HasValue || currentAssets.Value <= command.TotalAssets.Value)
+            .When(x => x.CurrentAssets.HasValue && x.TotalAssets.HasValue)
+            .WithMessage("Current assets cannot exceed total assets");
+
+        RuleFor(x => x.CurrentLiabilities)
+            .Must((command, currentLiabilities) => !currentLiabilities.HasValue || !command.TotalLiabilities.HasValue || currentLiabilities.Value <= command.TotalLiabilities.Value)
+            .When(x => x.CurrentLiabilities.HasValue && x.TotalLiabilities.HasValue)
             .WithMessage("Current liabilities cannot exceed total liabilities");
 
         RuleFor(x => x.CreatedBy)

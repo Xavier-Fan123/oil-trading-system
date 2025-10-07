@@ -312,7 +312,7 @@ public class ContractInventoryService : IContractInventoryService
         {
             var inventorySnapshot = await _inventoryService.GetRealTimeInventoryAsync(productCode, locationCode);
             // Find the available quantity for this product and location
-            var position = inventorySnapshot?.Positions?.FirstOrDefault(p => p.ProductId.ToString() == productCode);
+            var position = inventorySnapshot?.Positions?.FirstOrDefault(p => p.ProductName == productCode);
             var availableQuantity = position?.AvailableQuantity ?? Quantity.Zero(requiredQuantity.Unit);
 
             var isAvailable = availableQuantity.Value >= requiredQuantity.Value;
