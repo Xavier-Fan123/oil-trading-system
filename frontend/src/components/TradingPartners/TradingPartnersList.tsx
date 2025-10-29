@@ -78,7 +78,9 @@ export const TradingPartnersList: React.FC = () => {
     setFormOpen(true);
   };
 
-  const handleEdit = (partner: TradingPartnerSummary) => {
+  const handleEdit = async (partner: TradingPartnerSummary) => {
+    // Load complete trading partner data (includes all credit info, contact details, etc)
+    // Don't edit with summary data which is missing fields
     setSelectedPartner(partner);
     setFormOpen(true);
   };

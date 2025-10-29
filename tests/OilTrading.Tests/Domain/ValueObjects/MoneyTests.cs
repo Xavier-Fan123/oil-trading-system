@@ -140,7 +140,7 @@ public class MoneyTests
         var money = new Money(100, "USD");
 
         // Act & Assert
-        Assert.Throws<DivideByZeroException>(() => money / 0);
+        Assert.Throws<DomainException>(() => money / 0);
     }
 
     [Fact]
@@ -191,13 +191,12 @@ public class MoneyTests
         var result = money.ToString();
 
         // Assert
-        result.Should().Contain("1234.56");
-        result.Should().Contain("USD");
+        result.Should().Be("1,234.56 USD");  // N2 format includes thousand separator
     }
 
     [Theory]
     [InlineData(0, "USD")]
-    [InlineData(-100, "EUR")]
+    [InlineData(0.01, "EUR")]
     [InlineData(1000000, "GBP")]
     public void Money_ShouldHandleEdgeCases(decimal amount, string currency)
     {

@@ -6,9 +6,9 @@ public class Product : BaseEntity
     public string Code { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public string ProductCode { get; set; } = string.Empty;
-    public ProductType Type { get; set; }
+    public ProductType Type { get; set; } = ProductType.CrudeOil;
     public string Description { get; set; } = string.Empty;
-    public ProductType ProductType { get; set; }
+    public ProductType ProductType { get; set; } = ProductType.CrudeOil;
     public string Grade { get; set; } = string.Empty;
     public string Specification { get; set; } = string.Empty;
     public string UnitOfMeasure { get; set; } = string.Empty;

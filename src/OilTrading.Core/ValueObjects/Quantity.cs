@@ -26,6 +26,9 @@ public class Quantity : ValueObject
         if (Unit == targetUnit)
             return this;
 
+        if (conversionRatio <= 0)
+            throw new DomainException("Conversion ratio must be greater than zero");
+
         return (Unit, targetUnit) switch
         {
             (QuantityUnit.MT, QuantityUnit.BBL) => new Quantity(Value * conversionRatio, targetUnit),
@@ -78,8 +81,8 @@ public class Quantity : ValueObject
 
 public enum QuantityUnit
 {
-    MT = 0,   // Metric Tons
-    BBL = 1,  // Barrels
-    GAL = 2,  // Gallons
-    LOTS = 3  // Trading Lots (for futures)
+    MT = 1,   // Metric Tons
+    BBL = 2,  // Barrels
+    GAL = 3,  // Gallons
+    LOTS = 4  // Trading Lots (for futures)
 }

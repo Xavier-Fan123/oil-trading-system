@@ -7,35 +7,43 @@ export enum ContractStatus {
 }
 
 export enum DeliveryTerms {
-  FOB = 0,
-  CIF = 1,
-  CFR = 2,
-  DAP = 3,
-  DDP = 4
+  FOB = 1,
+  CIF = 2,
+  CFR = 3,
+  DAP = 4,
+  DDP = 5,
+  DES = 6,
+  DDU = 7,
+  STS = 8,
+  ITT = 9,
+  EXW = 10
 }
 
 export enum SettlementType {
-  TT = 0,
-  LC = 1,
-  CAD = 2
+  TT = 1,
+  LC = 2,
+  CAD = 3,
+  SBLC = 4,
+  DP = 5
 }
 
 export enum PricingType {
-  Fixed = 0,
-  Floating = 1,
-  Formula = 2
+  Fixed = 1,
+  Floating = 2,
+  Formula = 3
 }
 
 export enum QuantityUnit {
-  MT = 0,
-  BBL = 1,
-  GAL = 2
+  MT = 1,
+  BBL = 2,
+  GAL = 3,
+  LOTS = 4
 }
 
 export enum ContractType {
-  Physical = 0,
-  Paper = 1,
-  Financial = 2
+  CARGO = 1,
+  EXW = 2,
+  DEL = 3
 }
 
 export interface Money {
@@ -91,17 +99,26 @@ export interface ContractNumber {
 
 export interface TradingPartner {
   id: string;
-  code: string;
-  name: string;
   companyName: string;
-  type: number;
-  contactEmail: string;
-  contactPhone: string;
-  address: string;
-  country: string;
-  isActive: boolean;
+  companyCode: string;
+  partnerType: number;
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  taxNumber?: string;
   creditLimit: number;
-  creditRating: string;
+  creditLimitValidUntil: Date;
+  paymentTermDays: number;
+  currentExposure: number;
+  creditUtilization: number;
+  isActive: boolean;
+  isBlocked: boolean;
+  blockReason?: string;
+  isCreditExceeded?: boolean;
+  // For backward compatibility with components using these field names
+  name?: string;
+  code?: string;
 }
 
 export interface Product {
@@ -136,37 +153,85 @@ export interface PurchaseContract {
   externalContractNumber?: string; // External/Manual contract number
   contractType: ContractType;
   status: ContractStatus;
+
+  // Supplier Information (nested object from backend)
   supplier: TradingPartner;
+
+  // Product Information (nested object from backend)
   product: Product;
+
+  // Trader Information
   traderId: string;
-  quantity: number;
-  quantityUnit: QuantityUnit;
-  tonBarrelRatio: number;
+  traderName?: string;
+  traderEmail?: string;
+
+  // Price Benchmark Information
   priceBenchmarkId?: string;
   priceBenchmarkName?: string;
   priceBenchmarkType?: string;
+
+  // Linked Contracts
+  benchmarkContractId?: string;
+  benchmarkContractNumber?: string;
+
+  // Quantity Information
+  quantity: number;
+  quantityUnit: QuantityUnit;
+  tonBarrelRatio: number;
+
+  // Pricing Information
   pricingType: PricingType;
-  fixedPrice?: number;
   pricingFormula?: string;
+  contractValue?: number;  // Backend returns contractValue
+  fixedPrice?: number;     // Frontend alias for contractValue
+  contractValueCurrency?: string;
   pricingPeriodStart?: Date;
   pricingPeriodEnd?: Date;
+  isPriceFinalized?: boolean;
+  premium?: number;
+  discount?: number;
+
+  // Delivery Information
   deliveryTerms: DeliveryTerms;
   laycanStart: Date;
   laycanEnd: Date;
   loadPort: string;
   dischargePort: string;
+
+  // Payment Information
   settlementType: SettlementType;
+  paymentTerms?: string;
   creditPeriodDays: number;
   prepaymentPercentage: number;
-  paymentTerms?: string;
+
+  // Additional Information
+  incoterms?: string;
   qualitySpecifications?: string;
   inspectionAgency?: string;
   notes?: string;
+
+  // Business Metrics
+  estimatedProfit?: number;
+  margin?: number;
+  riskMetrics?: {
+    var95: number;
+    exposure: number;
+  };
+
+  // Shipping Operations
+  shippingOperations?: any[];
+
+  // Pricing Events
+  pricingEvents?: any[];
+
+  // Audit Information
   createdAt: Date;
   createdBy: string;
   updatedAt?: Date;
   updatedBy?: string;
-  linkedSalesContracts: SalesContract[];
+
+  // Linked Contracts
+  linkedSalesContracts?: SalesContract[];
 }
 
 export interface SalesContract {
@@ -238,6 +303,7 @@ export interface CreatePurchaseContractDto {
   qualitySpecifications?: string;
   inspectionAgency?: string;
   notes?: string;
+  createdBy: string;
 }
 
 export interface UpdatePurchaseContractDto {
@@ -290,7 +356,7 @@ export interface PurchaseContractListDto {
   supplierName: string;
   productName: string;
   quantity: number;
-  quantityUnit: QuantityUnit;
+  quantityUnit: QuantityUnit | string; // Backend returns as string due to JsonStringEnumConverter
   laycanStart: Date;
   laycanEnd: Date;
   createdAt: Date;

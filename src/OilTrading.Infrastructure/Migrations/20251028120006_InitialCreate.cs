@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace OilTrading.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddContractSettlementSupport : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -34,7 +34,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -74,7 +75,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -103,7 +105,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -133,7 +136,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -160,7 +164,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -186,7 +191,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -203,6 +209,8 @@ namespace OilTrading.Infrastructure.Migrations
                     ProductName = table.Column<string>(type: "TEXT", nullable: false),
                     ProductCode = table.Column<string>(type: "TEXT", nullable: false),
                     Type = table.Column<int>(type: "INTEGER", nullable: false),
+                    Description = table.Column<string>(type: "TEXT", nullable: false),
+                    ProductType = table.Column<int>(type: "INTEGER", nullable: false),
                     Grade = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     Specification = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
                     UnitOfMeasure = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
@@ -215,7 +223,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false, defaultValueSql: "X'00000000000000000000000000000001'")
                 },
                 constraints: table =>
                 {
@@ -244,7 +253,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -269,7 +279,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -317,7 +328,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -342,6 +354,7 @@ namespace OilTrading.Infrastructure.Migrations
                     Country = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     TaxId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     TaxNumber = table.Column<string>(type: "TEXT", nullable: true),
+                    ContactInfo = table.Column<string>(type: "TEXT", nullable: false),
                     CreditLimit = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: false, defaultValue: 0m),
                     CreditLimitValidUntil = table.Column<DateTime>(type: "TEXT", nullable: false),
                     PaymentTermDays = table.Column<int>(type: "INTEGER", nullable: false),
@@ -360,7 +373,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false, defaultValueSql: "X'00000000000000000000000000000001'")
                 },
                 constraints: table =>
                 {
@@ -372,6 +386,7 @@ namespace OilTrading.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
                     Email = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
                     FirstName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
@@ -385,7 +400,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false, defaultValueSql: "X'00000000000000000000000000000001'")
                 },
                 constraints: table =>
                 {
@@ -411,7 +427,8 @@ namespace OilTrading.Infrastructure.Migrations
                     updated_by = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -445,7 +462,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -500,7 +518,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -531,7 +550,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -601,6 +621,42 @@ namespace OilTrading.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FinancialReports",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    TradingPartnerId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ReportStartDate = table.Column<DateTime>(type: "date", nullable: false),
+                    ReportEndDate = table.Column<DateTime>(type: "date", nullable: false),
+                    TotalAssets = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    TotalLiabilities = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    NetAssets = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    CurrentAssets = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    CurrentLiabilities = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    Revenue = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    NetProfit = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    OperatingCashFlow = table.Column<decimal>(type: "TEXT", precision: 18, scale: 2, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    CreatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FinancialReports", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FinancialReports_TradingPartners_TradingPartnerId",
+                        column: x => x.TradingPartnerId,
+                        principalTable: "TradingPartners",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PhysicalContracts",
                 columns: table => new
                 {
@@ -651,7 +707,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -681,6 +738,7 @@ namespace OilTrading.Infrastructure.Migrations
                     PriceBenchmarkId = table.Column<Guid>(type: "TEXT", nullable: true),
                     ContractQuantity = table.Column<decimal>(type: "TEXT", precision: 18, scale: 6, nullable: false),
                     ContractQuantityUnit = table.Column<int>(type: "INTEGER", nullable: false),
+                    MatchedQuantity = table.Column<decimal>(type: "TEXT", nullable: false),
                     TonBarrelRatio = table.Column<decimal>(type: "TEXT", precision: 8, scale: 4, nullable: false, defaultValue: 7.6m),
                     PriceFormula = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
                     PricingMethod = table.Column<int>(type: "INTEGER", nullable: true),
@@ -732,7 +790,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false, defaultValueSql: "X'00000000000000000000000000000001'")
                 },
                 constraints: table =>
                 {
@@ -802,7 +861,8 @@ namespace OilTrading.Infrastructure.Migrations
                     updated_by = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -855,7 +915,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -938,7 +999,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false, defaultValueSql: "X'00000000000000000000000000000001'")
                 },
                 constraints: table =>
                 {
@@ -978,6 +1040,43 @@ namespace OilTrading.Infrastructure.Migrations
                         column: x => x.PriceBenchmarkId,
                         principalTable: "price_benchmarks",
                         principalColumn: "id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ContractMatchings",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    PurchaseContractId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    SalesContractId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    MatchedQuantity = table.Column<decimal>(type: "TEXT", nullable: false),
+                    MatchedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    MatchedBy = table.Column<string>(type: "TEXT", nullable: false),
+                    Notes = table.Column<string>(type: "TEXT", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    CreatedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ContractMatchings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ContractMatchings_PurchaseContracts_PurchaseContractId",
+                        column: x => x.PurchaseContractId,
+                        principalTable: "PurchaseContracts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ContractMatchings_SalesContracts_SalesContractId",
+                        column: x => x.SalesContractId,
+                        principalTable: "SalesContracts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -1022,7 +1121,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1058,7 +1158,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1110,7 +1211,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1163,7 +1265,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1227,7 +1330,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1266,7 +1370,8 @@ namespace OilTrading.Infrastructure.Migrations
                     updated_by = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1305,7 +1410,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1359,7 +1465,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1397,7 +1504,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1455,7 +1563,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1536,7 +1645,8 @@ namespace OilTrading.Infrastructure.Migrations
                     UpdatedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: true),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     DeletedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true)
+                    DeletedBy = table.Column<string>(type: "TEXT", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "BLOB", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1578,6 +1688,16 @@ namespace OilTrading.Infrastructure.Migrations
                 name: "IX_ContractEvents_UserId",
                 table: "ContractEvents",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ContractMatchings_PurchaseContractId",
+                table: "ContractMatchings",
+                column: "PurchaseContractId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ContractMatchings_SalesContractId",
+                table: "ContractMatchings",
+                column: "SalesContractId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ContractSettlements_ContractId",
@@ -1649,6 +1769,22 @@ namespace OilTrading.Infrastructure.Migrations
                 name: "IX_ContractTags_TagId",
                 table: "ContractTags",
                 column: "TagId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FinancialReports_ReportStartDate",
+                table: "FinancialReports",
+                column: "ReportStartDate");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FinancialReports_TradingPartnerId",
+                table: "FinancialReports",
+                column: "TradingPartnerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FinancialReports_TradingPartnerId_ReportStartDate",
+                table: "FinancialReports",
+                columns: new[] { "TradingPartnerId", "ReportStartDate" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_FuturesDeals_ContractMonth",
@@ -2104,6 +2240,11 @@ namespace OilTrading.Infrastructure.Migrations
                 name: "IX_Products_Origin",
                 table: "Products",
                 column: "Origin");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_ProductType",
+                table: "Products",
+                column: "ProductType");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Products_Type",
@@ -2729,7 +2870,13 @@ namespace OilTrading.Infrastructure.Migrations
                 name: "ContractEvents");
 
             migrationBuilder.DropTable(
+                name: "ContractMatchings");
+
+            migrationBuilder.DropTable(
                 name: "ContractTags");
+
+            migrationBuilder.DropTable(
+                name: "FinancialReports");
 
             migrationBuilder.DropTable(
                 name: "FuturesDeals");

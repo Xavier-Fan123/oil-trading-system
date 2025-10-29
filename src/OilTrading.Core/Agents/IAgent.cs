@@ -83,12 +83,12 @@ public enum AgentType
 /// </summary>
 public enum AgentStatus
 {
-    Inactive = 0,
-    Initializing = 1,
-    Active = 2,
-    Processing = 3,
-    Error = 4,
-    Suspended = 5
+    Inactive = 1,
+    Initializing = 2,
+    Active = 3,
+    Processing = 4,
+    Error = 5,
+    Suspended = 6
 }
 
 /// <summary>

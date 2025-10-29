@@ -10,7 +10,7 @@ public class ContractNumber : ValueObject
     public ContractType Type { get; private set; }
     public int SerialNumber { get; private set; }
 
-    private static readonly Regex ContractNumberRegex = new(@"^ITGR-(\d{4})-(CARGO|EXW|DEL)-B(\d{4})$", RegexOptions.Compiled);
+    private static readonly Regex InternalContractNumberRegex = new(@"^ITGR-(\d{4})-(CARGO|EXW|DEL)-B(\d{4})$", RegexOptions.Compiled);
 
     private ContractNumber() { } // For EF Core
 
@@ -26,13 +26,13 @@ public class ContractNumber : ValueObject
     {
         if (year < 2000 || year > 3000)
             throw new DomainException("Year must be between 2000 and 3000");
-        
+
         if (serialNumber < 1 || serialNumber > 9999)
             throw new DomainException("Serial number must be between 1 and 9999");
 
         var typeString = type.ToString().ToUpper();
         var value = $"ITGR-{year}-{typeString}-B{serialNumber:D4}";
-        
+
         return new ContractNumber(value, year.ToString(), type, serialNumber);
     }
 
@@ -41,21 +41,27 @@ public class ContractNumber : ValueObject
         if (string.IsNullOrWhiteSpace(value))
             throw new DomainException("Contract number cannot be null or empty");
 
-        var match = ContractNumberRegex.Match(value.Trim().ToUpper());
-        if (!match.Success)
-            throw new DomainException($"Invalid contract number format: {value}. Expected format: ITGR-YYYY-TYPE-BXXXX");
+        // Accept any alphanumeric string as external contract number
+        var trimmedValue = value.Trim();
 
-        var year = match.Groups[1].Value;
-        var typeString = match.Groups[2].Value;
-        var serialNumberString = match.Groups[3].Value;
+        // Try to parse as internal format first
+        var match = InternalContractNumberRegex.Match(trimmedValue.ToUpper());
+        if (match.Success)
+        {
+            var year = match.Groups[1].Value;
+            var typeString = match.Groups[2].Value;
+            var serialNumberString = match.Groups[3].Value;
 
-        if (!Enum.TryParse<ContractType>(typeString, true, out var type))
-            throw new DomainException($"Invalid contract type: {typeString}");
+            if (Enum.TryParse<ContractType>(typeString, true, out var type) &&
+                int.TryParse(serialNumberString, out var serialNumber))
+            {
+                return new ContractNumber(trimmedValue.ToUpper(), year, type, serialNumber);
+            }
+        }
 
-        if (!int.TryParse(serialNumberString, out var serialNumber))
-            throw new DomainException($"Invalid serial number: {serialNumberString}");
-
-        return new ContractNumber(value.Trim().ToUpper(), year, type, serialNumber);
+        // If not internal format, accept as external contract number
+        // Use default/placeholder values for Year, Type, SerialNumber
+        return new ContractNumber(trimmedValue, string.Empty, ContractType.CARGO, 0);
     }
 
     public static bool TryParse(string value, out ContractNumber? contractNumber)
@@ -76,7 +82,10 @@ public class ContractNumber : ValueObject
     {
         if (SerialNumber >= 9999)
             throw new DomainException("Cannot generate next serial number: maximum reached");
-        
+
+        if (SerialNumber == 0)
+            throw new DomainException("Cannot generate next serial number for external contract number");
+
         return Create(int.Parse(Year), Type, SerialNumber + 1);
     }
 

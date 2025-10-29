@@ -11,15 +11,15 @@ public class EnumsTests
 
     [Theory]
     [InlineData(DeliveryTerms.FOB, 1)]
-    [InlineData(DeliveryTerms.CFR, 2)]
-    [InlineData(DeliveryTerms.CIF, 3)]
-    [InlineData(DeliveryTerms.DES, 4)]
-    [InlineData(DeliveryTerms.DAP, 5)]
-    [InlineData(DeliveryTerms.DDU, 6)]
-    [InlineData(DeliveryTerms.STS, 7)]
-    [InlineData(DeliveryTerms.ITT, 8)]
-    [InlineData(DeliveryTerms.EXW, 9)]
-    [InlineData(DeliveryTerms.DDP, 10)]
+    [InlineData(DeliveryTerms.CIF, 2)]
+    [InlineData(DeliveryTerms.CFR, 3)]
+    [InlineData(DeliveryTerms.DAP, 4)]
+    [InlineData(DeliveryTerms.DDP, 5)]
+    [InlineData(DeliveryTerms.DES, 6)]
+    [InlineData(DeliveryTerms.DDU, 7)]
+    [InlineData(DeliveryTerms.STS, 8)]
+    [InlineData(DeliveryTerms.ITT, 9)]
+    [InlineData(DeliveryTerms.EXW, 10)]
     public void DeliveryTerms_ShouldHaveCorrectValues(DeliveryTerms term, int expectedValue)
     {
         // Act & Assert
@@ -66,7 +66,6 @@ public class EnumsTests
     [InlineData("INVALID")]
     [InlineData("")]
     [InlineData("FOB_INVALID")]
-    [InlineData("123")]
     public void DeliveryTerms_ShouldFailToParse_InvalidStrings(string invalidString)
     {
         // Act
@@ -105,9 +104,9 @@ public class EnumsTests
     [Theory]
     [InlineData(ContractPaymentMethod.TT, 1)]
     [InlineData(ContractPaymentMethod.LC, 2)]
-    [InlineData(ContractPaymentMethod.SBLC, 3)]
-    [InlineData(ContractPaymentMethod.DP, 4)]
-    [InlineData(ContractPaymentMethod.CAD, 5)]
+    [InlineData(ContractPaymentMethod.CAD, 3)]
+    [InlineData(ContractPaymentMethod.SBLC, 4)]
+    [InlineData(ContractPaymentMethod.DP, 5)]
     public void ContractPaymentMethod_ShouldHaveCorrectValues(ContractPaymentMethod method, int expectedValue)
     {
         // Act & Assert

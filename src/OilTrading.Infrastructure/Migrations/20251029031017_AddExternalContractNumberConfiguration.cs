@@ -5,7 +5,7 @@
 namespace OilTrading.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddContractMatchingSupport : Migration
+    public partial class AddExternalContractNumberConfiguration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

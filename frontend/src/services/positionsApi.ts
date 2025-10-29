@@ -8,10 +8,19 @@ import {
   PositionType
 } from '@/types/positions';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Force correct baseURL
+// Position controller uses non-versioned /api routes
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Dashboard API instance
+const dashboardApi = axios.create({
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -54,7 +63,7 @@ export const positionsApi = {
 
   // Get position summary
   getPositionSummary: async (): Promise<PositionSummary> => {
-    const response = await api.get('/dashboard/overview');
+    const response = await dashboardApi.get('/dashboard/overview');
     const data = response.data;
     
     return {

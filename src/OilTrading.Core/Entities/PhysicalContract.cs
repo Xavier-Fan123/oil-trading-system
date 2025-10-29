@@ -74,9 +74,9 @@ public enum PhysicalContractType
 
 public enum PricingType
 {
-    Fixed = 0,
-    Floating = 1,
-    Formula = 2
+    Fixed = 1,
+    Floating = 2,
+    Formula = 3
 }
 
 public enum PhysicalContractStatus

@@ -89,9 +89,10 @@ public static class DatabaseOptimizationConfiguration
                 .IsDescending(false, true); // ContractId ASC, EventDate DESC
 
             // Index for recent price queries
+            // Note: Removed provider-specific filter for database compatibility
+            // Will be added in a separate migration after PostgreSQL is confirmed
             entity.HasIndex(e => e.EventDate)
                 .HasDatabaseName("IX_PricingEvents_EventDate_Recent")
-                .HasFilter("EventDate >= DATEADD(month, -3, GETDATE())")
                 .IncludeProperties(e => new { e.ContractId, e.EventType });
 
             // Index for event type and date

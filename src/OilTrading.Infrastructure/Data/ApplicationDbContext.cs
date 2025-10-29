@@ -148,16 +148,23 @@ public class ApplicationDbContext : DbContext
         // Apply database optimizations for performance
         modelBuilder.ApplyDatabaseOptimizations();
 
-        // Apply global query filters for soft delete
+        // Apply global query filters for soft delete and configure optimistic concurrency
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var entityClrType = entityType.ClrType;
             if (typeof(BaseEntity).IsAssignableFrom(entityClrType))
             {
-                var method = typeof(ApplicationDbContext)
+                // Apply soft delete query filter
+                var filterMethod = typeof(ApplicationDbContext)
                     .GetMethod(nameof(SetGlobalQueryFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
                     .MakeGenericMethod(entityClrType);
-                method.Invoke(null, new object[] { modelBuilder });
+                filterMethod.Invoke(null, new object[] { modelBuilder });
+
+                // Configure RowVersion for optimistic concurrency control
+                var concurrencyMethod = typeof(ApplicationDbContext)
+                    .GetMethod(nameof(ConfigureOptimisticConcurrency), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                    .MakeGenericMethod(entityClrType);
+                concurrencyMethod.Invoke(null, new object[] { modelBuilder });
             }
         }
     }
@@ -165,6 +172,15 @@ public class ApplicationDbContext : DbContext
     private static void SetGlobalQueryFilter<T>(ModelBuilder modelBuilder) where T : BaseEntity
     {
         modelBuilder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
+    }
+
+    private static void ConfigureOptimisticConcurrency<T>(ModelBuilder modelBuilder) where T : BaseEntity
+    {
+        // Configure RowVersion as a concurrency token (Timestamp in SQL Server, auto-updated)
+        modelBuilder.Entity<T>()
+            .Property(e => e.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
     }
 
 

@@ -111,7 +111,8 @@ public class ProductController : ControllerBase
             return NotFound();
         }
 
-        product.IsActive = false; // Soft delete
+        product.IsActive = false;
+        product.SoftDelete("system"); // Properly set IsDeleted, DeletedAt, DeletedBy
         await _context.SaveChangesAsync();
 
         return NoContent();

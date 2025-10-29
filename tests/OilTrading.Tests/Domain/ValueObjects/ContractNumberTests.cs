@@ -81,29 +81,49 @@ public class ContractNumberTests
     [InlineData("")]                           // Empty
     [InlineData("   ")]                        // Whitespace only
     [InlineData(null)]                         // Null
-    [InlineData("INVALID")]                    // Invalid format
-    [InlineData("ITGR-2024-INVALID-B0001")]   // Invalid type
-    [InlineData("ITGR-XXXX-CARGO-B0001")]     // Invalid year
-    [InlineData("ITGR-2024-CARGO-BXXXX")]     // Invalid serial
-    [InlineData("2024-CARGO-B0001")]          // Missing prefix
-    [InlineData("ITGR-2024-CARGO-0001")]      // Missing B prefix
-    [InlineData("ITGR-24-CARGO-B0001")]       // Short year
-    [InlineData("ITGR-2024-CARGO-B00001")]    // Too many digits
-    [InlineData("ITGR_2024_CARGO_B0001")]     // Wrong separators
-    public void Parse_ShouldThrowDomainException_WhenInvalidFormatProvided(string invalidInput)
+    public void Parse_ShouldThrowDomainException_WhenNullOrEmpty(string invalidInput)
     {
         // Act & Assert
         var exception = Assert.Throws<DomainException>(() => ContractNumber.Parse(invalidInput));
-        exception.Message.Should().Contain("Invalid contract number format");
+        exception.Message.Should().Contain("Contract number cannot be null or empty");
     }
 
     [Theory]
-    [InlineData("ITGR-2024-CARGO-B0001", true)]
-    [InlineData("ITGR-2025-EXW-B0123", true)]
-    [InlineData("INVALID", false)]
-    [InlineData("", false)]
-    [InlineData(null, false)]
-    [InlineData("ITGR-2024-INVALID-B0001", false)]
+    [InlineData("INVALID")]                    // External format
+    [InlineData("PC-2024-001")]               // External format
+    [InlineData("ITGR-2024-INVALID-B0001")]   // External format with invalid type
+    [InlineData("ITGR-XXXX-CARGO-B0001")]     // External format with invalid year
+    [InlineData("ITGR-2024-CARGO-BXXXX")]     // External format with invalid serial
+    [InlineData("2024-CARGO-B0001")]          // External format missing prefix
+    [InlineData("ITGR-2024-CARGO-0001")]      // External format missing B prefix
+    [InlineData("ITGR-24-CARGO-B0001")]       // External format short year
+    [InlineData("ITGR-2024-CARGO-B00001")]    // External format too many digits
+    [InlineData("ITGR_2024_CARGO_B0001")]     // External format wrong separators
+    [InlineData("ABC123")]                     // Simple alphanumeric
+    [InlineData("CONTRACT-2024-XYZ")]         // External format
+    public void Parse_ShouldAcceptAsExternalContractNumber_WhenNotMatchingInternalFormat(string externalInput)
+    {
+        // Act
+        var contractNumber = ContractNumber.Parse(externalInput);
+
+        // Assert
+        contractNumber.Should().NotBeNull();
+        contractNumber.Value.Should().Be(externalInput);
+        contractNumber.Year.Should().Be(string.Empty); // Placeholder for external
+        contractNumber.Type.Should().Be(ContractType.CARGO); // Default for external
+        contractNumber.SerialNumber.Should().Be(0); // Placeholder for external
+    }
+
+    [Theory]
+    [InlineData("ITGR-2024-CARGO-B0001", true)]  // Internal format
+    [InlineData("ITGR-2025-EXW-B0123", true)]    // Internal format
+    [InlineData("INVALID", true)]                 // External format - now accepted
+    [InlineData("PC-2024-001", true)]            // External format - now accepted
+    [InlineData("ITGR-2024-INVALID-B0001", true)] // External format - now accepted
+    [InlineData("ABC123", true)]                  // External format - now accepted
+    [InlineData("", false)]                       // Empty - rejected
+    [InlineData(null, false)]                     // Null - rejected
+    [InlineData("   ", false)]                    // Whitespace - rejected
     public void TryParse_ShouldReturnCorrectResult_ForValidAndInvalidInputs(string input, bool expectedSuccess)
     {
         // Act
@@ -111,11 +131,11 @@ public class ContractNumberTests
 
         // Assert
         success.Should().Be(expectedSuccess);
-        
+
         if (expectedSuccess)
         {
             contractNumber.Should().NotBeNull();
-            contractNumber!.Value.Should().Be(input?.Trim().ToUpper());
+            contractNumber!.Value.Should().Be(input?.Trim().ToUpper() ?? input);
         }
         else
         {
@@ -151,6 +171,17 @@ public class ContractNumberTests
         // Act & Assert
         var exception = Assert.Throws<DomainException>(() => maxSerial.NextSerial());
         exception.Message.Should().Be("Cannot generate next serial number: maximum reached");
+    }
+
+    [Fact]
+    public void NextSerial_ShouldThrowDomainException_WhenCalledOnExternalContractNumber()
+    {
+        // Arrange
+        var externalContract = ContractNumber.Parse("PC-2024-001");
+
+        // Act & Assert
+        var exception = Assert.Throws<DomainException>(() => externalContract.NextSerial());
+        exception.Message.Should().Be("Cannot generate next serial number for external contract number");
     }
 
     [Fact]

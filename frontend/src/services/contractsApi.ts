@@ -15,7 +15,7 @@ import {
   formatApiDate 
 } from '@/utils/dateUtils';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Force correct baseURL
+const API_BASE_URL = 'http://localhost:5000/api'; // Non-versioned API endpoints
 
 const api = axios.create({
   baseURL: API_BASE_URL,

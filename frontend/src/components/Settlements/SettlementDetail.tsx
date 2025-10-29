@@ -265,7 +265,7 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
                   <Box>
                     <Typography variant="body2" color="text.secondary">Contract Quantity</Typography>
                     <Typography variant="body1">
-                      {formatQuantity(settlement.purchaseContract.quantity, settlement.purchaseContract.quantityUnit === 0 ? 'MT' : 'BBL')}
+                      {formatQuantity(settlement.purchaseContract.quantity, settlement.purchaseContract.quantityUnit === 1 ? 'MT' : 'BBL')}
                     </Typography>
                   </Box>
                   <Box>
@@ -297,7 +297,7 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
                   <Box>
                     <Typography variant="body2" color="text.secondary">Contract Quantity</Typography>
                     <Typography variant="body1">
-                      {formatQuantity(settlement.salesContract.quantity, settlement.salesContract.quantityUnit === 0 ? 'MT' : 'BBL')}
+                      {formatQuantity(settlement.salesContract.quantity, settlement.salesContract.quantityUnit === 1 ? 'MT' : 'BBL')}
                     </Typography>
                   </Box>
                   <Box>

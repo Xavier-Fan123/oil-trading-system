@@ -12,6 +12,7 @@ public class PurchaseContractMappingProfile : Profile
         // Entity to DTO mappings
         CreateMap<PurchaseContract, PurchaseContractDto>()
             .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => new ContractNumberDto { Value = src.ContractNumber.Value }))
+            .ForMember(dest => dest.ExternalContractNumber, opt => opt.MapFrom(src => src.ExternalContractNumber))
             .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => new SupplierDto 
             { 
                 Id = src.TradingPartnerId,
@@ -64,6 +65,7 @@ public class PurchaseContractMappingProfile : Profile
         // Sales Contract mappings
         CreateMap<SalesContract, SalesContractDto>()
             .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => new ContractNumberDto { Value = src.ContractNumber.Value }))
+            .ForMember(dest => dest.ExternalContractNumber, opt => opt.MapFrom(src => src.ExternalContractNumber))
             .ForMember(dest => dest.Customer, opt => opt.MapFrom(src => new CustomerDto 
             { 
                 Id = src.TradingPartnerId,
@@ -97,6 +99,7 @@ public class PurchaseContractMappingProfile : Profile
 
         CreateMap<SalesContract, SalesContractSummaryDto>()
             .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => src.ContractNumber.Value))
+            .ForMember(dest => dest.ExternalContractNumber, opt => opt.MapFrom(src => src.ExternalContractNumber))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
             .ForMember(dest => dest.CustomerId, opt => opt.MapFrom(src => src.TradingPartnerId))
             .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.TradingPartner != null ? src.TradingPartner.CompanyName : ""))

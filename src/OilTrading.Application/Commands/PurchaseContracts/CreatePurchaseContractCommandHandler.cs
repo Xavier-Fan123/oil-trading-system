@@ -43,6 +43,14 @@ public class CreatePurchaseContractCommandHandler : IRequestHandler<CreatePurcha
         if (supplier == null)
             throw new NotFoundException($"Supplier with ID {request.SupplierId} not found");
 
+        // A partner can be a purchase supplier if they are:
+        // - Supplier (1): Pure supplier
+        // - Both (3): Both supplier and customer (common for traders/resellers)
+        // - Trader (4): Professional trader
+        // Cannot be Customer (2) or EndUser (5) - these are demand-side roles
+        if (supplier.Type == TradingPartnerType.Customer || supplier.Type == TradingPartnerType.EndUser)
+            throw new DomainException($"Trading partner {supplier.Name} cannot be a supplier (only customers and end users)");
+
         var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
         if (product == null)
             throw new NotFoundException($"Product with ID {request.ProductId} not found");

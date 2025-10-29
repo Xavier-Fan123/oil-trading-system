@@ -6,7 +6,7 @@ using OilTrading.Infrastructure.Data;
 namespace OilTrading.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]s")]
+[Route("api/legacy-users")]
 public class UserController : ControllerBase
 {
     private readonly ApplicationDbContext _context;

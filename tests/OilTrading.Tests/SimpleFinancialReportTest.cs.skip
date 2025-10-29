@@ -77,7 +77,7 @@ public class SimpleFinancialReportTest
 
     [Theory]
     [InlineData(null, null)]
-    [InlineData(100000, 0)]
+    [InlineData(100000m, 0m)]
     public void FinancialReport_ShouldReturnNull_ForInvalidRatioCalculation(decimal? currentAssets, decimal? currentLiabilities)
     {
         // Arrange

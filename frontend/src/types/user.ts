@@ -69,9 +69,9 @@ export interface GetUsersParams {
 }
 
 export interface PagedResult<T> {
-  data: T[];
+  items: T[];
   totalCount: number;
-  page: number;
+  pageNumber: number;
   pageSize: number;
   totalPages: number;
   hasNextPage: boolean;

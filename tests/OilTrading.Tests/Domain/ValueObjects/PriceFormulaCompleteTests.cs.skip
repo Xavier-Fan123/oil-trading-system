@@ -91,7 +91,7 @@ public class PriceFormulaCompleteTests
     }
 
     [Theory]
-    [InlineData("BRENT", 5.0, "USD", "AVG(BRENT) + 5.00 USD/USD")]
+    [InlineData("BRENT", 5m, "USD", "AVG(BRENT) + 5.00 USD/USD")]
     [InlineData("WTI", -2.5, "EUR", "AVG(WTI) - 2.50 EUR/EUR")]
     [InlineData("DUBAI", 10.75, "GBP", "AVG(DUBAI) + 10.75 GBP/GBP")]
     public void Index_ShouldCreateValidIndexPrice_WithAdjustment(string indexName, decimal adjustmentAmount, string currency, string expectedFormula)
@@ -374,7 +374,7 @@ public class PriceFormulaCompleteTests
 
     [Theory]
     [InlineData(PricingMethod.Fixed, true, null, 75.50)]
-    [InlineData(PricingMethod.Fixed, false, null, -1.0)]
+    [InlineData(PricingMethod.Fixed, false, null, -1m)]
     [InlineData(PricingMethod.AVG, true, "BRENT", null)]
     [InlineData(PricingMethod.AVG, false, null, null)]
     [InlineData(PricingMethod.Custom, true, null, null)]

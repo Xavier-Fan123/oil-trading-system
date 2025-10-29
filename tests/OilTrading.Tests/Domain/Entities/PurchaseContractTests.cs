@@ -1,4 +1,5 @@
 using FluentAssertions;
+using OilTrading.Core.Common;
 using OilTrading.Core.Entities;
 using OilTrading.Core.ValueObjects;
 using Xunit;
@@ -58,7 +59,7 @@ public class PurchaseContractTests
         var laycanEnd = DateTime.Today.AddDays(30);
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => contract.UpdateLaycan(laycanStart, laycanEnd));
+        Assert.Throws<DomainException>(() => contract.UpdateLaycan(laycanStart, laycanEnd));
     }
 
     [Fact]
@@ -120,7 +121,7 @@ public class PurchaseContractTests
         var periodEnd = DateTime.Today.AddDays(10);
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => contract.SetPricingPeriod(periodStart, periodEnd));
+        Assert.Throws<DomainException>(() => contract.SetPricingPeriod(periodStart, periodEnd));
     }
 
     [Fact]
@@ -146,9 +147,9 @@ public class PurchaseContractTests
         var contract = CreateValidContract();
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => contract.UpdatePorts("", "Rotterdam"));
-        Assert.Throws<ArgumentException>(() => contract.UpdatePorts("Houston", ""));
-        Assert.Throws<ArgumentException>(() => contract.UpdatePorts("   ", "Rotterdam"));
+        Assert.Throws<DomainException>(() => contract.UpdatePorts("", "Rotterdam"));
+        Assert.Throws<DomainException>(() => contract.UpdatePorts("Houston", ""));
+        Assert.Throws<DomainException>(() => contract.UpdatePorts("   ", "Rotterdam"));
     }
 
     [Fact]
@@ -216,8 +217,8 @@ public class PurchaseContractTests
         var contract = CreateValidContract();
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => contract.SetPrepaymentPercentage(-1));
-        Assert.Throws<ArgumentException>(() => contract.SetPrepaymentPercentage(101));
+        Assert.Throws<DomainException>(() => contract.SetPrepaymentPercentage(-1));
+        Assert.Throws<DomainException>(() => contract.SetPrepaymentPercentage(101));
     }
 
     [Fact]
@@ -281,6 +282,19 @@ public class PurchaseContractTests
     {
         // Arrange
         var contract = CreateValidContract();
+
+        // Add all required fields for activation
+        var priceFormula = PriceFormula.Fixed(75.50m);
+        var contractValue = Money.Dollar(75500m);
+        contract.UpdatePricing(priceFormula, contractValue);
+
+        var laycanStart = DateTime.Today.AddDays(30);
+        var laycanEnd = DateTime.Today.AddDays(35);
+        contract.UpdateLaycan(laycanStart, laycanEnd);
+
+        contract.UpdatePorts("Houston", "Rotterdam");
+        contract.UpdatePaymentTerms("NET 30 DAYS", 30);
+
         var activatedBy = "manager@company.com";
 
         // Act
@@ -298,11 +312,24 @@ public class PurchaseContractTests
     {
         // Arrange
         var contract = CreateValidContract();
+
+        // Add all required fields for activation
+        var priceFormula = PriceFormula.Fixed(75.50m);
+        var contractValue = Money.Dollar(75500m);
+        contract.UpdatePricing(priceFormula, contractValue);
+
+        var laycanStart = DateTime.Today.AddDays(30);
+        var laycanEnd = DateTime.Today.AddDays(35);
+        contract.UpdateLaycan(laycanStart, laycanEnd);
+
+        contract.UpdatePorts("Houston", "Rotterdam");
+        contract.UpdatePaymentTerms("NET 30 DAYS", 30);
+
         contract.SetUpdatedBy("manager@company.com");
         contract.Activate();
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => contract.Activate());
+        Assert.Throws<DomainException>(() => contract.Activate());
     }
 
     [Fact]
@@ -329,6 +356,19 @@ public class PurchaseContractTests
     {
         // Arrange
         var contract = CreateValidContract();
+
+        // Add all required fields for activation
+        var priceFormula = PriceFormula.Fixed(75.50m);
+        var contractValue = Money.Dollar(75500m);
+        contract.UpdatePricing(priceFormula, contractValue);
+
+        var laycanStart = DateTime.Today.AddDays(30);
+        var laycanEnd = DateTime.Today.AddDays(35);
+        contract.UpdateLaycan(laycanStart, laycanEnd);
+
+        contract.UpdatePorts("Houston", "Rotterdam");
+        contract.UpdatePaymentTerms("NET 30 DAYS", 30);
+
         contract.SetUpdatedBy("manager@company.com");
         contract.Activate();
         var completedBy = "trader@company.com";
@@ -344,13 +384,13 @@ public class PurchaseContractTests
     }
 
     [Fact]
-    public void PurchaseContract_ShouldThrowInvalidOperationException_WhenCompletingNonActiveContract()
+    public void PurchaseContract_ShouldThrowDomainException_WhenCompletingNonActiveContract()
     {
         // Arrange
         var contract = CreateValidContract();
 
         // Act & Assert
-        Assert.Throws<InvalidOperationException>(() => contract.Complete());
+        Assert.Throws<DomainException>(() => contract.Complete());
     }
 
     [Fact]

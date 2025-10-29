@@ -54,31 +54,36 @@ builder.Services.AddControllers()
         // Configure JSON serialization for consistent date handling
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.WriteIndented = false;
-        
+
         // Use ISO 8601 format for all DateTime serialization
         options.JsonSerializerOptions.Converters.Add(new DateTimeConverter());
         options.JsonSerializerOptions.Converters.Add(new NullableDateTimeConverter());
-        
+
+        // Allow enum values to be either numbers or strings
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+
         // Handle nullable values properly
         options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-        
+
         // Preserve property names case for API consistency
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
-// Add API Versioning
+// API Versioning - Disabled for simple /api/ routing
+// All endpoints use /api/{resource} format without version prefix
 builder.Services.AddApiVersioning(options =>
 {
-    options.DefaultApiVersion = new ApiVersion(2, 0);
+    options.DefaultApiVersion = new ApiVersion(1, 0);
     options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    options.ReportApiVersions = false;
+    // Use URL segment reader but don't enforce it (simple /api/ paths)
+    options.ApiVersionReader = new QueryStringApiVersionReader();
 });
 
 builder.Services.AddVersionedApiExplorer(options =>
 {
     options.GroupNameFormat = "'v'VVV";
-    options.SubstituteApiVersionInUrl = true;
+    options.SubstituteApiVersionInUrl = false;
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -126,20 +131,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Oil Trading API",
         Version = "v2.0",
-        Description = "Enterprise Oil Trading and Risk Management System API - Version 2.0 with API Versioning",
-        Contact = new OpenApiContact
-        {
-            Name = "Oil Trading Support",
-            Email = "support@oiltrading.com"
-        }
-    });
-
-    // Also document v1 for backward compatibility reference
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Oil Trading API",
-        Version = "v1",
-        Description = "Enterprise Oil Trading API - Legacy Version 1.0 (deprecated)",
+        Description = "Enterprise Oil Trading and Risk Management System API - v2.0",
         Contact = new OpenApiContact
         {
             Name = "Oil Trading Support",
@@ -353,6 +345,35 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Apply database migrations automatically on startup
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        logger.LogInformation("Applying pending database migrations...");
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+
+        if (pendingMigrations.Any())
+        {
+            logger.LogInformation("Found {MigrationCount} pending migrations. Applying...", pendingMigrations.Count());
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Successfully applied all pending migrations");
+        }
+        else
+        {
+            logger.LogInformation("No pending migrations to apply");
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to apply database migrations. Application will continue but database may not be properly initialized.");
+    }
+}
 
 // Handle command line arguments for database operations
 // Only handle specific database commands, not framework arguments like --environment
@@ -703,20 +724,25 @@ static async Task InitializeInMemoryDatabaseAsync(ApplicationDbContext context, 
 static async Task InitializeSqliteDatabaseAsync(ApplicationDbContext context, ILogger logger)
 {
     logger.LogInformation("Setting up SQLite database");
-    
-    // Ensure database is created
-    await context.Database.EnsureCreatedAsync();
-    
-    // Apply any pending migrations
-    var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-    if (pendingMigrations.Any())
+
+    try
     {
-        logger.LogInformation("Applying {Count} pending migrations", pendingMigrations.Count());
+        // Apply all migrations - this will create the database if it doesn't exist
+        // EnsureCreatedAsync() doesn't work well with IsRowVersion() on SQLite, so use MigrateAsync() instead
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        logger.LogInformation("Found {Count} pending migrations", pendingMigrations.Count());
+
         await context.Database.MigrateAsync();
+        logger.LogInformation("Successfully applied all migrations");
+
+        // Seed with comprehensive test data
+        await SeedBasicTestDataAsync(context, logger);
     }
-    
-    // Seed with comprehensive test data
-    await SeedBasicTestDataAsync(context, logger);
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error during SQLite database initialization");
+        throw;
+    }
 }
 
 static async Task InitializePostgreSQLDatabaseAsync(IServiceScope scope, ApplicationDbContext context, ILogger logger, string environment)

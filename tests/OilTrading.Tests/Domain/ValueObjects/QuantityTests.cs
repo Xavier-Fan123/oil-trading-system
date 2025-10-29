@@ -245,8 +245,7 @@ public class QuantityTests
         var result = quantity.ToString();
 
         // Assert
-        result.Should().Contain("1234.56");
-        result.Should().Contain("BBL");
+        result.Should().Be("1,234.56 BBL");  // N2 format includes thousand separator
     }
 
     [Theory]

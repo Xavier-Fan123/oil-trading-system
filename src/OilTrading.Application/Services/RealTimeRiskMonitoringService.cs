@@ -445,18 +445,20 @@ public class RealTimeRiskMonitoringService : IRealTimeRiskMonitoringService
         foreach (var product in products)
         {
             var position = Random.Shared.Next(-100000, 100000);
-            var marketValue = Math.Abs(position) * Random.Shared.Next(50, 100);
-            
+            var absPosition = Math.Abs(position);
+            if (absPosition == 0) absPosition = 1; // Ensure non-zero position
+            var marketValue = absPosition * Random.Shared.Next(50, 100);
+
             positions.Add(new PositionRisk
             {
                 PositionId = Guid.NewGuid(),
                 ProductType = product,
-                Position = new Quantity(position, QuantityUnit.BBL),
-                MarketValue = new Money(marketValue, "USD"),
+                Position = new Quantity(absPosition, QuantityUnit.BBL),
+                MarketValue = new Money(Math.Max(marketValue, 1), "USD"),
                 DeltaEquivalent = position * 0.8m,
-                VaRContribution = marketValue * 0.02m,
+                VaRContribution = Math.Max(marketValue * 0.02m, 1), // Ensure positive
                 Beta = (decimal)(Random.Shared.NextSingle() * 2),
-                RiskRating = DetermineRiskRating(marketValue),
+                RiskRating = DetermineRiskRating(Math.Max(marketValue, 1)),
                 LastUpdated = DateTime.UtcNow
             });
         }
@@ -468,14 +470,14 @@ public class RealTimeRiskMonitoringService : IRealTimeRiskMonitoringService
     {
         var positions = await GetPositionRisksAsync();
         var totalValue = positions.Sum(p => p.MarketValue.Amount);
-        
+
         var productConcentration = positions
             .GroupBy(p => p.ProductType)
             .Select(g => new ConcentrationBreakdown
             {
                 Category = g.Key,
                 Percentage = totalValue > 0 ? (g.Sum(p => p.MarketValue.Amount) / totalValue) * 100 : 0,
-                Value = new Money(g.Sum(p => p.MarketValue.Amount), "USD"),
+                Value = new Money(Math.Max(g.Sum(p => p.MarketValue.Amount), 0), "USD"),
                 Count = g.Count()
             })
             .OrderByDescending(c => c.Percentage)
@@ -506,29 +508,29 @@ public class RealTimeRiskMonitoringService : IRealTimeRiskMonitoringService
             var exposure = Random.Shared.Next(100000, 5000000);
             var rating = (decimal)(Random.Shared.NextSingle() * 10);
             var pd = (decimal)(Random.Shared.NextSingle() * 0.1f); // 0-10% PD
-            
+
             counterparties.Add(new CounterpartyRiskDetail
             {
                 CounterpartyId = Guid.NewGuid(),
                 CounterpartyName = $"Counterparty {i + 1}",
-                Exposure = new Money(exposure, "USD"),
+                Exposure = new Money(Math.Max(exposure, 0), "USD"),
                 CreditRating = rating,
                 ProbabilityOfDefault = pd,
-                PotentialLoss = new Money(exposure * pd, "USD")
+                PotentialLoss = new Money(Math.Max(exposure * pd, 0), "USD")
             });
         }
-        
+
         var totalExposure = counterparties.Sum(c => c.Exposure.Amount);
         var totalPotentialLoss = counterparties.Sum(c => c.PotentialLoss.Amount);
-        
+
         return new CounterpartyRiskSummary
         {
             TotalCounterparties = counterparties.Count,
-            TotalExposure = new Money(totalExposure, "USD"),
+            TotalExposure = new Money(Math.Max(totalExposure, 0), "USD"),
             AverageRating = counterparties.Average(c => c.CreditRating),
             TopRisks = counterparties.OrderByDescending(c => c.PotentialLoss.Amount).Take(3).ToList(),
             CounterpartiesAboveThreshold = counterparties.Count(c => c.Exposure.Amount > 1000000),
-            PotentialLoss = new Money(totalPotentialLoss, "USD")
+            PotentialLoss = new Money(Math.Max(totalPotentialLoss, 0), "USD")
         };
     }
 
@@ -727,13 +729,14 @@ public class RealTimeRiskMonitoringService : IRealTimeRiskMonitoringService
             foreach (var shock in scenario.PriceShocks)
             {
                 var componentImpact = portfolioValue * (shock.Value / 100) * 0.1m; // Simplified calculation
-                totalImpact += Math.Abs(componentImpact);
-                
+                var absComponentImpact = Math.Abs(componentImpact);
+                totalImpact += absComponentImpact;
+
                 componentResults.Add(new StressTestComponentResult
                 {
                     Component = shock.Key,
-                    Impact = new Money(componentImpact, "USD"),
-                    ImpactPercentage = (componentImpact / portfolioValue) * 100
+                    Impact = new Money(absComponentImpact, "USD"),
+                    ImpactPercentage = (absComponentImpact / portfolioValue) * 100
                 });
             }
             

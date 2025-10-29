@@ -781,10 +781,20 @@ public class SalesContractTests
         tagIdProperty?.SetValue(tag, tagId);
 
         var contractTag = new ContractTag(contract.Id, nameof(SalesContract), tagId, null, "TestUser");
-        
+
+        // Set the Tag navigation property using reflection
+        var tagProperty = typeof(ContractTag).GetProperty(nameof(ContractTag.Tag));
+        tagProperty?.SetValue(contractTag, tag);
+
         var contractTagsProperty = typeof(SalesContract).GetProperty(nameof(SalesContract.ContractTags));
-        var contractTags = (ICollection<ContractTag>)contractTagsProperty?.GetValue(contract)!;
-        contractTags.Add(contractTag);
+        if (contractTagsProperty != null)
+        {
+            var contractTagsValue = contractTagsProperty.GetValue(contract);
+            if (contractTagsValue is ICollection<ContractTag> contractTags)
+            {
+                contractTags.Add(contractTag);
+            }
+        }
     }
 
     #endregion

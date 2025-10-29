@@ -51,9 +51,9 @@ import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 export const UsersList: React.FC = () => {
   const [users, setUsers] = useState<PagedResult<UserSummary>>({
-    data: [],
+    items: [],
     totalCount: 0,
-    page: 1,
+    pageNumber: 1,
     pageSize: 10,
     totalPages: 0,
     hasNextPage: false,
@@ -146,7 +146,7 @@ export const UsersList: React.FC = () => {
     return isActive ? 'success' : 'default';
   };
 
-  if (loading && users.data.length === 0) {
+  if (loading && users.items.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="400px">
         <CircularProgress />
@@ -286,7 +286,7 @@ export const UsersList: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.data.map((user) => (
+              {users.items?.map((user) => (
                 <TableRow key={user.id} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight="medium">

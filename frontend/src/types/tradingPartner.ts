@@ -37,10 +37,25 @@ export interface TradingPartnerSummary {
   companyName: string;
   companyCode: string;
   partnerType: string;
+
+  // Contact Information
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  taxNumber?: string;
+
+  // Credit Management - MUST PERSIST
   creditLimit: number;
+  creditLimitValidUntil: string;  // ← Added to fix persistence
+  paymentTermDays: number;  // ← Added to fix persistence
   currentExposure: number;
   creditUtilization: number;
+
+  // Status - MUST PERSIST
   isActive: boolean;
+  isBlocked: boolean;  // ← Added to fix persistence
+  blockReason?: string;  // ← Added to fix persistence
   isCreditExceeded: boolean;
 }
 
@@ -55,6 +70,9 @@ export interface CreateTradingPartnerRequest {
   creditLimit: number;
   creditLimitValidUntil: string;
   paymentTermDays?: number;
+  isActive?: boolean;
+  isBlocked?: boolean;
+  blockReason?: string;
 }
 
 export interface UpdateTradingPartnerRequest {

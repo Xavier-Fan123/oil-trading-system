@@ -23,7 +23,8 @@ public class UserTests
         user.FirstName.Should().BeEmpty();
         user.LastName.Should().BeEmpty();
         user.PasswordHash.Should().BeEmpty();
-        user.Role.Should().Be(UserRoleEnum.Trader); // Default enum value
+        // Role defaults to 0 since it's not explicitly initialized
+        user.Role.Should().Be((UserRoleEnum)0);
         user.IsActive.Should().BeTrue();
         user.LastLoginAt.Should().BeNull();
         user.FullName.Should().Be(" "); // FirstName + " " + LastName when both empty

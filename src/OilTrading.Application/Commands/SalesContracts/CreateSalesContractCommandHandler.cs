@@ -38,13 +38,24 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
 
     public async Task<Guid> Handle(CreateSalesContractCommand request, CancellationToken cancellationToken)
     {
+        // DEBUG: Log the external contract number received
+        Console.WriteLine($"[DEBUG] CreateSalesContractCommandHandler - ExternalContractNumber: '{request.ExternalContractNumber ?? "NULL"}'");
+
         // Validate entities exist
         var customer = await _tradingPartnerRepository.GetByIdAsync(request.CustomerId, cancellationToken);
         if (customer == null)
             throw new NotFoundException($"Customer with ID {request.CustomerId} not found");
 
-        if (customer.Type != TradingPartnerType.Customer)
-            throw new DomainException($"Trading partner {customer.Name} is not a customer");
+        // A partner can be a sales customer if they are:
+        // - Customer (2): Pure customer
+        // - Both (3): Both supplier and customer (common for traders/resellers)
+        // - EndUser (5): End user/consumer
+        // Cannot be Supplier (1) or just Trader (4) - these are supply-side roles
+        if (customer.Type == TradingPartnerType.Supplier)
+            throw new DomainException($"Trading partner {customer.Name} is a supplier and cannot be a sales customer");
+
+        if (customer.Type == TradingPartnerType.Trader && customer.Type != TradingPartnerType.Both)
+            throw new DomainException($"Trading partner {customer.Name} is a trader and cannot be a direct sales customer");
 
         var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
         if (product == null)
@@ -92,6 +103,9 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
             request.LinkedPurchaseContractId,
             request.PriceBenchmarkId,
             request.ExternalContractNumber);
+
+        // DEBUG: Log the created entity's external contract number
+        Console.WriteLine($"[DEBUG] SalesContract created - ExternalContractNumber: '{salesContract.ExternalContractNumber ?? "NULL"}'");
 
         // Set delivery information if provided
         if (request.LaycanStart != default && request.LaycanEnd != default)

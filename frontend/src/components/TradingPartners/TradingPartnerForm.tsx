@@ -122,14 +122,10 @@ export const TradingPartnerForm: React.FC<TradingPartnerFormProps> = ({
     }
     setErrors({});
 
-    // Load financial reports for existing trading partner
-    if (initialData?.id && open) {
-      loadFinancialReports(initialData.id);
-      setShowFinancialReports(true);
-    } else {
-      setFinancialReports([]);
-      setShowFinancialReports(false);
-    }
+    // Initialize financial reports state (don't load automatically)
+    // Reports will only be loaded when user expands the section
+    setFinancialReports([]);
+    setShowFinancialReports(false);
   }, [initialData, open]);
 
   const handleInputChange = (field: string, value: any) => {
@@ -215,7 +211,9 @@ export const TradingPartnerForm: React.FC<TradingPartnerFormProps> = ({
       }));
       setFinancialReports(gridRows);
     } catch (error) {
-      console.error('Failed to load financial reports:', error);
+      // Silently handle errors - financial reports are optional
+      // If the backend endpoint is not available, just show empty list
+      setFinancialReports([]);
     }
   };
 
@@ -389,7 +387,14 @@ export const TradingPartnerForm: React.FC<TradingPartnerFormProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      disableRestoreFocus
+      onBackdropClick={onClose}
+    >
       <DialogTitle>
         <Box display="flex" alignItems="center">
           <BusinessIcon sx={{ mr: 1 }} />
@@ -637,10 +642,17 @@ export const TradingPartnerForm: React.FC<TradingPartnerFormProps> = ({
               <Typography variant="h6">
                 Financial Reports History
               </Typography>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 sx={{ ml: 1 }}
-                onClick={() => setShowFinancialReports(!showFinancialReports)}
+                onClick={() => {
+                  const newState = !showFinancialReports;
+                  if (newState && initialData?.id && financialReports.length === 0) {
+                    // Load financial reports when expanding and they haven't been loaded yet
+                    loadFinancialReports(initialData.id);
+                  }
+                  setShowFinancialReports(newState);
+                }}
               >
                 {showFinancialReports ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               </IconButton>

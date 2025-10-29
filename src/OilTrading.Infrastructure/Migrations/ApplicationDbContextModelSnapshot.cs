@@ -54,6 +54,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid>("PurchaseContractId")
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<Guid>("SalesContractId")
                         .HasColumnType("TEXT");
 
@@ -138,6 +144,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<DateTime>("PricingStartDate")
                         .HasColumnType("date")
                         .HasColumnName("pricing_start_date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER")
@@ -302,6 +314,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<string>("SettlementCurrency")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -409,6 +427,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT")
                         .HasColumnName("Notes");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid>("TagId")
                         .HasColumnType("TEXT")
@@ -524,6 +548,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("price_date");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
@@ -604,6 +634,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<decimal?>("Revenue")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<decimal?>("TotalAssets")
                         .HasPrecision(18, 2)
@@ -751,11 +787,17 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int>("QuantityUnit")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasDefaultValue(0);
+                        .HasDefaultValue(1);
 
                     b.Property<decimal?>("RealizedPnL")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<DateTime?>("SettlementDate")
                         .HasColumnType("TEXT");
@@ -903,6 +945,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<string>("SupportedProducts")
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
@@ -997,6 +1045,12 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<Guid?>("PurchaseContractId")
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid?>("SalesContractId")
                         .HasColumnType("TEXT");
@@ -1128,6 +1182,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<DateTime?>("ReceivedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -1236,6 +1296,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -1335,6 +1401,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<string>("Source")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
@@ -1420,6 +1492,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("TEXT");
@@ -1546,6 +1624,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<DateTime?>("SettlementDate")
                         .HasColumnType("TEXT");
 
@@ -1662,6 +1746,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid>("SettlementId")
                         .HasColumnType("TEXT");
@@ -1875,6 +1965,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("INTEGER");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -1967,6 +2063,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT")
                         .HasColumnName("product_category");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<string>("Unit")
                         .IsRequired()
@@ -2064,6 +2166,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid?>("PurchaseContractId")
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<Guid?>("SalesContractId")
                         .HasColumnType("TEXT");
 
@@ -2093,7 +2201,6 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("EventDate")
                         .IsDescending()
                         .HasDatabaseName("IX_PricingEvents_EventDate_Recent")
-                        .HasFilter("EventDate >= DATEADD(month, -3, GETDATE())")
                         .HasAnnotation("Npgsql:IndexInclude", new[] { "ContractId", "EventType" });
 
                     b.HasIndex("EventType")
@@ -2193,6 +2300,13 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int>("ProductType")
                         .HasColumnType("INTEGER");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB")
+                        .HasDefaultValueSql("X'00000000000000000000000000000001'");
+
                     b.Property<string>("Specification")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -2272,7 +2386,7 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int>("DeliveryTerms")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasDefaultValue(0);
+                        .HasDefaultValue(1);
 
                     b.Property<string>("DischargePort")
                         .HasMaxLength(100)
@@ -2280,6 +2394,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<string>("ExternalContractNumber")
                         .HasMaxLength(100)
+                        .IsUnicode(true)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Incoterms")
@@ -2338,6 +2453,13 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<string>("QualitySpecifications")
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB")
+                        .HasDefaultValueSql("X'00000000000000000000000000000001'");
 
                     b.Property<int>("SettlementType")
                         .ValueGeneratedOnAdd()
@@ -2448,13 +2570,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int>("DeliveryTerms")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasDefaultValue(0);
+                        .HasDefaultValue(1);
 
                     b.Property<string>("DischargePort")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ExternalContractNumber")
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Incoterms")
@@ -2511,6 +2635,13 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<string>("QualitySpecifications")
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB")
+                        .HasDefaultValueSql("X'00000000000000000000000000000001'");
 
                     b.Property<int>("SettlementType")
                         .ValueGeneratedOnAdd()
@@ -2644,6 +2775,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid?>("PurchaseContractId")
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<Guid?>("SalesContractId")
                         .HasColumnType("TEXT");
 
@@ -2732,6 +2869,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<Guid?>("SettlementId")
                         .HasColumnType("TEXT");
 
@@ -2815,6 +2958,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<string>("ReferenceDocument")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid>("SettlementId")
                         .HasColumnType("TEXT");
@@ -2916,6 +3065,12 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<Guid?>("PurchaseContractId")
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid?>("SalesContractId")
                         .HasColumnType("TEXT");
@@ -3062,6 +3217,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("Priority");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("UpdatedAt");
@@ -3157,6 +3318,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamptz");
 
@@ -3251,6 +3418,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<string>("Symbol")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -3338,6 +3511,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamptz");
 
@@ -3422,6 +3601,12 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<Guid?>("PurchaseContractId")
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid?>("SalesContractId")
                         .HasColumnType("TEXT");
@@ -3542,6 +3727,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<decimal?>("MaxAllowedLoss")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -3614,6 +3805,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
 
                     b.Property<Guid>("TagId")
                         .HasColumnType("TEXT");
@@ -3758,6 +3955,13 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int>("PaymentTermDays")
                         .HasColumnType("INTEGER");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB")
+                        .HasDefaultValueSql("X'00000000000000000000000000000001'");
+
                     b.Property<string>("TaxId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -3873,6 +4077,13 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<int>("Role")
                         .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB")
+                        .HasDefaultValueSql("X'00000000000000000000000000000001'");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");

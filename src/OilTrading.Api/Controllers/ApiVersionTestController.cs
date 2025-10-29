@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace OilTrading.Api.Controllers;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/version-test")]
-[ApiVersion("2.0")]
+[Route("api/version-test")]
 public class ApiVersionTestController : ControllerBase
 {
     private readonly ILogger<ApiVersionTestController> _logger;

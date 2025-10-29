@@ -228,6 +228,10 @@ public class SalesContractConfiguration : IEntityTypeConfiguration<SalesContract
                .HasPrecision(5, 2);
 
         // Additional Fields
+        builder.Property(e => e.ExternalContractNumber)
+               .HasMaxLength(100)
+               .IsUnicode(true);
+
         builder.Property(e => e.Incoterms).HasMaxLength(50);
         builder.Property(e => e.QualitySpecifications).HasMaxLength(2000);
         builder.Property(e => e.InspectionAgency).HasMaxLength(200);
@@ -292,6 +296,12 @@ public class SalesContractConfiguration : IEntityTypeConfiguration<SalesContract
                .HasForeignKey(ct => ct.ContractId)
                .HasPrincipalKey(e => e.Id)
                .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure RowVersion for optimistic concurrency control
+        builder.Property(e => e.RowVersion)
+               .IsRowVersion()
+               .HasColumnType("BLOB")
+               .HasDefaultValueSql("X'00000000000000000000000000000001'");
 
         // Table configuration
         builder.ToTable("SalesContracts");

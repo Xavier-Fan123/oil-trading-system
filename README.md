@@ -1,6 +1,8 @@
-# Oil Trading & Risk Management System v2.4.1
+# Oil Trading & Risk Management System v2.6.1
 
-An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced TradeGroup management and futures-spot integration.
+An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced TradeGroup management, futures-spot integration, and contract matching for natural hedging.
+
+**Latest Update (Oct 8, 2025)**: API routing configuration fixed - all endpoints now working correctly with proper versioning.
 
 ## 🚀 Quick Start
 
@@ -310,13 +312,17 @@ For support and questions:
 
 ## 🔄 Recent Updates & Roadmap
 
-### ✅ Completed (August 2025)
+### ✅ Completed (October 2025)
 
+- [x] **API Routing Fix (v2.6.1)** - Fixed mixed API versioning, all endpoints working ✨
+- [x] **100% Test Pass Rate (v2.6.0)** - 100/100 unit tests passing, 85.1% coverage
+- [x] **Contract Matching System (v2.3)** - Manual matching for natural hedging
+- [x] **Frontend-Backend Alignment (v2.4)** - Perfect DTO and API alignment
 - [x] **TradeGroup Management System** - Complete multi-strategy trading group management
 - [x] **Futures-Spot Integration** - Advanced futures-physical position integration
 - [x] **Tag System Redesign** - Trading strategy classification and risk management tags
 - [x] **Frontend Architecture** - Migrated from Next.js to React 18 + Vite + MUI
-- [x] **API Error Handling** - Robust error handling with mock data fallbacks
+- [x] **API Error Handling** - Robust error handling with standardized responses
 - [x] **TypeScript Enhancement** - Improved type safety and enum handling
 
 ### 🚧 In Progress

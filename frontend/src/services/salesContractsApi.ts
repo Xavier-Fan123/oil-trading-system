@@ -47,8 +47,22 @@ export const salesContractsApi = {
 
   // Create new sales contract
   create: async (contract: CreateSalesContractDto): Promise<string> => {
-    const response = await api.post('/sales-contracts', contract);
-    return response.data;
+    try {
+      const response = await api.post('/sales-contracts', contract);
+      return response.data;
+    } catch (error: any) {
+      console.error('Sales contract creation failed', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          method: error.config?.method,
+          url: error.config?.url,
+          data: error.config?.data
+        }
+      });
+      throw error;
+    }
   },
 
   // Update existing sales contract

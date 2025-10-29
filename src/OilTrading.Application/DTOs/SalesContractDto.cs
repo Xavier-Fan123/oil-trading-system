@@ -86,6 +86,7 @@ public class SalesContractSummaryDto
 {
     public Guid Id { get; set; }
     public string ContractNumber { get; set; } = string.Empty;
+    public string? ExternalContractNumber { get; set; }
     public ContractStatus Status { get; set; }
     public Guid CustomerId { get; set; }
     public string CustomerName { get; set; } = string.Empty;

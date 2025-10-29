@@ -1,0 +1,40 @@
+  正在确定要还原的项目…
+  所有项目均是最新的，无法还原。
+  OilTrading.Core -> C:\Users\itg\Desktop\X\src\OilTrading.Core\bin\Debug\net9.0\OilTrading.Core.dll
+  OilTrading.Application -> C:\Users\itg\Desktop\X\src\OilTrading.Application\bin\Debug\net9.0\OilTrading.Application.dll
+  OilTrading.Infrastructure -> C:\Users\itg\Desktop\X\src\OilTrading.Infrastructure\bin\Debug\net9.0\OilTrading.Infrastructure.dll
+  OilTrading.Api -> C:\Users\itg\Desktop\X\src\OilTrading.Api\bin\Debug\net9.0\OilTrading.Api.dll
+  OilTrading.Tests -> C:\Users\itg\Desktop\X\tests\OilTrading.Tests\bin\Debug\net9.0\OilTrading.Tests.dll
+C:\Users\itg\Desktop\X\tests\OilTrading.Tests\bin\Debug\net9.0\OilTrading.Tests.dll (.NETCoreApp,Version=v9.0)的测试运行
+VSTest 版本 17.14.1 (x64)
+
+正在启动测试执行，请稍候...
+总共 1 个测试文件与指定模式相匹配。
+C:\Users\itg\Desktop\X\tests\OilTrading.Tests\bin\Debug\net9.0\OilTrading.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.4.3+1b45f5407b (64-bit .NET 9.0.8)
+[xUnit.net 00:00:01.61]   Discovering: OilTrading.Tests
+[xUnit.net 00:00:01.69]   Discovered:  OilTrading.Tests
+[xUnit.net 00:00:01.70]   Starting:    OilTrading.Tests
+[xUnit.net 00:00:01.77]     OilTrading.Tests.Domain.ValueObjects.PriceFormulaTests.PriceFormula_ShouldThrowArgumentException_WhenFormulaIsInvalid [FAIL]
+[xUnit.net 00:00:01.77]       Assert.Throws() Failure
+[xUnit.net 00:00:01.77]       Expected: typeof(OilTrading.Core.Common.DomainException)
+[xUnit.net 00:00:01.77]       Actual:   (No exception was thrown)
+[xUnit.net 00:00:01.77]       Stack Trace:
+[xUnit.net 00:00:01.77]         C:\Users\itg\Desktop\X\tests\OilTrading.Tests\Domain\ValueObjects\PriceFormulaTests.cs(161,0): at OilTrading.Tests.Domain.ValueObjects.PriceFormulaTests.PriceFormula_ShouldThrowArgumentException_WhenFormulaIsInvalid()
+[xUnit.net 00:00:01.77]            at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+[xUnit.net 00:00:01.77]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:01.78]   Finished:    OilTrading.Tests
+  失败 OilTrading.Tests.Domain.ValueObjects.PriceFormulaTests.PriceFormula_ShouldThrowArgumentException_WhenFormulaIsInvalid [32 ms]
+  错误消息:
+   Assert.Throws() Failure
+Expected: typeof(OilTrading.Core.Common.DomainException)
+Actual:   (No exception was thrown)
+  堆栈跟踪:
+     at OilTrading.Tests.Domain.ValueObjects.PriceFormulaTests.PriceFormula_ShouldThrowArgumentException_WhenFormulaIsInvalid() in C:\Users\itg\Desktop\X\tests\OilTrading.Tests\Domain\ValueObjects\PriceFormulaTests.cs:line 161
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+测试运行失败。
+测试总数: 1
+     失败数: 1
+总时间: 2.6270 秒

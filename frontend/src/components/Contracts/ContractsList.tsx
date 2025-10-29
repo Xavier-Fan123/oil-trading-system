@@ -81,7 +81,13 @@ const getStatusLabel = (status: ContractStatus): string => {
   }
 };
 
-const getQuantityUnitLabel = (unit: QuantityUnit): string => {
+const getQuantityUnitLabel = (unit: QuantityUnit | string): string => {
+  // Handle string values from backend JsonStringEnumConverter
+  if (typeof unit === 'string') {
+    return unit; // Return as-is since backend returns "MT", "BBL", "GAL", "LOTS"
+  }
+
+  // Handle numeric enum values
   switch (unit) {
     case QuantityUnit.MT:
       return 'MT';

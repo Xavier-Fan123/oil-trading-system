@@ -752,6 +752,7 @@ public class SettlementCalculationService : ISettlementCalculationService
         {
             Id = contract.Id,
             ContractNumber = contract.ContractNumber.Value,
+            ExternalContractNumber = contract.ExternalContractNumber,
             Status = contract.Status,
             CustomerName = contract.TradingPartner?.Name ?? "",
             Quantity = contract.ContractQuantity.Value,

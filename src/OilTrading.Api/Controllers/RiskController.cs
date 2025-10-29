@@ -6,8 +6,7 @@ using OilTrading.Application.DTOs;
 namespace OilTrading.Api.Controllers;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/risk")]
-[ApiVersion("2.0")]
+[Route("api/risk")]
 public class RiskController : ControllerBase
 {
     private readonly IMediator _mediator;

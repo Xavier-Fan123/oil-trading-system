@@ -5,7 +5,7 @@ namespace OilTrading.Core.Entities;
 public abstract class BaseEntity : IAggregateRoot
 {
     private readonly List<IDomainEvent> _domainEvents = new();
-    
+
     public Guid Id { get; protected set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; protected set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; protected set; }
@@ -14,6 +14,10 @@ public abstract class BaseEntity : IAggregateRoot
     public bool IsDeleted { get; protected set; } = false;
     public DateTime? DeletedAt { get; protected set; }
     public string? DeletedBy { get; protected set; }
+
+    // Optimistic concurrency control - prevents data corruption from concurrent updates
+    // Database will automatically update this value on each save
+    public byte[] RowVersion { get; protected set; } = new byte[] { 0 };
 
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 

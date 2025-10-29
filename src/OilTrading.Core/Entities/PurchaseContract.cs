@@ -556,10 +556,10 @@ public class PurchaseContract : BaseEntity
 
 public enum ContractStatus
 {
-    Draft = 0,
-    PendingApproval = 1,
-    Active = 2,
-    Completed = 3,
-    Cancelled = 4,
-    Suspended = 5
+    Draft = 1,
+    PendingApproval = 2,
+    Active = 3,
+    Completed = 4,
+    Cancelled = 5,
+    Suspended = 6
 }

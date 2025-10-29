@@ -115,7 +115,8 @@ public class GlobalExceptionMiddlewareTests
         var response = await GetResponseAsync(context);
         Assert.NotNull(response);
         Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
-        Assert.NotNull(response.Details);
+        // NotFoundException includes entity id in the message
+        Assert.Contains("PC-2024-001", response.Message);
     }
 
     #endregion
@@ -492,7 +493,9 @@ public class GlobalExceptionMiddlewareTests
         Assert.NotNull(response);
         Assert.Equal("INTERNAL_SERVER_ERROR", response.Code);
         Assert.Equal("An internal server error occurred while processing your request.", response.Message);
-        Assert.Equal("Please contact support if the problem persists.", response.Details);
+        // Details is a JsonElement, convert to string for comparison
+        var detailsStr = response.Details?.ToString();
+        Assert.Equal("Please contact support if the problem persists.", detailsStr);
     }
 
     [Fact]

@@ -52,7 +52,7 @@ public class FinancialReport : BaseEntity
 
     public int ReportYear => ReportStartDate.Year;
     
-    public bool IsAnnualReport => ReportEndDate.Subtract(ReportStartDate).Days >= 360;
+    public bool IsAnnualReport => ReportEndDate.Subtract(ReportStartDate).Days > 358;
 
     // Business Methods
     public void UpdateFinancialPosition(

@@ -167,7 +167,7 @@ public class GetTradingPartnerAnalysisQueryHandlerTests : IDisposable
     [Theory]
     [InlineData(0.8, 95, "Poor")]
     [InlineData(1.2, 80, "Fair")]
-    [InlineData(2.0, 25, "Good")]
+    [InlineData(2m, 25, "Good")]
     public async Task Handle_WithDifferentRiskProfiles_ShouldCalculateCorrectHealthStatus(decimal currentRatio, decimal creditUtilization, string expectedHealthStatus)
     {
         // Arrange

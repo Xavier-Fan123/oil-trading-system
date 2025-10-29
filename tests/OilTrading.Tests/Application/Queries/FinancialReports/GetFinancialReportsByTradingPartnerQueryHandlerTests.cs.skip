@@ -60,7 +60,7 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
         firstReport.TradingPartnerId.Should().Be(_tradingPartnerId);
         firstReport.ReportYear.Should().Be(2024);
         firstReport.TotalAssets.Should().Be(12000m);
-        firstReport.CurrentRatio.Should().BeApproximately(2.0m, 0.01m);
+        firstReport.CurrentRatio.Should().BeApproximately(2.0, 0.01m);
     }
 
     [Fact]
@@ -164,11 +164,11 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
     #region Growth Calculation Tests
 
     [Theory]
-    [InlineData(1000, 1200, 20.0)] // 20% growth
-    [InlineData(1000, 800, -20.0)] // 20% decline
-    [InlineData(1000, 1000, 0.0)] // No change
-    [InlineData(100, 200, 100.0)] // 100% growth
-    [InlineData(200, 100, -50.0)] // 50% decline
+    [InlineData(1000, 1200, 20m)] // 20% growth
+    [InlineData(1000, 800, -20m)] // 20% decline
+    [InlineData(1000, 1000, 0m)] // No change
+    [InlineData(100, 200, 100m)] // 100% growth
+    [InlineData(200, 100, -50m)] // 50% decline
     public async Task Handle_GrowthCalculation_ShouldCalculateCorrectPercentage(decimal previous, decimal current, decimal expectedGrowth)
     {
         // Arrange
@@ -192,8 +192,8 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
 
     [Theory]
     [InlineData(0, 100, null)] // Division by zero
-    [InlineData(-100, -50, -50.0)] // Negative values
-    [InlineData(-100, 50, 150.0)] // Negative to positive
+    [InlineData(-100, -50, -50m)] // Negative values
+    [InlineData(-100, 50, 150m)] // Negative to positive
     public async Task Handle_GrowthCalculation_EdgeCases_ShouldHandleCorrectly(decimal previous, decimal current, decimal? expectedGrowth)
     {
         // Arrange
@@ -517,8 +517,8 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
             CompanyName = "Test Trading Company",
             CompanyCode = "TTC",
             Type = TradingPartnerType.Supplier,
-            CreditLimit = 1000000m,
-            CurrentExposure = 250000m,
+            CreditLimit = 1000000,
+            CurrentExposure = 250000,
             IsActive = true
         };
         SetEntityId(partner, _tradingPartnerId);
@@ -531,26 +531,26 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
         
         // 2024 Annual Report
         var report2024 = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
-        report2024.UpdateFinancialPosition(12000m, 6000m, 6000m, 7000m, 3500m);
-        report2024.UpdatePerformanceData(15000m, 1500m, 1800m);
+        report2024.UpdateFinancialPosition(12000, 6000, 6000, 7000, 3500m);
+        report2024.UpdatePerformanceData(15000, 1500, 1800m);
         reports.Add(report2024);
         
         // 2023 Q4 Report
         var report2023Q4 = new FinancialReport(_tradingPartnerId, new DateTime(2023, 10, 1), new DateTime(2023, 12, 31));
-        report2023Q4.UpdateFinancialPosition(10500m, 5500m, 5000m, 6300m, 3150m);
-        report2023Q4.UpdatePerformanceData(12500m, 1000m, 1250m);
+        report2023Q4.UpdateFinancialPosition(10500, 5500, 5000, 6300, 3150m);
+        report2023Q4.UpdatePerformanceData(12500, 1000, 1250m);
         reports.Add(report2023Q4);
         
         // 2023 Q1 Report
         var report2023Q1 = new FinancialReport(_tradingPartnerId, new DateTime(2023, 1, 1), new DateTime(2023, 3, 31));
-        report2023Q1.UpdateFinancialPosition(9800m, 4900m, 4900m, 5880m, 2940m);
-        report2023Q1.UpdatePerformanceData(12000m, 800m, 1000m);
+        report2023Q1.UpdateFinancialPosition(9800, 4900, 4900, 5880, 2940m);
+        report2023Q1.UpdatePerformanceData(12000, 800, 1000m);
         reports.Add(report2023Q1);
         
         // 2022 Annual Report
         var report2022 = new FinancialReport(_tradingPartnerId, new DateTime(2022, 1, 1), new DateTime(2022, 12, 31));
-        report2022.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
-        report2022.UpdatePerformanceData(10000m, 800m, 1000m);
+        report2022.UpdateFinancialPosition(10000, 5000, 5000, 6000, 3000m);
+        report2022.UpdatePerformanceData(10000, 800, 1000m);
         reports.Add(report2022);
         
         return reports;
@@ -584,20 +584,20 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
         
         // 2024 report
         var current = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
-        current.UpdateFinancialPosition(12000m, 6000m, 6000m, 7000m, 3500m);
-        current.UpdatePerformanceData(12000m, 1500m, 1800m); // 20% revenue growth, 50% profit growth
+        current.UpdateFinancialPosition(12000, 6000, 6000, 7000, 3500m);
+        current.UpdatePerformanceData(12000, 1500, 1800m); // 20% revenue growth, 50% profit growth
         growthReports.Add(current);
         
         // 2023 report
         var previous = new FinancialReport(_tradingPartnerId, new DateTime(2023, 1, 1), new DateTime(2023, 12, 31));
-        previous.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
-        previous.UpdatePerformanceData(10000m, 1000m, 1200m); // Base for 2024 growth
+        previous.UpdateFinancialPosition(10000, 5000, 5000, 6000, 3000m);
+        previous.UpdatePerformanceData(10000, 1000, 1200m); // Base for 2024 growth
         growthReports.Add(previous);
         
         // 2022 report
         var older = new FinancialReport(_tradingPartnerId, new DateTime(2022, 1, 1), new DateTime(2022, 12, 31));
-        older.UpdateFinancialPosition(8000m, 4000m, 4000m, 4800m, 2400m);
-        older.UpdatePerformanceData(8000m, 600m, 800m); // Base for 2023 growth (25% revenue growth)
+        older.UpdateFinancialPosition(8000, 4000, 4000, 4800, 2400m);
+        older.UpdatePerformanceData(8000, 600, 800m); // Base for 2023 growth (25% revenue growth)
         growthReports.Add(older);
         
         _mockTradingPartnerRepository
@@ -614,13 +614,13 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
         var reports = new List<FinancialReport>();
         
         var current = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
-        current.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
-        current.UpdatePerformanceData(currentRevenue, 1000m, 1200m);
+        current.UpdateFinancialPosition(10000, 5000, 5000, 6000, 3000m);
+        current.UpdatePerformanceData(currentRevenue, 1000, 1200m);
         reports.Add(current);
         
         var previous = new FinancialReport(_tradingPartnerId, new DateTime(2023, 1, 1), new DateTime(2023, 12, 31));
-        previous.UpdateFinancialPosition(8000m, 4000m, 4000m, 4800m, 2400m);
-        previous.UpdatePerformanceData(previousRevenue, 800m, 1000m);
+        previous.UpdateFinancialPosition(8000, 4000, 4000, 4800, 2400m);
+        previous.UpdatePerformanceData(previousRevenue, 800, 1000m);
         reports.Add(previous);
         
         _mockTradingPartnerRepository
@@ -637,12 +637,12 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
         var reports = new List<FinancialReport>();
         
         var current = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
-        current.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
-        current.UpdatePerformanceData(12000m, 1000m, 1200m);
+        current.UpdateFinancialPosition(10000, 5000, 5000, 6000, 3000m);
+        current.UpdatePerformanceData(12000, 1000, 1200m);
         reports.Add(current);
         
         var previous = new FinancialReport(_tradingPartnerId, new DateTime(2023, 1, 1), new DateTime(2023, 12, 31));
-        previous.UpdateFinancialPosition(8000m, 4000m, 4000m, 4800m, 2400m);
+        previous.UpdateFinancialPosition(8000, 4000, 4000, 4800, 2400m);
         previous.UpdatePerformanceData(null, null, null); // Null values for growth calculation
         reports.Add(previous);
         
@@ -661,14 +661,14 @@ public class GetFinancialReportsByTradingPartnerQueryHandlerTests : IDisposable
         
         // 2024 report
         var report2024 = new FinancialReport(_tradingPartnerId, new DateTime(2024, 1, 1), new DateTime(2024, 12, 31));
-        report2024.UpdateFinancialPosition(10000m, 5000m, 5000m, 6000m, 3000m);
-        report2024.UpdatePerformanceData(10000m, 1000m, 1200m);
+        report2024.UpdateFinancialPosition(10000, 5000, 5000, 6000, 3000m);
+        report2024.UpdatePerformanceData(10000, 1000, 1200m);
         reports.Add(report2024);
         
         // Skip 2023, add 2022 report
         var report2022 = new FinancialReport(_tradingPartnerId, new DateTime(2022, 1, 1), new DateTime(2022, 12, 31));
-        report2022.UpdateFinancialPosition(8000m, 4000m, 4000m, 4800m, 2400m);
-        report2022.UpdatePerformanceData(8000m, 800m, 1000m);
+        report2022.UpdateFinancialPosition(8000, 4000, 4000, 4800, 2400m);
+        report2022.UpdatePerformanceData(8000, 800, 1000m);
         reports.Add(report2022);
         
         _mockTradingPartnerRepository

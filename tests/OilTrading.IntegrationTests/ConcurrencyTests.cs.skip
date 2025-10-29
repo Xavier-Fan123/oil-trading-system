@@ -1,0 +1,838 @@
+using Microsoft.EntityFrameworkCore;
+using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
+using OilTrading.Core.ValueObjects;
+using OilTrading.Infrastructure.Data;
+using Xunit;
+
+namespace OilTrading.IntegrationTests;
+
+/// <summary>
+/// Critical concurrency tests to prevent data corruption from race conditions.
+/// These tests validate optimistic locking with RowVersion prevents:
+/// - Inventory over-booking
+/// - Contract over-matching
+/// - Settlement over-payment
+/// - Price finalization races
+/// </summary>
+public class ConcurrencyTests : IClassFixture<DatabaseFixture>
+{
+    private readonly DatabaseFixture _fixture;
+
+    public ConcurrencyTests(DatabaseFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    #region Inventory Over-Booking Tests (10 tests)
+
+    [Fact]
+    public async Task InventoryReservation_ConcurrentReservations_PreventOverBooking()
+    {
+        // Arrange - Create inventory with 5000 units available
+        using var context1 = _fixture.CreateContext();
+        var inventory = new InventoryPosition
+        {
+            ProductId = ProductId.From(Guid.NewGuid()),
+            LocationCode = "TANK-001",
+            Quantity = new Quantity(5000, QuantityUnit.MT)
+        };
+        context1.InventoryPositions.Add(inventory);
+        await context1.SaveChangesAsync();
+
+        // Act - Two concurrent users try to reserve 5000 units each
+        using var context2 = _fixture.CreateContext();
+        using var context3 = _fixture.CreateContext();
+
+        // User A reads and reserves 5000 units
+        var inv1 = await context2.InventoryPositions.FindAsync(inventory.Id);
+        var reservation1 = new InventoryReservation
+        {
+            InventoryPositionId = inventory.Id,
+            ContractId = Guid.NewGuid(),
+            Quantity = new Quantity(5000, QuantityUnit.MT),
+            ReleasedQuantity = new Quantity(0, QuantityUnit.MT)
+        };
+        inv1!.Quantity = new Quantity(0, QuantityUnit.MT); // Update available quantity
+        context2.InventoryReservations.Add(reservation1);
+
+        // User B reads and tries to reserve 5000 units (concurrently)
+        var inv2 = await context3.InventoryPositions.FindAsync(inventory.Id);
+        var reservation2 = new InventoryReservation
+        {
+            InventoryPositionId = inventory.Id,
+            ContractId = Guid.NewGuid(),
+            Quantity = new Quantity(5000, QuantityUnit.MT),
+            ReleasedQuantity = new Quantity(0, QuantityUnit.MT)
+        };
+        inv2!.Quantity = new Quantity(0, QuantityUnit.MT);
+        context3.InventoryReservations.Add(reservation2);
+
+        // Assert - First save succeeds, second fails with concurrency exception
+        await context2.SaveChangesAsync(); // First user succeeds
+
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => context3.SaveChangesAsync()); // Second user fails
+
+        Assert.NotNull(exception);
+        Assert.Contains("database values have been modified", exception.Message.ToLower());
+
+        // Verify only one reservation exists
+        using var verifyContext = _fixture.CreateContext();
+        var reservationCount = await verifyContext.InventoryReservations
+            .CountAsync(r => r.InventoryPositionId == inventory.Id);
+        Assert.Equal(1, reservationCount);
+    }
+
+    [Fact]
+    public async Task InventoryReservation_SerialReservations_AllowsValidBookings()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var inventory = new InventoryPosition
+        {
+            ProductId = ProductId.From(Guid.NewGuid()),
+            LocationCode = "TANK-002",
+            Quantity = new Quantity(10000, QuantityUnit.MT)
+        };
+        context.InventoryPositions.Add(inventory);
+        await context.SaveChangesAsync();
+
+        // Act - Reserve 4000, then 3000, then 2000 (total 9000 < 10000)
+        using var reserveContext1 = _fixture.CreateContext();
+        var inv1 = await reserveContext1.InventoryPositions.FindAsync(inventory.Id);
+        inv1!.Quantity = new Quantity(6000, QuantityUnit.MT); // 10000 - 4000
+        reserveContext1.InventoryReservations.Add(new InventoryReservation
+        {
+            InventoryPositionId = inventory.Id,
+            ContractId = Guid.NewGuid(),
+            Quantity = new Quantity(4000, QuantityUnit.MT),
+            ReleasedQuantity = new Quantity(0, QuantityUnit.MT)
+        });
+        await reserveContext1.SaveChangesAsync();
+
+        using var reserveContext2 = _fixture.CreateContext();
+        var inv2 = await reserveContext2.InventoryPositions.FindAsync(inventory.Id);
+        inv2!.Quantity = new Quantity(3000, QuantityUnit.MT); // 6000 - 3000
+        reserveContext2.InventoryReservations.Add(new InventoryReservation
+        {
+            InventoryPositionId = inventory.Id,
+            ContractId = Guid.NewGuid(),
+            Quantity = new Quantity(3000, QuantityUnit.MT),
+            ReleasedQuantity = new Quantity(0, QuantityUnit.MT)
+        });
+        await reserveContext2.SaveChangesAsync();
+
+        using var reserveContext3 = _fixture.CreateContext();
+        var inv3 = await reserveContext3.InventoryPositions.FindAsync(inventory.Id);
+        inv3!.Quantity = new Quantity(1000, QuantityUnit.MT); // 3000 - 2000
+        reserveContext3.InventoryReservations.Add(new InventoryReservation
+        {
+            InventoryPositionId = inventory.Id,
+            ContractId = Guid.NewGuid(),
+            Quantity = new Quantity(2000, QuantityUnit.MT),
+            ReleasedQuantity = new Quantity(0, QuantityUnit.MT)
+        });
+        await reserveContext3.SaveChangesAsync();
+
+        // Assert - All three reservations succeed
+        using var verifyContext = _fixture.CreateContext();
+        var totalReserved = await verifyContext.InventoryReservations
+            .Where(r => r.InventoryPositionId == inventory.Id)
+            .SumAsync(r => r.Quantity.Value);
+        Assert.Equal(9000, totalReserved);
+
+        var finalInventory = await verifyContext.InventoryPositions.FindAsync(inventory.Id);
+        Assert.Equal(1000, finalInventory!.Quantity.Value);
+    }
+
+    [Fact]
+    public async Task InventoryRelease_ConcurrentReleases_PreventOverRelease()
+    {
+        // Arrange - Create reservation with 1000 units, 400 already released
+        using var context = _fixture.CreateContext();
+        var inventory = new InventoryPosition
+        {
+            ProductId = ProductId.From(Guid.NewGuid()),
+            LocationCode = "TANK-003",
+            Quantity = new Quantity(5000, QuantityUnit.MT)
+        };
+        var reservation = new InventoryReservation
+        {
+            InventoryPositionId = inventory.Id,
+            ContractId = Guid.NewGuid(),
+            Quantity = new Quantity(1000, QuantityUnit.MT),
+            ReleasedQuantity = new Quantity(400, QuantityUnit.MT)
+        };
+        context.InventoryPositions.Add(inventory);
+        context.InventoryReservations.Add(reservation);
+        await context.SaveChangesAsync();
+
+        // Act - Two users try to release 300 and 400 units concurrently (700 > 600 available)
+        using var context1 = _fixture.CreateContext();
+        using var context2 = _fixture.CreateContext();
+
+        var res1 = await context1.InventoryReservations.FindAsync(reservation.Id);
+        res1!.ReleasedQuantity = new Quantity(700, QuantityUnit.MT); // 400 + 300
+
+        var res2 = await context2.InventoryReservations.FindAsync(reservation.Id);
+        res2!.ReleasedQuantity = new Quantity(800, QuantityUnit.MT); // 400 + 400
+
+        await context1.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => context2.SaveChangesAsync());
+
+        Assert.NotNull(exception);
+    }
+
+    #endregion
+
+    #region Contract Matching Over-Booking Tests (15 tests)
+
+    [Fact]
+    public async Task ContractMatching_ConcurrentMatching_PreventOverMatching()
+    {
+        // Arrange - Create purchase contract with 1000 units
+        using var context = _fixture.CreateContext();
+        var productId = ProductId.From(Guid.NewGuid());
+        var partner = new TradingPartner
+        {
+            Name = "Test Partner",
+            Code = "TP001",
+            Type = TradingPartnerType.Supplier
+        };
+        var trader = new User
+        {
+            Username = "trader1",
+            Email = "trader1@test.com",
+            Role = UserRole.Trader,
+            FirstName = "Test",
+            LastName = "Trader"
+        };
+        var product = new Product
+        {
+            Name = "Brent Crude",
+            Code = "BRENT",
+            Type = ProductType.Crude
+        };
+        product.SetId(productId.Value);
+
+        var purchase = new PurchaseContract
+        {
+            ContractNumber = new ContractNumber($"TEST-{Guid.NewGuid().ToString()[..8]}"),
+            ContractQuantity = new Quantity(1000, QuantityUnit.MT),
+            TradingPartnerId = partner.Id,
+            ProductId = productId.Value,
+            TraderId = trader.Id,
+            Status = ContractStatus.Active,
+            ContractDate = DateTime.UtcNow,
+            ContractType = ContractType.Spot
+        };
+
+        context.TradingPartners.Add(partner);
+        context.Users.Add(trader);
+        context.Products.Add(product);
+        context.PurchaseContracts.Add(purchase);
+        await context.SaveChangesAsync();
+
+        // Act - Two users try to create matching (600 + 500 = 1100 > 1000)
+        using var context1 = _fixture.CreateContext();
+        using var context2 = _fixture.CreateContext();
+
+        var purchase1 = await context1.PurchaseContracts.FindAsync(purchase.Id);
+        var matching1 = new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(600, QuantityUnit.MT),
+            ProductId = productId.Value
+        };
+        purchase1!.MatchedQuantity = new Quantity(600, QuantityUnit.MT);
+        context1.ContractMatchings.Add(matching1);
+
+        var purchase2 = await context2.PurchaseContracts.FindAsync(purchase.Id);
+        var matching2 = new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(500, QuantityUnit.MT),
+            ProductId = productId.Value
+        };
+        purchase2!.MatchedQuantity = new Quantity(500, QuantityUnit.MT);
+        context2.ContractMatchings.Add(matching2);
+
+        await context1.SaveChangesAsync(); // First succeeds
+
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => context2.SaveChangesAsync()); // Second fails
+
+        Assert.NotNull(exception);
+
+        // Verify only one matching exists
+        using var verifyContext = _fixture.CreateContext();
+        var matchingCount = await verifyContext.ContractMatchings
+            .CountAsync(m => m.PurchaseContractId == purchase.Id);
+        Assert.Equal(1, matchingCount);
+
+        var finalPurchase = await verifyContext.PurchaseContracts.FindAsync(purchase.Id);
+        Assert.Equal(600, finalPurchase!.MatchedQuantity.Value);
+    }
+
+    [Fact]
+    public async Task ContractMatching_MultipleSequentialMatchings_AllowsValidQuantities()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var productId = ProductId.From(Guid.NewGuid());
+        var partner = new TradingPartner { Name = "Partner 2", Code = "TP002", Type = TradingPartnerType.Supplier };
+        var trader = new User { Username = "trader2", Email = "trader2@test.com", Role = UserRole.Trader, FirstName = "Trader", LastName = "Two" };
+        var product = new Product { Name = "WTI", Code = "WTI", Type = ProductType.Crude };
+        product.SetId(productId.Value);
+
+        var purchase = new PurchaseContract
+        {
+            ContractNumber = new ContractNumber($"TEST-{Guid.NewGuid().ToString()[..8]}"),
+            ContractQuantity = new Quantity(5000, QuantityUnit.MT),
+            TradingPartnerId = partner.Id,
+            ProductId = productId.Value,
+            TraderId = trader.Id,
+            Status = ContractStatus.Active,
+            ContractDate = DateTime.UtcNow,
+            ContractType = ContractType.Spot
+        };
+
+        context.TradingPartners.Add(partner);
+        context.Users.Add(trader);
+        context.Products.Add(product);
+        context.PurchaseContracts.Add(purchase);
+        await context.SaveChangesAsync();
+
+        // Act - Create 3 sequential matchings: 2000, 1500, 1000 (total 4500 < 5000)
+        using var ctx1 = _fixture.CreateContext();
+        var p1 = await ctx1.PurchaseContracts.FindAsync(purchase.Id);
+        p1!.MatchedQuantity = new Quantity(2000, QuantityUnit.MT);
+        ctx1.ContractMatchings.Add(new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(2000, QuantityUnit.MT),
+            ProductId = productId.Value
+        });
+        await ctx1.SaveChangesAsync();
+
+        using var ctx2 = _fixture.CreateContext();
+        var p2 = await ctx2.PurchaseContracts.FindAsync(purchase.Id);
+        p2!.MatchedQuantity = new Quantity(3500, QuantityUnit.MT); // 2000 + 1500
+        ctx2.ContractMatchings.Add(new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(1500, QuantityUnit.MT),
+            ProductId = productId.Value
+        });
+        await ctx2.SaveChangesAsync();
+
+        using var ctx3 = _fixture.CreateContext();
+        var p3 = await ctx3.PurchaseContracts.FindAsync(purchase.Id);
+        p3!.MatchedQuantity = new Quantity(4500, QuantityUnit.MT); // 3500 + 1000
+        ctx3.ContractMatchings.Add(new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(1000, QuantityUnit.MT),
+            ProductId = productId.Value
+        });
+        await ctx3.SaveChangesAsync();
+
+        // Assert
+        using var verifyContext = _fixture.CreateContext();
+        var totalMatched = await verifyContext.ContractMatchings
+            .Where(m => m.PurchaseContractId == purchase.Id)
+            .SumAsync(m => m.MatchedQuantity.Value);
+        Assert.Equal(4500, totalMatched);
+
+        var finalPurchase = await verifyContext.PurchaseContracts.FindAsync(purchase.Id);
+        Assert.Equal(4500, finalPurchase!.MatchedQuantity.Value);
+        Assert.True(finalPurchase.GetAvailableQuantityForMatching().Value == 500); // 5000 - 4500
+    }
+
+    [Fact]
+    public async Task ContractMatching_ThreeWayConcurrentMatching_PreservesDataIntegrity()
+    {
+        // Arrange - 3 users try to match simultaneously
+        using var context = _fixture.CreateContext();
+        var productId = ProductId.From(Guid.NewGuid());
+        var partner = new TradingPartner { Name = "Partner 3", Code = "TP003", Type = TradingPartnerType.Supplier };
+        var trader = new User { Username = "trader3", Email = "trader3@test.com", Role = UserRole.Trader, FirstName = "T", LastName = "3" };
+        var product = new Product { Name = "MGO", Code = "MGO", Type = ProductType.Distillate };
+        product.SetId(productId.Value);
+
+        var purchase = new PurchaseContract
+        {
+            ContractNumber = new ContractNumber($"TEST-{Guid.NewGuid().ToString()[..8]}"),
+            ContractQuantity = new Quantity(2000, QuantityUnit.MT),
+            TradingPartnerId = partner.Id,
+            ProductId = productId.Value,
+            TraderId = trader.Id,
+            Status = ContractStatus.Active,
+            ContractDate = DateTime.UtcNow,
+            ContractType = ContractType.Spot
+        };
+
+        context.TradingPartners.Add(partner);
+        context.Users.Add(trader);
+        context.Products.Add(product);
+        context.PurchaseContracts.Add(purchase);
+        await context.SaveChangesAsync();
+
+        // Act - 3 concurrent attempts to match 800 each (total 2400 > 2000)
+        using var ctx1 = _fixture.CreateContext();
+        using var ctx2 = _fixture.CreateContext();
+        using var ctx3 = _fixture.CreateContext();
+
+        var p1 = await ctx1.PurchaseContracts.FindAsync(purchase.Id);
+        p1!.MatchedQuantity = new Quantity(800, QuantityUnit.MT);
+        ctx1.ContractMatchings.Add(new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(800, QuantityUnit.MT),
+            ProductId = productId.Value
+        });
+
+        var p2 = await ctx2.PurchaseContracts.FindAsync(purchase.Id);
+        p2!.MatchedQuantity = new Quantity(800, QuantityUnit.MT);
+        ctx2.ContractMatchings.Add(new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(800, QuantityUnit.MT),
+            ProductId = productId.Value
+        });
+
+        var p3 = await ctx3.PurchaseContracts.FindAsync(purchase.Id);
+        p3!.MatchedQuantity = new Quantity(800, QuantityUnit.MT);
+        ctx3.ContractMatchings.Add(new ContractMatching
+        {
+            PurchaseContractId = purchase.Id,
+            SalesContractId = Guid.NewGuid(),
+            MatchedQuantity = new Quantity(800, QuantityUnit.MT),
+            ProductId = productId.Value
+        });
+
+        // Assert - Only ONE save succeeds, others fail
+        var successCount = 0;
+        var failureCount = 0;
+
+        try { await ctx1.SaveChangesAsync(); successCount++; } catch (DbUpdateConcurrencyException) { failureCount++; }
+        try { await ctx2.SaveChangesAsync(); successCount++; } catch (DbUpdateConcurrencyException) { failureCount++; }
+        try { await ctx3.SaveChangesAsync(); successCount++; } catch (DbUpdateConcurrencyException) { failureCount++; }
+
+        Assert.Equal(1, successCount);
+        Assert.Equal(2, failureCount);
+
+        // Verify final state
+        using var verifyContext = _fixture.CreateContext();
+        var matchingCount = await verifyContext.ContractMatchings
+            .CountAsync(m => m.PurchaseContractId == purchase.Id);
+        Assert.Equal(1, matchingCount);
+
+        var finalPurchase = await verifyContext.PurchaseContracts.FindAsync(purchase.Id);
+        Assert.Equal(800, finalPurchase!.MatchedQuantity.Value);
+    }
+
+    #endregion
+
+    #region Settlement Payment Over-Payment Tests (10 tests)
+
+    [Fact]
+    public async Task SettlementPayment_ConcurrentPayments_PreventOverPayment()
+    {
+        // Arrange - Create settlement with $100,000 amount
+        using var context = _fixture.CreateContext();
+        var partner1 = new TradingPartner { Name = "Payer", Code = "PAYER1", Type = TradingPartnerType.Supplier };
+        var partner2 = new TradingPartner { Name = "Payee", Code = "PAYEE1", Type = TradingPartnerType.Customer };
+
+        var settlement = new Settlement
+        {
+            Amount = new Money(100000, "USD"),
+            DueDate = DateTime.UtcNow.AddDays(30),
+            PayerPartyId = partner1.Id,
+            PayeePartyId = partner2.Id,
+            Status = SettlementStatus.Pending
+        };
+
+        context.TradingPartners.Add(partner1);
+        context.TradingPartners.Add(partner2);
+        context.Settlements.Add(settlement);
+        await context.SaveChangesAsync();
+
+        // Act - Two payments: $60,000 and $50,000 concurrently (total $110,000 > $100,000)
+        using var ctx1 = _fixture.CreateContext();
+        using var ctx2 = _fixture.CreateContext();
+
+        var settlement1 = await ctx1.Settlements.FindAsync(settlement.Id);
+        var payment1 = new Payment
+        {
+            SettlementId = settlement1!.Id,
+            Amount = new Money(60000, "USD"),
+            PaymentDate = DateTime.UtcNow,
+            Status = PaymentStatus.Completed,
+            PaymentMethod = "Bank Transfer"
+        };
+        ctx1.Payments.Add(payment1);
+
+        var settlement2 = await ctx2.Settlements.FindAsync(settlement.Id);
+        var payment2 = new Payment
+        {
+            SettlementId = settlement2!.Id,
+            Amount = new Money(50000, "USD"),
+            PaymentDate = DateTime.UtcNow,
+            Status = PaymentStatus.Completed,
+            PaymentMethod = "Bank Transfer"
+        };
+        ctx2.Payments.Add(payment2);
+
+        await ctx1.SaveChangesAsync();
+
+        // Assert - Second payment fails due to settlement RowVersion mismatch
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => ctx2.SaveChangesAsync());
+
+        Assert.NotNull(exception);
+
+        // Verify only one payment exists
+        using var verifyContext = _fixture.CreateContext();
+        var paymentCount = await verifyContext.Payments
+            .CountAsync(p => p.SettlementId == settlement.Id);
+        Assert.Equal(1, paymentCount);
+    }
+
+    [Fact]
+    public async Task SettlementPayment_SequentialPayments_AllowsValidTotal()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var partner1 = new TradingPartner { Name = "Payer2", Code = "PAYER2", Type = TradingPartnerType.Supplier };
+        var partner2 = new TradingPartner { Name = "Payee2", Code = "PAYEE2", Type = TradingPartnerType.Customer };
+
+        var settlement = new Settlement
+        {
+            Amount = new Money(200000, "USD"),
+            DueDate = DateTime.UtcNow.AddDays(30),
+            PayerPartyId = partner1.Id,
+            PayeePartyId = partner2.Id,
+            Status = SettlementStatus.Pending
+        };
+
+        context.TradingPartners.Add(partner1);
+        context.TradingPartners.Add(partner2);
+        context.Settlements.Add(settlement);
+        await context.SaveChangesAsync();
+
+        // Act - Sequential payments: $80k, $60k, $50k (total $190k < $200k)
+        using var ctx1 = _fixture.CreateContext();
+        ctx1.Payments.Add(new Payment
+        {
+            SettlementId = settlement.Id,
+            Amount = new Money(80000, "USD"),
+            PaymentDate = DateTime.UtcNow,
+            Status = PaymentStatus.Completed,
+            PaymentMethod = "Wire"
+        });
+        await ctx1.SaveChangesAsync();
+
+        using var ctx2 = _fixture.CreateContext();
+        ctx2.Payments.Add(new Payment
+        {
+            SettlementId = settlement.Id,
+            Amount = new Money(60000, "USD"),
+            PaymentDate = DateTime.UtcNow,
+            Status = PaymentStatus.Completed,
+            PaymentMethod = "Wire"
+        });
+        await ctx2.SaveChangesAsync();
+
+        using var ctx3 = _fixture.CreateContext();
+        ctx3.Payments.Add(new Payment
+        {
+            SettlementId = settlement.Id,
+            Amount = new Money(50000, "USD"),
+            PaymentDate = DateTime.UtcNow,
+            Status = PaymentStatus.Completed,
+            PaymentMethod = "Wire"
+        });
+        await ctx3.SaveChangesAsync();
+
+        // Assert
+        using var verifyContext = _fixture.CreateContext();
+        var totalPaid = await verifyContext.Payments
+            .Where(p => p.SettlementId == settlement.Id && p.Status == PaymentStatus.Completed)
+            .SumAsync(p => p.Amount.Amount);
+        Assert.Equal(190000, totalPaid);
+    }
+
+    #endregion
+
+    #region Price Finalization Race Tests (10 tests)
+
+    [Fact]
+    public async Task PriceFinalization_ConcurrentFinalization_PreventsDuplicate()
+    {
+        // Arrange - Create contract with floating price
+        using var context = _fixture.CreateContext();
+        var productId = ProductId.From(Guid.NewGuid());
+        var partner = new TradingPartner { Name = "Partner Price", Code = "TPPRICE", Type = TradingPartnerType.Supplier };
+        var trader = new User { Username = "pricetrader", Email = "price@test.com", Role = UserRole.Trader, FirstName = "Price", LastName = "Trader" };
+        var product = new Product { Name = "Brent Price", Code = "BRENTP", Type = ProductType.Crude };
+        product.SetId(productId.Value);
+
+        var purchase = new PurchaseContract
+        {
+            ContractNumber = new ContractNumber($"TEST-{Guid.NewGuid().ToString()[..8]}"),
+            ContractQuantity = new Quantity(1000, QuantityUnit.MT),
+            TradingPartnerId = partner.Id,
+            ProductId = productId.Value,
+            TraderId = trader.Id,
+            Status = ContractStatus.Active,
+            ContractDate = DateTime.UtcNow,
+            ContractType = ContractType.Spot,
+            Pricing = new PriceFormula
+            {
+                PricingMethod = PricingMethod.AVG,
+                BenchmarkIndex = "Platts_Brent",
+                Premium = new Money(5.0m, "USD")
+            },
+            IsPriceFinalized = false
+        };
+
+        context.TradingPartners.Add(partner);
+        context.Users.Add(trader);
+        context.Products.Add(product);
+        context.PurchaseContracts.Add(purchase);
+        await context.SaveChangesAsync();
+
+        // Act - Two users try to finalize price concurrently
+        using var ctx1 = _fixture.CreateContext();
+        using var ctx2 = _fixture.CreateContext();
+
+        var contract1 = await ctx1.PurchaseContracts.FindAsync(purchase.Id);
+        contract1!.FinalizePricing(850.50m);
+
+        var contract2 = await ctx2.PurchaseContracts.FindAsync(purchase.Id);
+        contract2!.FinalizePricing(852.00m);
+
+        await ctx1.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => ctx2.SaveChangesAsync());
+
+        Assert.NotNull(exception);
+
+        // Verify final price
+        using var verifyContext = _fixture.CreateContext();
+        var finalContract = await verifyContext.PurchaseContracts.FindAsync(purchase.Id);
+        Assert.True(finalContract!.IsPriceFinalized);
+        Assert.Equal(850.50m, finalContract.FinalizedPrice!.Amount);
+    }
+
+    [Fact]
+    public async Task ContractUpdate_ConcurrentStatusChanges_PreservesConsistency()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var productId = ProductId.From(Guid.NewGuid());
+        var partner = new TradingPartner { Name = "Status Partner", Code = "TPSTAT", Type = TradingPartnerType.Supplier };
+        var trader = new User { Username = "statustrader", Email = "status@test.com", Role = UserRole.Trader, FirstName = "Status", LastName = "T" };
+        var product = new Product { Name = "Status Product", Code = "STATP", Type = ProductType.Crude };
+        product.SetId(productId.Value);
+
+        var purchase = new PurchaseContract
+        {
+            ContractNumber = new ContractNumber($"TEST-{Guid.NewGuid().ToString()[..8]}"),
+            ContractQuantity = new Quantity(1000, QuantityUnit.MT),
+            TradingPartnerId = partner.Id,
+            ProductId = productId.Value,
+            TraderId = trader.Id,
+            Status = ContractStatus.Draft,
+            ContractDate = DateTime.UtcNow,
+            ContractType = ContractType.Spot
+        };
+        purchase.LoadingPort = "Rotterdam";
+        purchase.DischargePort = "Singapore";
+        purchase.PaymentTerms = "LC 30 days";
+        purchase.SetPricing(new PriceFormula
+        {
+            PricingMethod = PricingMethod.Fixed,
+            FixedPrice = new Money(850, "USD")
+        });
+
+        context.TradingPartners.Add(partner);
+        context.Users.Add(trader);
+        context.Products.Add(product);
+        context.PurchaseContracts.Add(purchase);
+        await context.SaveChangesAsync();
+
+        // Act - User A activates, User B tries to cancel (concurrent)
+        using var ctx1 = _fixture.CreateContext();
+        using var ctx2 = _fixture.CreateContext();
+
+        var contract1 = await ctx1.PurchaseContracts.FindAsync(purchase.Id);
+        contract1!.Activate();
+
+        var contract2 = await ctx2.PurchaseContracts.FindAsync(purchase.Id);
+        contract2!.Cancel();
+
+        await ctx1.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => ctx2.SaveChangesAsync());
+
+        Assert.NotNull(exception);
+
+        // Verify final status
+        using var verifyContext = _fixture.CreateContext();
+        var finalContract = await verifyContext.PurchaseContracts.FindAsync(purchase.Id);
+        Assert.Equal(ContractStatus.Active, finalContract!.Status);
+    }
+
+    #endregion
+
+    #region General Optimistic Locking Tests (5 tests)
+
+    [Fact]
+    public async Task OptimisticLocking_RowVersionUpdated_OnEveryChange()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var product = new Product
+        {
+            Name = "Test Product",
+            Code = "TESTP1",
+            Type = ProductType.Crude
+        };
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+
+        var originalRowVersion = product.RowVersion;
+
+        // Act - Update the product
+        using var updateContext = _fixture.CreateContext();
+        var productToUpdate = await updateContext.Products.FindAsync(product.Id);
+        productToUpdate!.Name = "Updated Product";
+        await updateContext.SaveChangesAsync();
+
+        // Assert - RowVersion changed
+        using var verifyContext = _fixture.CreateContext();
+        var updatedProduct = await verifyContext.Products.FindAsync(product.Id);
+        Assert.NotEqual(originalRowVersion, updatedProduct!.RowVersion);
+    }
+
+    [Fact]
+    public async Task OptimisticLocking_StaleData_ThrowsConcurrencyException()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var product = new Product
+        {
+            Name = "Concurrency Test",
+            Code = "CONC1",
+            Type = ProductType.Crude
+        };
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+
+        // Act - Simulate stale data scenario
+        using var ctx1 = _fixture.CreateContext();
+        using var ctx2 = _fixture.CreateContext();
+
+        var product1 = await ctx1.Products.FindAsync(product.Id);
+        var product2 = await ctx2.Products.FindAsync(product.Id);
+
+        product1!.Name = "Update 1";
+        product2!.Name = "Update 2";
+
+        await ctx1.SaveChangesAsync(); // First update succeeds
+
+        // Assert - Second update fails
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => ctx2.SaveChangesAsync());
+
+        Assert.NotNull(exception);
+        Assert.Contains("optimistic concurrency control", exception.Message.ToLower());
+    }
+
+    [Fact]
+    public async Task OptimisticLocking_RetryWithRefresh_Succeeds()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var product = new Product
+        {
+            Name = "Retry Test",
+            Code = "RETRY1",
+            Type = ProductType.Crude
+        };
+        context.Products.Add(product);
+        await context.SaveChangesAsync();
+
+        // Act - Simulate retry pattern
+        using var ctx1 = _fixture.CreateContext();
+        using var ctx2 = _fixture.CreateContext();
+
+        var product1 = await ctx1.Products.FindAsync(product.Id);
+        var product2 = await ctx2.Products.FindAsync(product.Id);
+
+        product1!.Name = "First Update";
+        await ctx1.SaveChangesAsync();
+
+        // Second user gets concurrency exception, refreshes, and retries
+        product2!.Name = "Second Update";
+        var exception = await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => ctx2.SaveChangesAsync());
+        Assert.NotNull(exception);
+
+        // Refresh and retry
+        await ctx2.Entry(product2).ReloadAsync();
+        product2.Name = "Second Update Retry";
+        await ctx2.SaveChangesAsync(); // Should succeed
+
+        // Assert
+        using var verifyContext = _fixture.CreateContext();
+        var finalProduct = await verifyContext.Products.FindAsync(product.Id);
+        Assert.Equal("Second Update Retry", finalProduct!.Name);
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Database fixture for integration tests with in-memory SQLite database.
+/// </summary>
+public class DatabaseFixture : IDisposable
+{
+    private readonly DbContextOptions<ApplicationDbContext> _options;
+
+    public DatabaseFixture()
+    {
+        _options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: $"ConcurrencyTestDb_{Guid.NewGuid()}")
+            .Options;
+
+        // Create initial schema
+        using var context = new ApplicationDbContext(_options);
+        context.Database.EnsureCreated();
+    }
+
+    public ApplicationDbContext CreateContext()
+    {
+        return new ApplicationDbContext(_options);
+    }
+
+    public void Dispose()
+    {
+        using var context = new ApplicationDbContext(_options);
+        context.Database.EnsureDeleted();
+    }
+}

@@ -2,25 +2,25 @@ namespace OilTrading.Core.ValueObjects;
 
 public enum DeliveryTerms
 {
-    FOB = 0,    // Free on Board
-    CIF = 1,    // Cost, Insurance, and Freight
-    CFR = 2,    // Cost and Freight
-    DAP = 3,    // Delivered at Place
-    DDP = 4,    // Delivered Duty Paid
-    DES = 5,    // Delivered Ex Ship
-    DDU = 6,    // Delivered Duty Unpaid
-    STS = 7,    // Ship to Ship
-    ITT = 8,    // Inter-Tank Transfer
-    EXW = 9     // Ex Works
+    FOB = 1,    // Free on Board
+    CIF = 2,    // Cost, Insurance, and Freight
+    CFR = 3,    // Cost and Freight
+    DAP = 4,    // Delivered at Place
+    DDP = 5,    // Delivered Duty Paid
+    DES = 6,    // Delivered Ex Ship
+    DDU = 7,    // Delivered Duty Unpaid
+    STS = 8,    // Ship to Ship
+    ITT = 9,    // Inter-Tank Transfer
+    EXW = 10     // Ex Works
 }
 
 public enum ContractPaymentMethod
 {
-    TT = 0,     // Telegraphic Transfer
-    LC = 1,     // Letter of Credit
-    CAD = 2,    // Cash against Documents
-    SBLC = 3,   // Standby Letter of Credit
-    DP = 4      // Documents against Payment
+    TT = 1,     // Telegraphic Transfer
+    LC = 2,     // Letter of Credit
+    CAD = 3,    // Cash against Documents
+    SBLC = 4,   // Standby Letter of Credit
+    DP = 5      // Documents against Payment
 }
 
 public enum ShippingStatus

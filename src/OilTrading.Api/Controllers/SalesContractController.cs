@@ -49,6 +49,7 @@ public class SalesContractController : ControllerBase
     {
         var command = new CreateSalesContractCommand
         {
+            ExternalContractNumber = dto.ExternalContractNumber,
             ContractType = dto.ContractType,
             CustomerId = dto.CustomerId,
             ProductId = dto.ProductId,
@@ -127,6 +128,7 @@ public class SalesContractController : ControllerBase
         var command = new UpdateSalesContractCommand
         {
             Id = id,
+            ExternalContractNumber = dto.ExternalContractNumber,
             Quantity = dto.Quantity,
             QuantityUnit = dto.QuantityUnit,
             TonBarrelRatio = dto.TonBarrelRatio,

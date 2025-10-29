@@ -1,16 +1,12 @@
 import axios, { AxiosResponse } from 'axios'
 import type {
-  DashboardOverview,
-  TradingMetrics,
-  PerformanceAnalytics,
-  MarketInsights,
-  OperationalStatus,
   ApiError,
   StandardApiError
 } from '@/types'
 import { parseApiDateFields, formatApiDate, COMMON_DATE_FIELDS } from '@/utils/dateUtils'
 
 // Use environment variable or fall back to localhost for development
+// Backend uses simple /api/ routing (non-versioned endpoints)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const api = axios.create({
@@ -109,50 +105,8 @@ api.interceptors.response.use(
   }
 )
 
-export const dashboardApi = {
-  getOverview: (): Promise<DashboardOverview> =>
-    api.get('/dashboard/overview').then(res => res.data),
-
-  getTradingMetrics: (startDate?: string | Date, endDate?: string | Date): Promise<TradingMetrics> => {
-    const params = new URLSearchParams();
-    if (startDate) {
-      const formattedDate = typeof startDate === 'string' ? startDate : formatApiDate(startDate);
-      if (formattedDate) params.append('startDate', formattedDate);
-    }
-    if (endDate) {
-      const formattedDate = typeof endDate === 'string' ? endDate : formatApiDate(endDate);
-      if (formattedDate) params.append('endDate', formattedDate);
-    }
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return api.get(`/dashboard/trading-metrics${query}`).then(res => res.data);
-  },
-
-  getPerformanceAnalytics: (startDate?: string | Date, endDate?: string | Date): Promise<PerformanceAnalytics> => {
-    const params = new URLSearchParams();
-    if (startDate) {
-      const formattedDate = typeof startDate === 'string' ? startDate : formatApiDate(startDate);
-      if (formattedDate) params.append('startDate', formattedDate);
-    }
-    if (endDate) {
-      const formattedDate = typeof endDate === 'string' ? endDate : formatApiDate(endDate);
-      if (formattedDate) params.append('endDate', formattedDate);
-    }
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return api.get(`/dashboard/performance${query}`).then(res => res.data);
-  },
-
-  getMarketInsights: (): Promise<MarketInsights> =>
-    api.get('/dashboard/market-insights').then(res => res.data),
-
-  getOperationalStatus: (): Promise<OperationalStatus> =>
-    api.get('/dashboard/operational-status').then(res => res.data),
-
-  getAlerts: (): Promise<any[]> =>
-    api.get('/dashboard/alerts').then(res => res.data),
-
-  getKpis: (): Promise<any> =>
-    api.get('/dashboard/kpis').then(res => res.data),
-}
+// NOTE: Dashboard API is exported from dashboardApi.ts (uses /api/v2)
+// This file only exports the base API client for non-versioned endpoints
 
 export { api }
 export default api

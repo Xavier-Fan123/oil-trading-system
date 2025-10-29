@@ -9,8 +9,7 @@ using OilTrading.Api.Attributes;
 namespace OilTrading.Api.Controllers;
 
 [ApiController]
-[Route("api/v{version:apiVersion}/purchase-contracts")]
-[ApiVersion("2.0")]
+[Route("api/purchase-contracts")]
 [Produces("application/json")]
 public class PurchaseContractController : ControllerBase
 {

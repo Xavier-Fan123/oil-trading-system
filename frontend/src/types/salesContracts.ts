@@ -18,40 +18,103 @@ export {
   QuantityUnit
 };
 
+// DTO interfaces that match the backend
+export interface CustomerDto {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ContractProductDto {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ContractNumber {
+  value: string;
+}
+
 export interface SalesContract {
   id: string;
-  contractNumber: string;
-  customerId: string;
-  customerName: string;
-  productId: string;
-  productName: string;
+  contractNumber: ContractNumber;
+  externalContractNumber?: string;
+  contractType: ContractType;
+  status: ContractStatus;
+
+  // Customer Information (nested object from backend)
+  customer: CustomerDto;
+  // For backwards compatibility, extract ids
+  customerId?: string;
+  customerName?: string;
+
+  // Product Information (nested object from backend)
+  product: ContractProductDto;
+  // For backwards compatibility, extract ids
+  productId?: string;
+  productName?: string;
+
+  // Trader Information
+  traderId: string;
+  traderName?: string;
+
+  // Linked Purchase Contract
+  linkedPurchaseContractId?: string;
+  linkedPurchaseContractNumber?: string;
+
+  // Quantity Information
   quantity: number;
-  unit: QuantityUnit;
-  pricePerUnit: number;
-  totalValue: number;
-  currency: string;
+  quantityUnit: QuantityUnit;
+  tonBarrelRatio: number;
+
+  // Price Benchmark Information
   priceBenchmarkId?: string;
   priceBenchmarkName?: string;
-  priceBenchmarkType?: string;
-  deliveryTerms: DeliveryTerms;
-  laycanStart: string;
-  laycanEnd: string;
-  deliveryLocation: string;
-  settlementType: SettlementType;
+
+  // Pricing Information
   pricingType: PricingType;
-  priceFormula?: string;
-  status: ContractStatus;
-  signedDate: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  margin?: number;
+  pricingFormula?: string;
+  contractValue?: number;  // Backend returns contractValue, not fixedPrice
+  contractValueCurrency?: string;
+  profitMargin?: number;
+  pricingPeriodStart?: Date;
+  pricingPeriodEnd?: Date;
+  isPriceFinalized?: boolean;
+  premium?: number;
+  discount?: number;
+
+  // Delivery Information
+  deliveryTerms: DeliveryTerms;
+  laycanStart: Date;
+  laycanEnd: Date;
+  loadPort: string;
+  dischargePort: string;
+
+  // Payment Information
+  settlementType: SettlementType;
+  paymentTerms?: string;
+  creditPeriodDays: number;
+  prepaymentPercentage: number;
+
+  // Additional Information
+  incoterms?: string;
+  qualitySpecifications?: string;
+  inspectionAgency?: string;
+  notes?: string;
+
+  // Business Metrics
   estimatedProfit?: number;
+  margin?: number;
   riskMetrics?: {
     var95: number;
     exposure: number;
   };
-  notes?: string;
+
+  // Audit Information
+  createdAt: Date;
+  createdBy: string;
+  updatedAt?: Date;
+  updatedBy?: string;
 }
 
 export interface CreateSalesContractDto {
@@ -90,15 +153,21 @@ export interface UpdateSalesContractDto extends Partial<CreateSalesContractDto> 
 export interface SalesContractListDto {
   id: string;
   contractNumber: string;
+  externalContractNumber?: string;  // User-provided contract number
+  status: ContractStatus;
+  customerId: string;
   customerName: string;
+  productId: string;
   productName: string;
   quantity: number;
-  unit: string;
-  totalValue: number;
-  status: ContractStatus;
-  deliveryMonth: string;
-  createdAt: string;
+  quantityUnit: QuantityUnit | string;  // Backend returns as string due to JsonStringEnumConverter
+  contractValue?: number;  // Total contract value (from backend)
   estimatedProfit?: number;
+  margin?: number;
+  laycanStart: Date | string;
+  laycanEnd: Date | string;
+  createdAt: Date | string;
+  updatedAt?: Date | string;
 }
 
 export interface SalesContractFilters {

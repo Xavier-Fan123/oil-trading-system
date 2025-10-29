@@ -72,6 +72,12 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasIndex(e => e.Name)
                .HasDatabaseName("IX_Products_Name");
 
+        // Configure RowVersion for optimistic concurrency control
+        builder.Property(e => e.RowVersion)
+               .IsRowVersion()
+               .HasColumnType("BLOB")
+               .HasDefaultValueSql("X'00000000000000000000000000000001'");
+
         // Table configuration
         builder.ToTable("Products");
 

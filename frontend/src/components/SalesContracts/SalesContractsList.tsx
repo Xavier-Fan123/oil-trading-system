@@ -79,6 +79,27 @@ const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
+const getQuantityUnitLabel = (unit: number | string): string => {
+  // Handle string values from backend JsonStringEnumConverter
+  if (typeof unit === 'string') {
+    return unit; // Return as-is since backend returns "MT", "BBL", "GAL", "LOTS"
+  }
+
+  // Handle numeric enum values
+  switch (unit) {
+    case 1:
+      return 'MT';
+    case 2:
+      return 'BBL';
+    case 3:
+      return 'GAL';
+    case 4:
+      return 'LOTS';
+    default:
+      return `Unknown (${unit})`;
+  }
+};
+
 export const SalesContractsList: React.FC<SalesContractsListProps> = ({ 
   onEdit, 
   onView, 
@@ -332,17 +353,17 @@ export const SalesContractsList: React.FC<SalesContractsListProps> = ({
             {contracts.map((contract) => (
               <TableRow key={contract.id} hover>
                 <TableCell>
-                  <Typography variant="body2" fontWeight="medium">
-                    {contract.contractNumber}
+                  <Typography variant="body2" fontWeight="medium" color={contract.externalContractNumber ? "text.primary" : "text.secondary"}>
+                    {contract.externalContractNumber || contract.contractNumber || "—"}
                   </Typography>
                 </TableCell>
                 <TableCell>{contract.customerName}</TableCell>
                 <TableCell>{contract.productName}</TableCell>
                 <TableCell align="right">
-                  {contract.quantity.toLocaleString()} {contract.unit}
+                  {contract.quantity.toLocaleString()} {getQuantityUnitLabel(contract.quantityUnit)}
                 </TableCell>
                 <TableCell align="right">
-                  {formatCurrency(contract.totalValue)}
+                  {contract.contractValue ? formatCurrency(contract.contractValue) : '-'}
                 </TableCell>
                 <TableCell align="right">
                   <Typography color="success.main">
@@ -356,7 +377,12 @@ export const SalesContractsList: React.FC<SalesContractsListProps> = ({
                     size="small"
                   />
                 </TableCell>
-                <TableCell>{contract.deliveryMonth}</TableCell>
+                <TableCell>
+                  {contract.laycanStart && contract.laycanEnd ?
+                    `${format(new Date(contract.laycanStart), 'MMM dd')} - ${format(new Date(contract.laycanEnd), 'MMM dd')}`
+                    : '-'
+                  }
+                </TableCell>
                 <TableCell>
                   {format(new Date(contract.createdAt), 'MMM dd, yyyy')}
                 </TableCell>

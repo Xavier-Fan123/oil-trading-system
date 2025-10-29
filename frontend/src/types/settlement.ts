@@ -32,9 +32,10 @@ export enum ChargeType {
 }
 
 export enum QuantityUnit {
-  MT = 0,
-  BBL = 1,
-  GAL = 2
+  MT = 1,
+  BBL = 2,
+  GAL = 3,
+  LOTS = 4
 }
 
 export enum CalculationMode {
@@ -453,7 +454,8 @@ export const ChargeTypeLabels: Record<ChargeType, string> = {
 export const QuantityUnitLabels: Record<QuantityUnit, string> = {
   [QuantityUnit.MT]: 'MT',
   [QuantityUnit.BBL]: 'BBL',
-  [QuantityUnit.GAL]: 'GAL'
+  [QuantityUnit.GAL]: 'GAL',
+  [QuantityUnit.LOTS]: 'LOTS'
 };
 
 // Helper functions
