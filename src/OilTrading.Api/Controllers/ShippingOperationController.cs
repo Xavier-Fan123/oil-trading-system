@@ -46,6 +46,10 @@ public class ShippingOperationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Create([FromBody] CreateShippingOperationDto dto)
     {
+        // Log the incoming DTO for debugging
+        _logger.LogInformation("Received CreateShippingOperationDto: ContractId={ContractId}, VesselName={VesselName}, PlannedQuantity={PlannedQuantity}, PlannedQuantityUnit={PlannedQuantityUnit}, LaycanStart={LaycanStart}, LaycanEnd={LaycanEnd}",
+            dto.ContractId, dto.VesselName, dto.PlannedQuantity, dto.PlannedQuantityUnit, dto.LaycanStart, dto.LaycanEnd);
+
         var command = new CreateShippingOperationCommand
         {
             ContractId = dto.ContractId,
@@ -59,10 +63,13 @@ public class ShippingOperationController : ControllerBase
             CreatedBy = GetCurrentUserName()
         };
 
+        _logger.LogInformation("CreateShippingOperationCommand: LoadPortETA={LoadPortETA}, DischargePortETA={DischargePortETA}, CreatedBy={CreatedBy}",
+            command.LoadPortETA, command.DischargePortETA, command.CreatedBy);
+
         var operationId = await _mediator.Send(command);
-        
+
         _logger.LogInformation("Shipping operation {OperationId} created successfully", operationId);
-        
+
         return CreatedAtAction(nameof(GetById), new { id = operationId }, operationId);
     }
 
