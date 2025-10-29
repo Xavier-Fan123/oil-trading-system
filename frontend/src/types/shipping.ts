@@ -77,17 +77,11 @@ export interface CreateShippingOperationDto {
   contractId: string;
   vesselName: string;
   imoNumber?: string;
-  chartererName?: string;
-  vesselCapacity?: number;
-  shippingAgent?: string;
   plannedQuantity: number;
   plannedQuantityUnit: string;
-  loadPortETA: string;
-  dischargePortETA: string;
-  loadPort?: string;
-  dischargePort?: string;
+  laycanStart?: string;
+  laycanEnd?: string;
   notes?: string;
-  createdBy: string;
 }
 
 export interface UpdateShippingOperationDto {
