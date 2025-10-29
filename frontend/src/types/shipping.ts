@@ -78,12 +78,9 @@ export interface CreateShippingOperationDto {
   vesselName: string;
   imoNumber?: string;
   plannedQuantity: number;
-  quantityUnit: string;
-  loadPort: string;
-  dischargePort: string;
-  loadPortETA?: string;
-  dischargePortETA?: string;
-  charterParty?: string;
+  plannedQuantityUnit: string;
+  laycanStart?: string;
+  laycanEnd?: string;
   notes?: string;
 }
 
@@ -91,19 +88,14 @@ export interface UpdateShippingOperationDto {
   vesselName?: string;
   imoNumber?: string;
   plannedQuantity?: number;
-  quantityUnit?: string;
+  plannedQuantityUnit?: string;
   actualQuantity?: number;
   actualQuantityUnit?: string;
-  loadPort?: string;
-  dischargePort?: string;
-  loadPortETA?: string;
-  dischargePortETA?: string;
-  loadPortATA?: string;
-  loadPortATD?: string;
-  dischargePortATA?: string;
-  dischargePortATD?: string;
-  demurrageDays?: number;
-  charterParty?: string;
+  laycanStart?: string;
+  laycanEnd?: string;
+  norDate?: string;
+  billOfLadingDate?: string;
+  dischargeDate?: string;
   notes?: string;
 }
 

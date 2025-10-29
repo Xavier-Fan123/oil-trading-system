@@ -132,29 +132,21 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.vesselName.trim()) {
       errors.vesselName = 'Vessel name is required';
     }
-    
+
     if (!formData.contractId.trim()) {
       errors.contractId = 'Contract ID is required';
     }
-    
+
     if (!formData.plannedQuantity.trim()) {
       errors.plannedQuantity = 'Planned quantity is required';
     } else if (isNaN(Number(formData.plannedQuantity)) || Number(formData.plannedQuantity) <= 0) {
       errors.plannedQuantity = 'Planned quantity must be a positive number';
     }
-    
-    if (!formData.loadPort.trim()) {
-      errors.loadPort = 'Load port is required';
-    }
-    
-    if (!formData.dischargePort.trim()) {
-      errors.dischargePort = 'Discharge port is required';
-    }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -167,21 +159,18 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
     try {
       if (isEditing && initialData?.id) {
         const updateData: UpdateShippingOperationDto = {
-          vesselName: formData.vesselName,
+          vesselName: formData.vesselName || undefined,
           imoNumber: formData.imoNumber || undefined,
-          plannedQuantity: Number(formData.plannedQuantity),
-          quantityUnit: formData.quantityUnit,
-          loadPort: formData.loadPort,
-          dischargePort: formData.dischargePort,
-          loadPortETA: formData.loadPortETA || undefined,
-          dischargePortETA: formData.dischargePortETA || undefined,
-          charterParty: formData.charterParty || undefined,
+          plannedQuantity: Number(formData.plannedQuantity) || undefined,
+          plannedQuantityUnit: formData.quantityUnit || undefined,
+          laycanStart: formData.loadPortETA ? new Date(formData.loadPortETA).toISOString() : undefined,
+          laycanEnd: formData.dischargePortETA ? new Date(formData.dischargePortETA).toISOString() : undefined,
           notes: formData.notes || undefined,
         };
-        
-        await updateMutation.mutateAsync({ 
-          id: initialData.id, 
-          operation: updateData 
+
+        await updateMutation.mutateAsync({
+          id: initialData.id,
+          operation: updateData
         });
       } else {
         const createData: CreateShippingOperationDto = {
@@ -189,18 +178,15 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           vesselName: formData.vesselName,
           imoNumber: formData.imoNumber || undefined,
           plannedQuantity: Number(formData.plannedQuantity),
-          quantityUnit: formData.quantityUnit,
-          loadPort: formData.loadPort,
-          dischargePort: formData.dischargePort,
-          loadPortETA: formData.loadPortETA || undefined,
-          dischargePortETA: formData.dischargePortETA || undefined,
-          charterParty: formData.charterParty || undefined,
+          plannedQuantityUnit: formData.quantityUnit,
+          laycanStart: formData.loadPortETA ? new Date(formData.loadPortETA).toISOString() : undefined,
+          laycanEnd: formData.dischargePortETA ? new Date(formData.dischargePortETA).toISOString() : undefined,
           notes: formData.notes || undefined,
         };
-        
+
         await createMutation.mutateAsync(createData);
       }
-      
+
       onSubmit();
       onClose();
     } catch (error) {
@@ -327,9 +313,8 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
                 <TextField
                   {...params}
                   fullWidth
-                  label="Load Port *"
-                  error={!!validationErrors.loadPort}
-                  helperText={validationErrors.loadPort}
+                  label="Load Port"
+                  helperText="Optional - Port information"
                   disabled={isSubmitting}
                 />
               )}
@@ -348,9 +333,8 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
                 <TextField
                   {...params}
                   fullWidth
-                  label="Discharge Port *"
-                  error={!!validationErrors.dischargePort}
-                  helperText={validationErrors.dischargePort}
+                  label="Discharge Port"
+                  helperText="Optional - Port information"
                   disabled={isSubmitting}
                 />
               )}
