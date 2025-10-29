@@ -38,7 +38,8 @@
       "Bash(\"C:\\Users\\itg\\nodejs\\npm.cmd\" --prefix \"c:\\Users\\itg\\Desktop\\X\\frontend\" run build)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(Start-Sleep -Seconds 3)"
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": [],

@@ -24,7 +24,7 @@ echo Backend API server started.
 
 echo [3/4] Starting Frontend React Application...
 echo Starting React frontend on port 3002+...
-start "Oil Trading Frontend" cmd /k "cd /d C:\Users\itg\Desktop\X\frontend && \"C:\Users\itg\nodejs\npm.cmd\" run dev"
+start "Oil Trading Frontend" cmd /k "cd /d C:\Users\itg\Desktop\X\frontend && npm run dev"
 timeout /t 8 /nobreak >nul
 echo Frontend application started.
 
