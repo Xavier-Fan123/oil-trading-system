@@ -115,6 +115,32 @@ public class PurchaseContractController : ControllerBase
     }
 
     /// <summary>
+    /// Gets purchase contracts by external contract number
+    /// </summary>
+    /// <param name="externalContractNumber">The external contract number</param>
+    /// <returns>Matching purchase contracts</returns>
+    [HttpGet("by-external/{externalContractNumber}")]
+    [ProducesResponseType(typeof(PagedResult<PurchaseContractListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByExternalContractNumber(string externalContractNumber)
+    {
+        var query = new GetPurchaseContractsQuery
+        {
+            ExternalContractNumber = externalContractNumber,
+            Page = 1,
+            PageSize = 10
+        };
+        var result = await _mediator.Send(query);
+
+        if (!result.Items.Any())
+        {
+            return NotFound($"No purchase contracts found with external contract number: {externalContractNumber}");
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Updates an existing purchase contract
     /// </summary>
     /// <param name="id">The contract ID</param>

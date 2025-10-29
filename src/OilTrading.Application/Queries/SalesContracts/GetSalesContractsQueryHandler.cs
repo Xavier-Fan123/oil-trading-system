@@ -32,6 +32,12 @@ public class GetSalesContractsQueryHandler : IRequestHandler<GetSalesContractsQu
             filter = CombineFilters(filter, x => x.ContractNumber.Value.Contains(contractNumber));
         }
 
+        if (!string.IsNullOrEmpty(request.ExternalContractNumber))
+        {
+            var externalNumber = request.ExternalContractNumber.Trim();
+            filter = CombineFilters(filter, x => x.ExternalContractNumber != null && x.ExternalContractNumber.Contains(externalNumber));
+        }
+
         if (!string.IsNullOrEmpty(request.Status))
         {
             if (Enum.TryParse<ContractStatus>(request.Status, true, out var status))

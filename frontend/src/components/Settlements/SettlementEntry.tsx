@@ -363,6 +363,11 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     }
   };
 
+  const getContractDisplayLabel = (contract: ContractInfo): string => {
+    const external = contract.externalContractNumber ? ` (${contract.externalContractNumber})` : '';
+    return `${contract.contractNumber}${external}`;
+  };
+
   const addCharge = () => {
     const newCharge: ChargeFormData = {
       chargeType: ChargeType.Other,
@@ -429,8 +434,8 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
             
             {selectedContract && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                Selected: <strong>{selectedContract.contractNumber}</strong> • 
-                {selectedContract.type === 'purchase' ? selectedContract.supplierName : selectedContract.customerName} • 
+                Selected: <strong>{getContractDisplayLabel(selectedContract)}</strong> •
+                {selectedContract.type === 'purchase' ? selectedContract.supplierName : selectedContract.customerName} •
                 {selectedContract.productName}
               </Alert>
             )}

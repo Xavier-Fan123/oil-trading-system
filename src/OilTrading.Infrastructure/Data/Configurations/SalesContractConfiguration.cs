@@ -290,6 +290,10 @@ public class SalesContractConfiguration : IEntityTypeConfiguration<SalesContract
         builder.HasIndex(e => e.CreatedAt)
                .HasDatabaseName("IX_SalesContracts_CreatedAt");
 
+        // Index for ExternalContractNumber - CRITICAL for external contract lookups
+        builder.HasIndex(e => e.ExternalContractNumber)
+               .HasDatabaseName("IX_SalesContracts_ExternalContractNumber");
+
         // Contract Tags Relationship
         builder.HasMany(e => e.ContractTags)
                .WithOne()

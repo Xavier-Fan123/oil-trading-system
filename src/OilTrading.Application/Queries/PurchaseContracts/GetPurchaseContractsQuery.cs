@@ -9,6 +9,7 @@ public class GetPurchaseContractsQuery : IRequest<PagedResult<PurchaseContractLi
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public string? ContractNumber { get; set; }
+    public string? ExternalContractNumber { get; set; }
     public string? Status { get; set; }
     public Guid? SupplierId { get; set; }
     public Guid? ProductId { get; set; }
