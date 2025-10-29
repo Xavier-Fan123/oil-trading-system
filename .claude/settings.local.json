@@ -36,7 +36,9 @@
       "Bash(\"src/OilTrading.Api/oiltrading.db-shm\" )",
       "Bash(\"src/OilTrading.Api/oiltrading.db-wal\")",
       "Bash(\"C:\\Users\\itg\\nodejs\\npm.cmd\" --prefix \"c:\\Users\\itg\\Desktop\\X\\frontend\" run build)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(Start-Sleep -Seconds 3)"
     ],
     "deny": [],
     "ask": [],

@@ -87,6 +87,7 @@ export interface CreateShippingOperationDto {
   loadPort?: string;
   dischargePort?: string;
   notes?: string;
+  createdBy: string;
 }
 
 export interface UpdateShippingOperationDto {

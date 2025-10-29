@@ -206,6 +206,7 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           loadPort: formData.loadPort || undefined,
           dischargePort: formData.dischargePort || undefined,
           notes: formData.notes || undefined,
+          createdBy: 'System User',
         };
 
         // DEBUG: Log the actual request payload
