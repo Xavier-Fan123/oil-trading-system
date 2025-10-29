@@ -208,6 +208,15 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           notes: formData.notes || undefined,
         };
 
+        // DEBUG: Log the actual request payload
+        console.log('=== SHIPPING OPERATION CREATE REQUEST ===');
+        console.log('Request Payload:', JSON.stringify(createData, null, 2));
+        console.log('Planned Quantity Type:', typeof createData.plannedQuantity, 'Value:', createData.plannedQuantity);
+        console.log('Load Port ETA:', createData.loadPortETA);
+        console.log('Discharge Port ETA:', createData.dischargePortETA);
+        console.log('Contract ID:', createData.contractId);
+        console.log('=========================================');
+
         await createMutation.mutateAsync(createData);
       }
 
