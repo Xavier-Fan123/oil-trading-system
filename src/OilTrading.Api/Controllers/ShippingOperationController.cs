@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using OilTrading.Application.Commands.ShippingOperations;
 using OilTrading.Application.Queries.ShippingOperations;
+using OilTrading.Application.Queries.Contracts;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Common;
 
@@ -74,6 +75,125 @@ public class ShippingOperationController : ControllerBase
         _logger.LogInformation("Shipping operation {OperationId} created successfully", operationId);
 
         return CreatedAtAction(nameof(GetById), new { id = operationId }, operationId);
+    }
+
+    /// <summary>
+    /// Creates a new shipping operation by resolving an external contract number
+    /// </summary>
+    /// <remarks>
+    /// This endpoint allows creating a shipping operation by providing an external contract number instead of a GUID.
+    /// If the external contract number resolves to multiple contracts, it returns a 422 response with candidates for disambiguation.
+    /// If the external contract number is not found, it returns a 404 response.
+    /// </remarks>
+    /// <param name="dto">The shipping operation details including the external contract number</param>
+    /// <returns>The ID of the created shipping operation</returns>
+    [HttpPost("create-by-external-contract")]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateByExternalContract([FromBody] CreateShippingOperationByExternalContractDto dto)
+    {
+        _logger.LogInformation("CreateByExternalContract request: ExternalContractNumber={ExternalContractNumber}, VesselName={VesselName}, PlannedQuantity={PlannedQuantity}",
+            dto.ExternalContractNumber, dto.VesselName, dto.PlannedQuantity);
+
+        // Validate input
+        if (string.IsNullOrWhiteSpace(dto.ExternalContractNumber))
+        {
+            _logger.LogWarning("CreateByExternalContract: External contract number is required");
+            return BadRequest(new
+            {
+                success = false,
+                errorMessage = "External contract number is required",
+                validationErrors = new[] { "ExternalContractNumber is required" }
+            });
+        }
+
+        try
+        {
+            // Step 1: Resolve external contract number to GUID
+            var resolutionQuery = new ResolveContractByExternalNumberQuery
+            {
+                ExternalContractNumber = dto.ExternalContractNumber,
+                ExpectedContractType = dto.ExpectedContractType,
+                ExpectedTradingPartnerId = dto.TradingPartnerId,
+                ExpectedProductId = dto.ProductId
+            };
+
+            var resolution = await _mediator.Send(resolutionQuery);
+
+            // Step 2: Handle disambiguation (multiple matches)
+            if (!resolution.Success && resolution.Candidates.Count > 0)
+            {
+                _logger.LogWarning("CreateByExternalContract: External contract number {ExternalContractNumber} resolved to {CandidateCount} candidates",
+                    dto.ExternalContractNumber, resolution.Candidates.Count);
+
+                return StatusCode(
+                    StatusCodes.Status422UnprocessableEntity,
+                    new
+                    {
+                        success = false,
+                        errorMessage = "External contract number is ambiguous - multiple contracts match",
+                        candidates = resolution.Candidates,
+                        hint = "Please provide ExpectedContractType, TradingPartnerId, or ProductId to disambiguate"
+                    });
+            }
+
+            // Step 3: Handle not found
+            if (!resolution.Success || !resolution.ContractId.HasValue)
+            {
+                _logger.LogWarning("CreateByExternalContract: External contract number {ExternalContractNumber} not found",
+                    dto.ExternalContractNumber);
+
+                return NotFound(new
+                {
+                    success = false,
+                    errorMessage = $"Contract with external number '{dto.ExternalContractNumber}' not found"
+                });
+            }
+
+            // Step 4: Create shipping operation with resolved contract ID
+            var command = new CreateShippingOperationCommand
+            {
+                ContractId = resolution.ContractId.Value,
+                VesselName = dto.VesselName,
+                IMONumber = dto.ImoNumber,
+                ChartererName = dto.ChartererName,
+                VesselCapacity = dto.VesselCapacity,
+                ShippingAgent = dto.ShippingAgent,
+                PlannedQuantity = dto.PlannedQuantity,
+                PlannedQuantityUnit = dto.PlannedQuantityUnit,
+                LoadPortETA = dto.LaycanStart ?? DateTime.UtcNow.AddDays(30),
+                DischargePortETA = dto.LaycanEnd ?? DateTime.UtcNow.AddDays(45),
+                LoadPort = dto.LoadPort,
+                DischargePort = dto.DischargePort,
+                Notes = dto.Notes,
+                CreatedBy = GetCurrentUserName()
+            };
+
+            _logger.LogInformation("CreateByExternalContract: Creating shipping operation with resolved ContractId={ContractId}", resolution.ContractId);
+
+            var operationId = await _mediator.Send(command);
+
+            _logger.LogInformation("Shipping operation {OperationId} created successfully from external contract {ExternalContractNumber}",
+                operationId, dto.ExternalContractNumber);
+
+            return CreatedAtAction(nameof(GetById), new { id = operationId }, operationId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating shipping operation by external contract number: {ExternalContractNumber}",
+                dto.ExternalContractNumber);
+
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new
+                {
+                    success = false,
+                    errorMessage = "An error occurred while creating the shipping operation",
+                    details = ex.Message
+                });
+        }
     }
 
     /// <summary>

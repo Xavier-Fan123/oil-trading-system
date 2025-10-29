@@ -31,4 +31,17 @@ public interface ISalesContractRepository : IRepository<SalesContract>
         int pageSize = 20,
         string[]? includeProperties = null,
         CancellationToken cancellationToken = default);
+
+    // External contract number lookup methods
+    Task<IReadOnlyList<SalesContract>> GetByExternalContractNumberAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<SalesContract?> GetSingleByExternalContractNumberAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExternalContractNumberExistsAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default);
 }

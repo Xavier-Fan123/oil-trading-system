@@ -30,4 +30,17 @@ public interface IPurchaseContractRepository : IRepository<PurchaseContract>
         string[]? includeProperties = null,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PurchaseContract>> GetContractsByYearAsync(int year, CancellationToken cancellationToken = default);
+
+    // External contract number lookup methods
+    Task<IReadOnlyList<PurchaseContract>> GetByExternalContractNumberAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<PurchaseContract?> GetSingleByExternalContractNumberAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExternalContractNumberExistsAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default);
 }

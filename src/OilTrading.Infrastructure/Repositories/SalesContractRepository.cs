@@ -226,4 +226,50 @@ public class SalesContractRepository : Repository<SalesContract>, ISalesContract
 
         return new PagedResult<SalesContract>(items, totalCount, page, pageSize);
     }
+
+    public async Task<IReadOnlyList<SalesContract>> GetByExternalContractNumberAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalContractNumber))
+            return new List<SalesContract>();
+
+        return await _dbSet
+            .Include(x => x.TradingPartner)
+            .Include(x => x.Product)
+            .Include(x => x.Trader)
+            .Where(x => x.ExternalContractNumber != null &&
+                       x.ExternalContractNumber.Contains(externalContractNumber))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<SalesContract?> GetSingleByExternalContractNumberAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalContractNumber))
+            return null;
+
+        return await _dbSet
+            .Include(x => x.TradingPartner)
+            .Include(x => x.Product)
+            .Include(x => x.Trader)
+            .FirstOrDefaultAsync(x => x.ExternalContractNumber != null &&
+                                      x.ExternalContractNumber == externalContractNumber,
+                                 cancellationToken);
+    }
+
+    public async Task<bool> ExternalContractNumberExistsAsync(
+        string externalContractNumber,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalContractNumber))
+            return false;
+
+        return await _dbSet
+            .AnyAsync(x => x.ExternalContractNumber != null &&
+                          x.ExternalContractNumber == externalContractNumber,
+                     cancellationToken);
+    }
 }

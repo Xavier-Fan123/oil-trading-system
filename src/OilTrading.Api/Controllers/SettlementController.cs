@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using MediatR;
 using OilTrading.Application.Services;
 using OilTrading.Application.DTOs;
+using OilTrading.Application.Queries.Contracts;
 using OilTrading.Core.Entities;
 using OilTrading.Api.Attributes;
 using OilTrading.Core.Common;
@@ -19,13 +21,16 @@ public class SettlementController : ControllerBase
 {
     private readonly ISettlementCalculationService _settlementService;
     private readonly ILogger<SettlementController> _logger;
+    private readonly IMediator _mediator;
 
     public SettlementController(
         ISettlementCalculationService settlementService,
-        ILogger<SettlementController> logger)
+        ILogger<SettlementController> logger,
+        IMediator mediator)
     {
         _settlementService = settlementService;
         _logger = logger;
+        _mediator = mediator;
     }
 
     /// <summary>
@@ -370,6 +375,145 @@ public class SettlementController : ControllerBase
         {
             _logger.LogError(ex, "Error creating settlement for contract: {ContractId}. Exception: {Message}. Stack: {StackTrace}",
                 dto.ContractId, ex.Message, ex.StackTrace);
+            return StatusCode(StatusCodes.Status500InternalServerError, new CreateSettlementResultDto
+            {
+                IsSuccessful = false,
+                ErrorMessage = $"An error occurred while creating the settlement: {ex.Message}",
+                ValidationErrors = new List<string> { ex.Message, ex.InnerException?.Message ?? "" }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Creates a new settlement by external contract number
+    /// This endpoint resolves the external contract number to internal contract GUID first
+    /// </summary>
+    /// <param name="dto">Settlement creation data with external contract number</param>
+    /// <returns>Created settlement details</returns>
+    [HttpPost("create-by-external-contract")]
+    [RiskCheck(RiskCheckLevel.Standard, allowOverride: true, "RiskManager", "SeniorTrader")]
+    [ProducesResponseType(typeof(CreateSettlementResultDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateByExternalContract([FromBody] CreateSettlementByExternalContractDto dto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                return BadRequest(new CreateSettlementResultDto
+                {
+                    IsSuccessful = false,
+                    ValidationErrors = errors,
+                    ErrorMessage = "Validation failed"
+                });
+            }
+
+            // Step 1: Resolve external contract number to contract ID
+            var resolutionQuery = new ResolveContractByExternalNumberQuery
+            {
+                ExternalContractNumber = dto.ExternalContractNumber,
+                ExpectedContractType = dto.ExpectedContractType,
+                ExpectedTradingPartnerId = dto.TradingPartnerId,
+                ExpectedProductId = dto.ProductId
+            };
+
+            var resolution = await _mediator.Send(resolutionQuery);
+
+            // Handle resolution error or multiple matches
+            if (!resolution.Success)
+            {
+                if (resolution.Candidates.Count > 0)
+                {
+                    _logger.LogWarning(
+                        "Multiple contracts found for external number {ExternalNumber}, count={CandidateCount}",
+                        dto.ExternalContractNumber, resolution.Candidates.Count);
+
+                    return UnprocessableEntity(new CreateSettlementResultDto
+                    {
+                        IsSuccessful = false,
+                        ErrorMessage = "Multiple contracts match the external number. Please specify additional filters (contract type, trading partner, or product).",
+                        ValidationErrors = resolution.Candidates
+                            .Select(c => $"{c.ContractType}: {c.ContractNumber} ({c.ExternalContractNumber}) - {c.TradingPartnerName}")
+                            .ToList()
+                    });
+                }
+
+                _logger.LogWarning("No contract found for external number {ExternalNumber}", dto.ExternalContractNumber);
+                return NotFound(new CreateSettlementResultDto
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = resolution.ErrorMessage ?? $"No contract found with external contract number: {dto.ExternalContractNumber}"
+                });
+            }
+
+            // Step 2: Create settlement with resolved contract ID
+            var createDto = new CreateSettlementDto
+            {
+                ContractId = resolution.ContractId!.Value,
+                DocumentNumber = dto.DocumentNumber,
+                DocumentType = dto.DocumentType,
+                DocumentDate = dto.DocumentDate,
+                ActualQuantityMT = dto.ActualQuantityMT,
+                ActualQuantityBBL = dto.ActualQuantityBBL,
+                CreatedBy = GetCurrentUserName(),
+                Notes = dto.Notes,
+                SettlementCurrency = dto.SettlementCurrency,
+                AutoCalculatePrices = dto.AutoCalculatePrices,
+                AutoTransitionStatus = dto.AutoTransitionStatus
+            };
+
+            var settlement = await _settlementService.CreateOrUpdateSettlementAsync(
+                createDto.ContractId,
+                createDto.DocumentNumber ?? string.Empty,
+                createDto.DocumentType,
+                createDto.ActualQuantityMT,
+                createDto.ActualQuantityBBL,
+                createDto.DocumentDate,
+                createDto.CreatedBy);
+
+            var result = new CreateSettlementResultDto
+            {
+                IsSuccessful = true,
+                SettlementId = settlement.Id,
+                Settlement = settlement
+            };
+
+            _logger.LogInformation(
+                "Settlement {SettlementId} created successfully for external contract {ExternalNumber} (resolved to {ContractId})",
+                settlement.Id, dto.ExternalContractNumber, resolution.ContractId);
+
+            return CreatedAtAction(nameof(GetById), new { settlementId = settlement.Id }, result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument for settlement creation: {ExternalNumber}", dto.ExternalContractNumber);
+            return BadRequest(new CreateSettlementResultDto
+            {
+                IsSuccessful = false,
+                ErrorMessage = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation for settlement creation: {ExternalNumber}", dto.ExternalContractNumber);
+            return UnprocessableEntity(new CreateSettlementResultDto
+            {
+                IsSuccessful = false,
+                ErrorMessage = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error creating settlement by external contract: {ExternalNumber}. Exception: {Message}",
+                dto.ExternalContractNumber, ex.Message);
             return StatusCode(StatusCodes.Status500InternalServerError, new CreateSettlementResultDto
             {
                 IsSuccessful = false,
