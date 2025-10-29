@@ -88,7 +88,16 @@ const getStatusLabel = (status: ContractStatus): string => {
   }
 };
 
-const getQuantityUnitLabel = (unit: QuantityUnit): string => {
+const getQuantityUnitLabel = (unit: QuantityUnit | string): string => {
+  // Handle both enum and string values
+  if (typeof unit === 'string') {
+    switch (unit.toUpperCase()) {
+      case 'MT': return 'MT';
+      case 'BBL': return 'BBL';
+      case 'GAL': return 'GAL';
+      default: return unit;
+    }
+  }
   switch (unit) {
     case QuantityUnit.MT: return 'MT';
     case QuantityUnit.BBL: return 'BBL';

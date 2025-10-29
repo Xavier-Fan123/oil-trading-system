@@ -48,10 +48,15 @@ public class CreateShippingOperationDto
     public Guid ContractId { get; set; }
     public string VesselName { get; set; } = string.Empty;
     public string? ImoNumber { get; set; }
+    public string? ChartererName { get; set; }
+    public decimal? VesselCapacity { get; set; }
+    public string? ShippingAgent { get; set; }
     public decimal PlannedQuantity { get; set; }
     public string PlannedQuantityUnit { get; set; } = "MT";
     public DateTime? LaycanStart { get; set; }
     public DateTime? LaycanEnd { get; set; }
+    public string? LoadPort { get; set; }
+    public string? DischargePort { get; set; }
     public string? Notes { get; set; }
 }
 

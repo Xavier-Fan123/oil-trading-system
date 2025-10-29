@@ -16,16 +16,18 @@ import {
   CircularProgress,
   Autocomplete
 } from '@mui/material';
-import { 
-  useCreateShippingOperation, 
-  useUpdateShippingOperation, 
-  useShippingOperation 
+import {
+  useCreateShippingOperation,
+  useUpdateShippingOperation,
+  useShippingOperation
 } from '@/hooks/useShipping';
-import { 
-  CreateShippingOperationDto, 
-  UpdateShippingOperationDto, 
-  COMMON_PORTS, 
-  QUANTITY_UNITS 
+import { usePurchaseContracts } from '@/hooks/useContracts';
+import { useSalesContracts } from '@/hooks/useSalesContracts';
+import {
+  CreateShippingOperationDto,
+  UpdateShippingOperationDto,
+  COMMON_PORTS,
+  QUANTITY_UNITS
 } from '@/types/shipping';
 
 interface ShippingOperationFormProps {
@@ -71,13 +73,31 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<FormData>(initialFormState);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
+
   const isEditing = Boolean(initialData?.id);
-  
+
   // Hooks for API operations
   const createMutation = useCreateShippingOperation();
   const updateMutation = useUpdateShippingOperation();
-  
+
+  // Load contracts for selection
+  const { data: purchaseContractsData, isLoading: loadingPurchaseContracts } = usePurchaseContracts({
+    pageSize: 100
+  });
+  const { data: salesContractsData, isLoading: loadingSalesContracts } = useSalesContracts({
+    pageSize: 100
+  });
+
+  // Combine both purchase and sales contracts for selection
+  const allContracts = [
+    ...(purchaseContractsData?.items || []),
+    ...(salesContractsData?.items || [])
+  ];
+  const contractOptions = allContracts.map(contract => ({
+    id: contract.id,
+    label: `${contract.contractNumber} (${contract.quantity} ${contract.quantityUnit})`
+  }));
+
   // Load existing data when editing
   const { data: existingOperation, isLoading: loadingOperation } = useShippingOperation(
     initialData?.id || '',
@@ -290,14 +310,29 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
+            <Autocomplete
               fullWidth
-              label="Contract ID *"
-              value={formData.contractId}
-              onChange={(e) => handleInputChange('contractId', e.target.value)}
-              error={!!validationErrors.contractId}
-              helperText={validationErrors.contractId}
-              disabled={isSubmitting || isEditing} // Disable editing contract ID
+              options={contractOptions}
+              getOptionLabel={(option) => typeof option === 'string' ? option : option.label}
+              value={
+                formData.contractId
+                  ? contractOptions.find(c => c.id === formData.contractId) || null
+                  : null
+              }
+              onChange={(_, value) => {
+                handleInputChange('contractId', value?.id || '');
+              }}
+              loading={loadingPurchaseContracts || loadingSalesContracts}
+              disabled={isSubmitting || isEditing}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Contract *"
+                  error={!!validationErrors.contractId}
+                  helperText={validationErrors.contractId || "Select a purchase or sales contract"}
+                  required
+                />
+              )}
             />
           </Grid>
 

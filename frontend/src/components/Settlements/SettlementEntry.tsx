@@ -59,7 +59,7 @@ interface ContractInfo {
   customerName?: string;
   productName: string;
   quantity: number;
-  quantityUnit: QuantityUnit;
+  quantityUnit: QuantityUnit | string;  // Accept both enum and string from API
   tonBarrelRatio: number;
 }
 
@@ -291,6 +291,13 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
       return;
     }
 
+    // Validate that the contract ID is a valid GUID (not a mock ID)
+    const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!guidPattern.test(selectedContract.id)) {
+      setError(`Invalid contract ID: ${selectedContract.id}. Please make sure you have loaded real contracts from the API.`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -331,9 +338,14 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         });
         onSuccess();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving settlement:', err);
-      setError('Failed to save settlement. Please try again.');
+      const errorMessage = err?.response?.data?.errorMessage || err?.response?.data?.message || err?.message || 'Failed to save settlement';
+      const validationErrors = err?.response?.data?.validationErrors || [];
+      const detailedErrors = validationErrors.length > 0
+        ? `${errorMessage} - ${validationErrors.join(', ')}`
+        : errorMessage;
+      setError(`Failed to save settlement: ${detailedErrors}`);
     } finally {
       setLoading(false);
     }

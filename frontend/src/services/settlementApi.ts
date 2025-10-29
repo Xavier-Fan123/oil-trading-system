@@ -77,6 +77,16 @@ export const settlementApi = {
     // First try to search by external contract number
     try {
       const settlement = await settlementApi.getByExternalContractNumber(searchTerm);
+      if (!settlement) {
+        // Settlement not found, fall back to partial search
+        const filters: SettlementSearchFilters = {
+          externalContractNumber: searchTerm,
+          pageNumber,
+          pageSize
+        };
+        return await settlementApi.getSettlements(filters);
+      }
+
       return {
         data: [{
           id: settlement.id,
@@ -94,7 +104,7 @@ export const settlementApi = {
           isFinalized: settlement.isFinalized,
           createdDate: settlement.createdDate,
           createdBy: settlement.createdBy,
-          chargesCount: settlement.charges.length,
+          chargesCount: settlement.charges?.length || 0,
           formattedAmount: settlement.formattedTotalAmount,
           displayStatus: settlement.displayStatus
         }],

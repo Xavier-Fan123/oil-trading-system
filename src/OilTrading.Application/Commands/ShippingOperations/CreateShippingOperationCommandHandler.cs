@@ -86,8 +86,12 @@ public class CreateShippingOperationCommandHandler : IRequestHandler<CreateShipp
         var purchaseContract = await _purchaseContractRepository.GetByIdAsync(contractId, cancellationToken);
         if (purchaseContract != null)
         {
-            if (purchaseContract.Status != ContractStatus.Active)
-                throw new DomainException($"Purchase contract {purchaseContract.ContractNumber.Value} is not active");
+            // Allow shipping operations to be created for Draft contracts too
+            // This supports planning purposes where shipping operations can be pre-arranged before contract activation
+            if (purchaseContract.Status != ContractStatus.Active &&
+                purchaseContract.Status != ContractStatus.Draft &&
+                purchaseContract.Status != ContractStatus.PendingApproval)
+                throw new DomainException($"Purchase contract {purchaseContract.ContractNumber.Value} cannot have shipping operations in {purchaseContract.Status} status");
             return purchaseContract;
         }
 
@@ -95,8 +99,12 @@ public class CreateShippingOperationCommandHandler : IRequestHandler<CreateShipp
         var salesContract = await _salesContractRepository.GetByIdAsync(contractId, cancellationToken);
         if (salesContract != null)
         {
-            if (salesContract.Status != ContractStatus.Active)
-                throw new DomainException($"Sales contract {salesContract.ContractNumber.Value} is not active");
+            // Allow shipping operations to be created for Draft contracts too
+            // This supports planning purposes where shipping operations can be pre-arranged before contract activation
+            if (salesContract.Status != ContractStatus.Active &&
+                salesContract.Status != ContractStatus.Draft &&
+                salesContract.Status != ContractStatus.PendingApproval)
+                throw new DomainException($"Sales contract {salesContract.ContractNumber.Value} cannot have shipping operations in {salesContract.Status} status");
             return salesContract;
         }
 

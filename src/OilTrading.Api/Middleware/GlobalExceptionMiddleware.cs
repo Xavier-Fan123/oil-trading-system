@@ -105,6 +105,9 @@ public class GlobalExceptionMiddleware
                 response.ValidationErrors = fluentValidationEx.Errors
                     .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
                     .ToDictionary(failureGroup => failureGroup.Key, failureGroup => failureGroup.ToArray());
+                // Log detailed validation errors for debugging
+                var validationLog = string.Join("; ", fluentValidationEx.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
+                response.Details = validationLog;
                 break;
 
             case UnauthorizedAccessException:

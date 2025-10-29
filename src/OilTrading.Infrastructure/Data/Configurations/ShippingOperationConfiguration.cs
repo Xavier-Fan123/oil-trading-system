@@ -80,6 +80,11 @@ public class ShippingOperationConfiguration : IEntityTypeConfiguration<ShippingO
         builder.Property(e => e.CreatedBy).HasMaxLength(100);
         builder.Property(e => e.UpdatedBy).HasMaxLength(100);
 
+        // Optimistic concurrency control
+        builder.Property(e => e.RowVersion)
+               .IsRowVersion()
+               .HasDefaultValue(new byte[] { 0 });
+
         // Relationships - will be configured in contract configurations
         // to avoid circular references
 

@@ -44,43 +44,12 @@ public class ShippingOperationController : ControllerBase
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Create()
+    public async Task<IActionResult> Create([FromBody] CreateShippingOperationDto dto)
     {
-        // Read raw request body to see what's actually being sent
-        Request.Body.Position = 0;
-        var body = "";
-        using (var reader = new StreamReader(Request.Body))
-        {
-            body = await reader.ReadToEndAsync();
-        }
-        _logger.LogInformation("=== RAW REQUEST BODY ===\n{Body}\n=== END RAW REQUEST BODY ===", body);
-
-        // Try to parse the JSON manually
-        CreateShippingOperationDto? dto = null;
-        try
-        {
-            var options = new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            };
-            dto = System.Text.Json.JsonSerializer.Deserialize<CreateShippingOperationDto>(body, options);
-
-            if (dto != null)
-            {
-                _logger.LogInformation("Successfully deserialized DTO: ContractId={ContractId}, VesselName={VesselName}, PlannedQuantity={PlannedQuantity}, PlannedQuantityUnit={PlannedQuantityUnit}, LaycanStart={LaycanStart}, LaycanEnd={LaycanEnd}",
-                    dto.ContractId, dto.VesselName, dto.PlannedQuantity, dto.PlannedQuantityUnit, dto.LaycanStart, dto.LaycanEnd);
-            }
-            else
-            {
-                _logger.LogError("DTO is null after deserialization");
-                return BadRequest(new { error = "DTO is null after deserialization" });
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to deserialize DTO from JSON. Error: {Message}", ex.Message);
-            return BadRequest(new { error = ex.Message, body = body });
-        }
+        _logger.LogInformation("=== RAW DTO RECEIVED ===");
+        _logger.LogInformation("DTO JSON: {@Dto}", dto);
+        _logger.LogInformation("CreateShippingOperationCommand received: ContractId={ContractId}, VesselName={VesselName}, PlannedQuantity={PlannedQuantity}, PlannedQuantityUnit={PlannedQuantityUnit}, LaycanStart={LaycanStart}, LaycanEnd={LaycanEnd}",
+            dto.ContractId, dto.VesselName, dto.PlannedQuantity, dto.PlannedQuantityUnit, dto.LaycanStart, dto.LaycanEnd);
 
         var command = new CreateShippingOperationCommand
         {
@@ -95,6 +64,8 @@ public class ShippingOperationController : ControllerBase
             CreatedBy = GetCurrentUserName()
         };
 
+        _logger.LogInformation("=== COMMAND TO HANDLER ===");
+        _logger.LogInformation("Command: {@Command}", command);
         _logger.LogInformation("CreateShippingOperationCommand: LoadPortETA={LoadPortETA}, DischargePortETA={DischargePortETA}, CreatedBy={CreatedBy}",
             command.LoadPortETA, command.DischargePortETA, command.CreatedBy);
 

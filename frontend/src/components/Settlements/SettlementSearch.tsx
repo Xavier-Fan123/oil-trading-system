@@ -66,15 +66,15 @@ export const SettlementSearch: React.FC<SettlementSearchProps> = ({
 
     try {
       const result = await searchSettlementsWithFallback(searchTerm.trim());
-      
-      if (result.data.length === 0) {
-        setError(`No settlements found for external contract number: ${searchTerm}`);
+
+      if (!result || !result.data || result.data.length === 0) {
+        setError(`No settlements found for external contract number: ${searchTerm}. You may need to create a settlement first.`);
       } else {
         onSearch(searchTerm, result.data);
       }
     } catch (err) {
       console.error('Search error:', err);
-      setError('Failed to search settlements. Please try again.');
+      setError('Failed to search settlements. No settlement exists for this external contract number yet. Please create a settlement first.');
     } finally {
       setLoading(false);
     }

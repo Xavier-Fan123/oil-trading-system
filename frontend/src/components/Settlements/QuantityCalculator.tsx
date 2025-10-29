@@ -39,7 +39,7 @@ interface QuantityData {
 interface QuantityCalculatorProps {
   initialData?: Partial<QuantityData>;
   contractQuantity?: number;
-  contractUnit?: QuantityUnit;
+  contractUnit?: QuantityUnit | string;  // Accept both enum and string from API
   productDensity?: number; // kg/m³
   onChange: (data: QuantityData) => void;
   readOnly?: boolean;
@@ -244,7 +244,7 @@ export const QuantityCalculator: React.FC<QuantityCalculatorProps> = ({
                 <Box>
                   <Typography variant="body2" color="text.secondary">Contract Quantity</Typography>
                   <Typography variant="body1" fontWeight="medium">
-                    {formatNumber(contractQuantity)} {QuantityUnitLabels[contractUnit]}
+                    {formatNumber(contractQuantity)} {typeof contractUnit === 'string' ? contractUnit : QuantityUnitLabels[contractUnit]}
                   </Typography>
                 </Box>
               )}

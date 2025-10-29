@@ -368,11 +368,13 @@ public class SettlementController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating settlement for contract: {ContractId}", dto.ContractId);
+            _logger.LogError(ex, "Error creating settlement for contract: {ContractId}. Exception: {Message}. Stack: {StackTrace}",
+                dto.ContractId, ex.Message, ex.StackTrace);
             return StatusCode(StatusCodes.Status500InternalServerError, new CreateSettlementResultDto
             {
                 IsSuccessful = false,
-                ErrorMessage = "An error occurred while creating the settlement"
+                ErrorMessage = $"An error occurred while creating the settlement: {ex.Message}",
+                ValidationErrors = new List<string> { ex.Message, ex.InnerException?.Message ?? "" }
             });
         }
     }

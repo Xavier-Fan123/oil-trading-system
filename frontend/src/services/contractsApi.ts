@@ -15,10 +15,9 @@ import {
   formatApiDate 
 } from '@/utils/dateUtils';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // Non-versioned API endpoints
-
+// Use relative path to leverage Vite proxy configuration
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },

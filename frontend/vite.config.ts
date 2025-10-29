@@ -11,12 +11,13 @@ export default defineConfig({
   },
   server: {
     port: 3002,
-    host: '0.0.0.0',
+    host: 'localhost',
     strictPort: false,
     open: false,
     hmr: {
       overlay: false,
       host: 'localhost',
+      port: 3002,
       protocol: 'ws',
     },
     watch: {
