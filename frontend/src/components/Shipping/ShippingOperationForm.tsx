@@ -162,13 +162,8 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
       }
     }
 
-    // Validate that ETAs are in the future
-    if (formData.loadPortETA) {
-      const loadDate = new Date(formData.loadPortETA);
-      if (loadDate <= new Date()) {
-        errors.loadPortETA = 'Load Port ETA must be in the future';
-      }
-    }
+    // Note: We do not validate that dates must be in the future
+    // Users may enter historical data when recording past shipping operations
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;

@@ -176,10 +176,9 @@ export const COMMON_PORTS = [
   'Hamburg, Germany',
 ] as const;
 
-// Unit options
+// Unit options - IMPORTANT: Backend only supports MT and BBL
+// Do NOT add other units unless backend is updated to support them
 export const QUANTITY_UNITS = [
-  { value: 'MT', label: 'Metric Tons' },
-  { value: 'BBL', label: 'Barrels' },
-  { value: 'GAL', label: 'Gallons' },
-  { value: 'LT', label: 'Liters' },
+  { value: 'MT', label: 'Metric Tons (MT)' },
+  { value: 'BBL', label: 'Barrels (BBL)' },
 ] as const;

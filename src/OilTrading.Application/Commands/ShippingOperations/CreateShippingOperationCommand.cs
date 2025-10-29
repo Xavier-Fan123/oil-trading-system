@@ -50,9 +50,8 @@ public class CreateShippingOperationCommandValidator : AbstractValidator<CreateS
             .Must(unit => unit == "MT" || unit == "BBL")
             .WithMessage("Quantity unit must be either MT or BBL");
 
-        RuleFor(x => x.LoadPortETA)
-            .GreaterThan(DateTime.UtcNow)
-            .WithMessage("Load port ETA must be in the future");
+        // Note: We allow past dates for LoadPortETA and DischargePortETA
+        // Users may enter historical data when recording past shipping operations
 
         RuleFor(x => x.DischargePortETA)
             .GreaterThan(x => x.LoadPortETA)
