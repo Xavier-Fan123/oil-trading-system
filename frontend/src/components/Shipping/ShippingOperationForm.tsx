@@ -147,6 +147,29 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
       errors.plannedQuantity = 'Planned quantity must be a positive number';
     }
 
+    if (!formData.loadPortETA.trim()) {
+      errors.loadPortETA = 'Load Port ETA is required';
+    }
+
+    if (!formData.dischargePortETA.trim()) {
+      errors.dischargePortETA = 'Discharge Port ETA is required';
+    } else if (formData.loadPortETA && formData.dischargePortETA) {
+      // Validate that discharge ETA is after load ETA
+      const loadDate = new Date(formData.loadPortETA);
+      const dischargeDate = new Date(formData.dischargePortETA);
+      if (dischargeDate <= loadDate) {
+        errors.dischargePortETA = 'Discharge Port ETA must be after Load Port ETA';
+      }
+    }
+
+    // Validate that ETAs are in the future
+    if (formData.loadPortETA) {
+      const loadDate = new Date(formData.loadPortETA);
+      if (loadDate <= new Date()) {
+        errors.loadPortETA = 'Load Port ETA must be in the future';
+      }
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -173,14 +196,20 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           operation: updateData
         });
       } else {
+        // Create request - must include loadPortETA and dischargePortETA as required fields
+        const loadPortETA = formData.loadPortETA ? new Date(formData.loadPortETA).toISOString() : '';
+        const dischargePortETA = formData.dischargePortETA ? new Date(formData.dischargePortETA).toISOString() : '';
+
         const createData: CreateShippingOperationDto = {
           contractId: formData.contractId,
           vesselName: formData.vesselName,
           imoNumber: formData.imoNumber || undefined,
           plannedQuantity: Number(formData.plannedQuantity),
           plannedQuantityUnit: formData.quantityUnit,
-          laycanStart: formData.loadPortETA ? new Date(formData.loadPortETA).toISOString() : undefined,
-          laycanEnd: formData.dischargePortETA ? new Date(formData.dischargePortETA).toISOString() : undefined,
+          loadPortETA: loadPortETA,
+          dischargePortETA: dischargePortETA,
+          loadPort: formData.loadPort || undefined,
+          dischargePort: formData.dischargePort || undefined,
           notes: formData.notes || undefined,
         };
 
@@ -345,10 +374,12 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Load Port ETA"
+              label="Load Port ETA *"
               type="datetime-local"
               value={formData.loadPortETA}
               onChange={(e) => handleInputChange('loadPortETA', e.target.value)}
+              error={!!validationErrors.loadPortETA}
+              helperText={validationErrors.loadPortETA}
               InputLabelProps={{ shrink: true }}
               disabled={isSubmitting}
             />
@@ -357,10 +388,12 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="Discharge Port ETA"
+              label="Discharge Port ETA *"
               type="datetime-local"
               value={formData.dischargePortETA}
               onChange={(e) => handleInputChange('dischargePortETA', e.target.value)}
+              error={!!validationErrors.dischargePortETA}
+              helperText={validationErrors.dischargePortETA}
               InputLabelProps={{ shrink: true }}
               disabled={isSubmitting}
             />
