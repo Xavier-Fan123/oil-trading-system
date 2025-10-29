@@ -38,6 +38,12 @@ export const shippingApi = {
 
   // Create new shipping operation
   create: async (operation: CreateShippingOperationDto): Promise<ShippingOperationDto> => {
+    // DEBUG: Log the actual JSON payload being sent
+    const jsonPayload = JSON.stringify(operation);
+    console.log('=== ACTUAL JSON PAYLOAD BEING SENT ===');
+    console.log(jsonPayload);
+    console.log('=====================================');
+
     const response = await api.post('/shipping-operations', operation);
     return response.data;
   },
