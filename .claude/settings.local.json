@@ -4,7 +4,8 @@
       "Bash(git commit:*)",
       "Bash(powershell -Command:*)",
       "Bash(npm run build)",
-      "Bash(del /F \"c:UsersitgDesktopXSETTLEMENT_FIX_SUMMARY.md\" \"EXECUTIVE_SUMMARY_EXTERNAL_CONTRACT_FIX.md\" \"EXTERNAL_CONTRACT_ANALYSIS.md\" \"EXTERNAL_CONTRACT_FIX_IMPLEMENTATION.md\" \"TESTING_GUIDE_EXTERNAL_CONTRACT.md\" \"START-PRODUCTION.bat\")"
+      "Bash(del /F \"c:UsersitgDesktopXSETTLEMENT_FIX_SUMMARY.md\" \"EXECUTIVE_SUMMARY_EXTERNAL_CONTRACT_FIX.md\" \"EXTERNAL_CONTRACT_ANALYSIS.md\" \"EXTERNAL_CONTRACT_FIX_IMPLEMENTATION.md\" \"TESTING_GUIDE_EXTERNAL_CONTRACT.md\" \"START-PRODUCTION.bat\")",
+      "Bash(awk '{print $9, \"\"\"\"(\"\"\"\" $5 \"\"\"\")\"\"\"\"}')"
     ],
     "deny": [],
     "ask": [],
