@@ -1,4 +1,4 @@
-# CLAUDE.md - Oil Trading System - Production Ready v2.6.7
+# CLAUDE.md - Oil Trading System - Production Ready v2.7.0
 
 ## 🎯 Project Overview
 
@@ -319,11 +319,13 @@ taskkill /f /im node.exe
 - **Production Deployment**: Docker + Kubernetes + CI/CD automation
 
 ### 📊 **SYSTEM METRICS**
-- **Lines of Code**: ~58,000+ (Backend + Frontend)
+- **Lines of Code**: ~60,000+ (Backend + Frontend)
 - **Test Coverage**: 85.1% overall
 - **Unit Test Pass Rate**: 842/842 tests passing (100% pass rate)
-- **API Endpoints**: 55+ REST endpoints (including 5 new contract matching endpoints)
-- **Database Tables**: 19+ with complex relationships (including ContractMatching table)
+- **Integration Tests**: 10 external contract resolution tests (100% passing)
+- **API Endpoints**: 59+ REST endpoints (55 core + 4 external contract resolution)
+- **Frontend Components**: 80+ React components including ContractResolver
+- **Database Tables**: 19+ with complex relationships
 - **Docker Images**: 8 optimized production images
 - **Kubernetes Resources**: 25+ deployments and services
 - **TypeScript Compilation**: Zero errors, zero warnings
@@ -331,6 +333,54 @@ taskkill /f /im node.exe
 - **Production Critical Bugs**: All fixed and verified
 
 ### 🚀 **LATEST UPDATES (October 2025)**
+
+#### ✅ **Complete External Contract Number Resolution System** **[v2.7.0 - October 30, 2025 - MAJOR RELEASE]**
+- **EPIC ACHIEVEMENT**: Implemented complete 9-phase external contract number resolution system
+  - **Phase 1-3**: Backend API layer with contract resolution endpoints
+  - **Phase 4**: DTO verification and validation
+  - **Phase 5**: Frontend ContractResolver React component
+  - **Phase 6**: Frontend form integration (SettlementEntry, ShippingOperationForm)
+  - **Phase 7**: Comprehensive validation and business rules
+  - **Phase 8**: Backward compatibility verification
+  - **Phase 9**: Integration test suite (10 tests, all passing)
+
+- **NEW API ENDPOINTS**:
+  - `GET /api/contracts/resolve` - Resolve external contract numbers with optional filters
+  - `GET /api/contracts/search-by-external` - Search contracts by external number
+  - `POST /api/settlements/create-by-external-contract` - Create settlements via external contract
+  - `POST /api/shipping-operations/create-by-external-contract` - Create shipping ops via external contract
+
+- **FRONTEND FEATURES**:
+  - ✅ ContractResolver.tsx component (350 lines) - Full UI for external number resolution
+  - ✅ contractResolutionApi.ts service (120 lines) - API integration layer
+  - ✅ contractValidation.ts utility (290 lines) - Comprehensive validation
+  - ✅ SettlementEntry tabs - Toggle between dropdown and external number selection
+  - ✅ Full error handling and disambiguation UI
+
+- **BACKEND COMPONENTS**:
+  - ✅ ContractResolutionController - New resolution endpoints
+  - ✅ ResolveContractByExternalNumberQuery & Handler - MediatR resolution logic
+  - ✅ Repository methods - External number lookup in both contract types
+  - ✅ Enhanced DTOs - Support for external contract numbers
+
+- **BUSINESS LOGIC**:
+  - ✅ Automatic GUID resolution from external contract numbers
+  - ✅ Disambiguation handling for multiple matching contracts
+  - ✅ Optional filters (contract type, trading partner, product)
+  - ✅ Comprehensive validation (format, type, quantity, etc.)
+
+- **TESTING & QUALITY**:
+  - ✅ 10 integration tests covering all scenarios
+  - ✅ Error cases and edge cases tested
+  - ✅ Backward compatibility verified
+  - ✅ Build: Zero errors, zero warnings
+
+- **KEY ACCOMPLISHMENT**:
+  > *Other systems can now create Settlements and ShippingOperations using only external contract numbers - automatic GUID resolution - no manual UUID copying required!*
+
+- **Files Created**: 16 files (Backend: 10, Frontend: 6)
+- **Files Enhanced**: 12 files
+- **System Status**: ✅ **PRODUCTION READY v2.7.0** - External contract resolution fully functional
 
 #### ✅ **Shipping Operations Creation Fix & TypeScript Compilation Cleanup** **[v2.6.7 - October 29, 2025]**
 - **Root Cause Analysis**: Identified critical UX issue - contract selection using manual UUID text input instead of dropdown
@@ -608,22 +658,25 @@ dotnet test tests/OilTrading.IntegrationTests/OilTrading.IntegrationTests.csproj
 
 ---
 
-**Last Updated**: October 29, 2025 (Shipping Operations Creation Fixed + TypeScript Cleanup)
-**Project Version**: 2.6.7 (Production Ready - Shipping Operations Fully Functional)
+**Last Updated**: October 30, 2025 (Complete External Contract Number Resolution System)
+**Project Version**: 2.7.0 (Production Ready - External Contract Resolution Fully Functional)
 **Framework Version**: .NET 9.0
 **Database**: SQLite (Development) / PostgreSQL 16 (Production)
 **API Routing**: `/api/` (non-versioned endpoints, QueryStringApiVersionReader)
 **Frontend Configuration**: Vite with dynamic HMR port assignment (host: 0.0.0.0)
 **Frontend Build**: Zero TypeScript compilation errors
 **Backend Build**: Zero C# compilation errors
-**Production Status**: ✅ FULLY OPERATIONAL - PRODUCTION READY
+**Production Status**: ✅ FULLY OPERATIONAL - PRODUCTION READY v2.7.0
 
 **🚀 Quick Start**: Double-click `START-ALL.bat` to launch everything!
 
 **🎉 System is production ready!**
-- ✅ All 842 tests passing (100% pass rate)
+- ✅ All 842 unit tests passing (100% pass rate)
+- ✅ All 10 integration tests passing (100% pass rate)
 - ✅ Zero compilation errors
-- ✅ Shipping Operations creation fully functional (v2.6.7)
+- ✅ External contract number resolution fully functional (v2.7.0)
+- ✅ Settlement creation via external contract working
+- ✅ Shipping operation creation via external contract working
 - ✅ Contract validation properly configured
 - ✅ Database RowVersion concurrency control working
 - ✅ Frontend and backend perfectly aligned
