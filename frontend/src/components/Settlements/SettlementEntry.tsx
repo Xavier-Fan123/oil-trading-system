@@ -16,7 +16,9 @@ import {
   Stepper,
   Step,
   StepLabel,
-  StepContent
+  StepContent,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -42,6 +44,7 @@ import { settlementApi, getSettlementWithFallback } from '@/services/settlementA
 import { purchaseContractsApi } from '@/services/contractsApi';
 import { salesContractsApi } from '@/services/salesContractsApi';
 import { QuantityCalculator } from './QuantityCalculator';
+import { ContractResolver } from '../Contracts/ContractResolver';
 
 interface SettlementEntryProps {
   mode: 'create' | 'edit';
@@ -82,6 +85,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [contracts, setContracts] = useState<ContractInfo[]>([]);
   const [selectedContract, setSelectedContract] = useState<ContractInfo | null>(null);
+  const [contractSelectionTab, setContractSelectionTab] = useState<'dropdown' | 'external'>(0 as any);
   
   const [formData, setFormData] = useState<SettlementFormData>({
     contractId: '',
@@ -406,38 +410,78 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
             <Typography paragraph>
               Select the contract for which you want to create a settlement.
             </Typography>
-            <FormControl fullWidth required>
-              <InputLabel>Select Contract</InputLabel>
-              <Select
-                value={selectedContract?.id || ''}
-                label="Select Contract"
-                onChange={(e) => handleContractSelect(e.target.value)}
-                disabled={loading || mode === 'edit'}
+
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+              <Tabs
+                value={contractSelectionTab === 'external' ? 1 : 0}
+                onChange={(e, newValue) => setContractSelectionTab(newValue === 1 ? 'external' : 'dropdown')}
               >
-                {contracts.map((contract) => (
-                  <MenuItem key={contract.id} value={contract.id}>
-                    <Box>
-                      <Typography variant="body1">
-                        {contract.contractNumber} 
-                        {contract.externalContractNumber && ` (${contract.externalContractNumber})`}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {contract.type === 'purchase' ? contract.supplierName : contract.customerName} • 
-                        {contract.productName} • 
-                        {contract.quantity.toLocaleString()} {contract.quantityUnit === QuantityUnit.MT ? 'MT' : 'BBL'}
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            {selectedContract && (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Selected: <strong>{getContractDisplayLabel(selectedContract)}</strong> •
-                {selectedContract.type === 'purchase' ? selectedContract.supplierName : selectedContract.customerName} •
-                {selectedContract.productName}
-              </Alert>
+                <Tab label="Select from Dropdown" />
+                <Tab label="Resolve by External Number" />
+              </Tabs>
+            </Box>
+
+            {contractSelectionTab === 'dropdown' ? (
+              <>
+                <FormControl fullWidth required>
+                  <InputLabel>Select Contract</InputLabel>
+                  <Select
+                    value={selectedContract?.id || ''}
+                    label="Select Contract"
+                    onChange={(e) => handleContractSelect(e.target.value)}
+                    disabled={loading || mode === 'edit'}
+                  >
+                    {contracts.map((contract) => (
+                      <MenuItem key={contract.id} value={contract.id}>
+                        <Box>
+                          <Typography variant="body1">
+                            {contract.contractNumber}
+                            {contract.externalContractNumber && ` (${contract.externalContractNumber})`}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {contract.type === 'purchase' ? contract.supplierName : contract.customerName} •
+                            {contract.productName} •
+                            {contract.quantity.toLocaleString()} {contract.quantityUnit === QuantityUnit.MT ? 'MT' : 'BBL'}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {selectedContract && (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    Selected: <strong>{getContractDisplayLabel(selectedContract)}</strong> •
+                    {selectedContract.type === 'purchase' ? selectedContract.supplierName : selectedContract.customerName} •
+                    {selectedContract.productName}
+                  </Alert>
+                )}
+              </>
+            ) : (
+              <ContractResolver
+                onContractSelected={(contractId, contract) => {
+                  if (contract) {
+                    const contractInfo: ContractInfo = {
+                      id: contractId,
+                      contractNumber: contract.contractNumber,
+                      externalContractNumber: contract.externalContractNumber,
+                      type: contract.contractType.toLowerCase() as 'purchase' | 'sales',
+                      [contract.contractType === 'Purchase' ? 'supplierName' : 'customerName']: contract.tradingPartnerName,
+                      productName: contract.productName,
+                      quantity: contract.quantity,
+                      quantityUnit: contract.quantityUnit,
+                      tonBarrelRatio: 7.33
+                    };
+                    setSelectedContract(contractInfo);
+                    setFormData(prev => ({
+                      ...prev,
+                      contractId: contractId,
+                      externalContractNumber: contract.externalContractNumber
+                    }));
+                  }
+                }}
+                allowManualInput={true}
+              />
             )}
           </Box>
         );

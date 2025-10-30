@@ -48,6 +48,12 @@ export const shippingApi = {
     return response.data;
   },
 
+  // Create shipping operation by external contract number
+  createByExternalContractNumber: async (operation: any): Promise<ShippingOperationDto> => {
+    const response = await api.post('/shipping-operations/create-by-external-contract', operation);
+    return response.data;
+  },
+
   // Update shipping operation
   update: async (id: string, operation: UpdateShippingOperationDto): Promise<ShippingOperationDto> => {
     const response = await api.put(`/shipping-operations/${id}`, operation);

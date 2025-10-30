@@ -130,6 +130,12 @@ export const settlementApi = {
     return response.data;
   },
 
+  // Create settlement by external contract number
+  createByExternalContractNumber: async (dto: any): Promise<CreateSettlementResultDto> => {
+    const response = await api.post('/settlements/create-by-external-contract', dto);
+    return response.data;
+  },
+
   // Update an existing settlement
   updateSettlement: async (settlementId: string, dto: UpdateSettlementDto): Promise<ContractSettlementDto> => {
     const response = await api.put(`/settlements/${settlementId}`, dto);
