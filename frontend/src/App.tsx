@@ -42,9 +42,14 @@ function App() {
     <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Oil Trading System
-          </Typography>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', fontSize: '2rem', letterSpacing: '0.1em' }}>
+              X
+            </Typography>
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', opacity: 0.8, fontStyle: 'italic' }}>
+              made by unispark
+            </Typography>
+          </Box>
           {navItems.map((item) => (
             <Button
               key={item.path}

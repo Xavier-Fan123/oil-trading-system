@@ -88,30 +88,25 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
 
   if (!operation) return null;
 
-  const getStatusColor = (status: number): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-    switch (status) {
-      case 1: return 'default'; // Planned
-      case 2: return 'info';    // InTransit
-      case 3: return 'warning'; // Loading
-      case 4: return 'primary'; // Loaded
-      case 5: return 'warning'; // Discharging
-      case 6: return 'success'; // Completed
-      case 7: return 'error';   // Cancelled
+  const getStatusColor = (status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+    switch (status?.toLowerCase()) {
+      case 'planned': return 'default';
+      case 'intransit': return 'info';
+      case 'loading': return 'warning';
+      case 'loaded': return 'primary';
+      case 'discharging': return 'warning';
+      case 'completed': return 'success';
+      case 'cancelled': return 'error';
       default: return 'default';
     }
   };
 
-  const getStatusLabel = (status: number): string => {
-    switch (status) {
-      case 1: return 'Planned';
-      case 2: return 'In Transit';
-      case 3: return 'Loading';
-      case 4: return 'Loaded';
-      case 5: return 'Discharging';
-      case 6: return 'Completed';
-      case 7: return 'Cancelled';
-      default: return 'Unknown';
-    }
+  const getStatusLabel = (status: string): string => {
+    if (!status) return 'Unknown';
+    return status
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
   };
 
   const timelineEvents = [
@@ -123,21 +118,21 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
     },
     {
       title: 'Vessel Nominated',
-      date: operation.createdAt, // Using creation date as placeholder
+      date: operation.createdAt,
       icon: <ShipIcon />,
       completed: !!operation.vesselName
     },
     {
       title: 'Loading Started',
-      date: operation.loadPortATA,
+      date: operation.laycanStart,
       icon: <LoadingIcon />,
-      completed: !!operation.loadPortATA
+      completed: !!operation.laycanStart
     },
     {
       title: 'Discharge Completed',
-      date: operation.dischargePortATA,
+      date: operation.dischargeDate,
       icon: <DischargeIcon />,
-      completed: !!operation.dischargePortATA
+      completed: !!operation.dischargeDate
     }
   ];
 
@@ -186,7 +181,7 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
                     Planned Quantity
                   </Typography>
                   <Typography variant="body1">
-                    {operation.plannedQuantity?.value?.toLocaleString()} {operation.plannedQuantity?.unit}
+                    {operation.plannedQuantity?.toLocaleString()} {operation.plannedQuantityUnit}
                   </Typography>
                 </Box>
                 {operation.actualQuantity && (
@@ -195,7 +190,7 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
                       Actual Quantity
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
-                      {operation.actualQuantity.value?.toLocaleString()} {operation.actualQuantity.unit}
+                      {operation.actualQuantity.toLocaleString()} {operation.actualQuantityUnit}
                     </Typography>
                   </Box>
                 )}
@@ -228,18 +223,18 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
                 </Box>
                 <Box mb={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Load Port ATA
+                    Laycan Start (ETA)
                   </Typography>
                   <Typography variant="body1">
-                    {operation.loadPortATA ? new Date(operation.loadPortATA).toLocaleString() : 'TBD'}
+                    {operation.laycanStart ? new Date(operation.laycanStart).toLocaleString() : 'TBD'}
                   </Typography>
                 </Box>
                 <Box mb={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Discharge Port ATA
+                    Laycan End (ETA)
                   </Typography>
                   <Typography variant="body1">
-                    {operation.dischargePortATA ? new Date(operation.dischargePortATA).toLocaleString() : 'TBD'}
+                    {operation.laycanEnd ? new Date(operation.laycanEnd).toLocaleString() : 'TBD'}
                   </Typography>
                 </Box>
               </CardContent>
@@ -305,29 +300,29 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
                 </Typography>
                 <Box mb={1}>
                   <Typography variant="body2" color="text.secondary">
-                    Contract Reference
+                    Contract Number
                   </Typography>
                   <Typography variant="body1" fontWeight="medium">
-                    {operation.contractId || 'Not specified'}
+                    {operation.contractNumber || 'Not specified'}
                   </Typography>
                 </Box>
-                {operation.demurrageDays && operation.demurrageDays > 0 && (
+                {operation.norDate && (
                   <Box mb={1}>
                     <Typography variant="body2" color="text.secondary">
-                      Demurrage Days
+                      Notice of Readiness Date
                     </Typography>
-                    <Typography variant="body1" color="error.main" fontWeight="medium">
-                      {operation.demurrageDays} days
+                    <Typography variant="body1">
+                      {new Date(operation.norDate).toLocaleString()}
                     </Typography>
                   </Box>
                 )}
-                {operation.charterParty && (
+                {operation.billOfLadingDate && (
                   <Box mb={1}>
                     <Typography variant="body2" color="text.secondary">
-                      Charter Party
+                      Bill of Lading Date
                     </Typography>
                     <Typography variant="body1">
-                      {operation.charterParty}
+                      {new Date(operation.billOfLadingDate).toLocaleString()}
                     </Typography>
                   </Box>
                 )}

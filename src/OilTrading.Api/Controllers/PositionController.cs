@@ -30,19 +30,90 @@ public class PositionController : ControllerBase
     /// Get current net positions across all products and months
     /// </summary>
     [HttpGet("current")]
-    [ProducesResponseType(typeof(IEnumerable<NetPositionDto>), 200)]
-    public async Task<ActionResult<IEnumerable<NetPositionDto>>> GetCurrentPositions(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(IEnumerable<object>), 200)]
+    public async Task<ActionResult<IEnumerable<object>>> GetCurrentPositions(CancellationToken cancellationToken)
     {
         try
         {
             var positions = await _netPositionService.CalculateRealTimePositionsAsync(cancellationToken);
-            return Ok(positions);
+
+            // Transform legacy NetPositionDto to frontend-expected format
+            var transformedPositions = positions.Select(p => new
+            {
+                id = $"{p.ProductType}-{p.Month}",
+                productType = GetProductTypeEnum(p.ProductType),
+                deliveryMonth = p.Month,
+                netQuantity = p.ContractNetPosition != 0 ? p.ContractNetPosition : p.TotalNetPosition,
+                longQuantity = p.PurchaseContractQuantity > 0 ? p.PurchaseContractQuantity : p.PhysicalPurchases,
+                shortQuantity = p.SalesContractQuantity > 0 ? p.SalesContractQuantity : p.PhysicalSales,
+                unit = "MT", // Default unit
+                averagePrice = p.MarketPrice > 0 ? p.MarketPrice : GetEstimatedPrice(p.ProductType),
+                currentPrice = p.MarketPrice > 0 ? p.MarketPrice : GetEstimatedPrice(p.ProductType),
+                unrealizedPnL = 0m, // Calculated from positions
+                realizedPnL = 0m,
+                totalPnL = 0m,
+                positionValue = Math.Abs(p.TotalNetPosition) * (p.MarketPrice > 0 ? p.MarketPrice : GetEstimatedPrice(p.ProductType)),
+                positionType = GetPositionType(p.TotalNetPosition),
+                currency = "USD",
+                lastUpdated = DateTime.UtcNow.ToString("O"),
+                riskMetrics = (object?)null
+            }).ToList();
+
+            return Ok(transformedPositions);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving current positions");
             return StatusCode(500, "Internal server error while retrieving positions");
         }
+    }
+
+    /// <summary>
+    /// Map product type string to enum value
+    /// </summary>
+    private int GetProductTypeEnum(string productType)
+    {
+        return productType?.ToLower() switch
+        {
+            "brent" => 0,
+            "wti" => 1,
+            "dubai" => 2,
+            "mgo" => 3,
+            "gasoil" => 4,
+            "gasoline" => 5,
+            "jetfuel" => 6,
+            "naphtha" => 7,
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Determine position type from net quantity
+    /// </summary>
+    private int GetPositionType(decimal netQuantity)
+    {
+        if (Math.Abs(netQuantity) < 100)
+            return 2; // Flat
+        return netQuantity > 0 ? 0 : 1; // Long : Short
+    }
+
+    /// <summary>
+    /// Get estimated market price for a product
+    /// </summary>
+    private decimal GetEstimatedPrice(string productType)
+    {
+        return productType?.ToLower() switch
+        {
+            "brent" => 85m,
+            "wti" => 80m,
+            "dubai" => 82m,
+            "mgo" => 750m,
+            "gasoil" => 650m,
+            "gasoline" => 3.00m,
+            "jetfuel" => 2.80m,
+            "naphtha" => 600m,
+            _ => 100m
+        };
     }
 
     /// <summary>

@@ -16,6 +16,7 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
     private readonly IProductRepository _productRepository;
     private readonly IUserRepository _userRepository;
     private readonly IContractNumberGenerator _contractNumberGenerator;
+    private readonly ICacheInvalidationService _cacheInvalidationService;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateSalesContractCommandHandler(
@@ -25,6 +26,7 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
         IProductRepository productRepository,
         IUserRepository userRepository,
         IContractNumberGenerator contractNumberGenerator,
+        ICacheInvalidationService cacheInvalidationService,
         IUnitOfWork unitOfWork)
     {
         _salesContractRepository = salesContractRepository;
@@ -33,6 +35,7 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
         _productRepository = productRepository;
         _userRepository = userRepository;
         _contractNumberGenerator = contractNumberGenerator;
+        _cacheInvalidationService = cacheInvalidationService;
         _unitOfWork = unitOfWork;
     }
 
@@ -136,9 +139,12 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
 
         // Add to repository
         await _salesContractRepository.AddAsync(salesContract, cancellationToken);
-        
+
         // Save changes
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Invalidate related caches
+        await _cacheInvalidationService.InvalidateSalesContractCacheAsync();
 
         return salesContract.Id;
     }

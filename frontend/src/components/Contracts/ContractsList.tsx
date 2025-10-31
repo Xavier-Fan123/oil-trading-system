@@ -45,10 +45,33 @@ interface ContractsListProps {
   onEdit: (contractId: string) => void;
   onView: (contractId: string) => void;
   onCreate: () => void;
+  onActivate?: (contractId: string) => Promise<void>;
 }
 
-const getStatusColor = (status: ContractStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-  switch (status) {
+// Convert string status from API to numeric enum (backend returns strings due to JsonStringEnumConverter)
+const normalizeStatus = (status: any): ContractStatus => {
+  if (typeof status === 'string') {
+    switch (status) {
+      case 'Draft':
+        return ContractStatus.Draft;
+      case 'PendingApproval':
+        return ContractStatus.PendingApproval;
+      case 'Active':
+        return ContractStatus.Active;
+      case 'Completed':
+        return ContractStatus.Completed;
+      case 'Cancelled':
+        return ContractStatus.Cancelled;
+      default:
+        return ContractStatus.Draft;
+    }
+  }
+  return status;
+};
+
+const getStatusColor = (status: ContractStatus | string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  const normalizedStatus = normalizeStatus(status);
+  switch (normalizedStatus) {
     case ContractStatus.Draft:
       return 'default';
     case ContractStatus.PendingApproval:
@@ -64,8 +87,9 @@ const getStatusColor = (status: ContractStatus): 'default' | 'primary' | 'second
   }
 };
 
-const getStatusLabel = (status: ContractStatus): string => {
-  switch (status) {
+const getStatusLabel = (status: ContractStatus | string): string => {
+  const normalizedStatus = normalizeStatus(status);
+  switch (normalizedStatus) {
     case ContractStatus.Draft:
       return 'Draft';
     case ContractStatus.PendingApproval:
@@ -100,7 +124,7 @@ const getQuantityUnitLabel = (unit: QuantityUnit | string): string => {
   }
 };
 
-export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, onCreate }) => {
+export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, onCreate, onActivate }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [showFilters, setShowFilters] = useState(false);
@@ -375,16 +399,22 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
-                  {(contract.status === ContractStatus.Draft || contract.status === ContractStatus.PendingApproval) && (
+                  {(normalizeStatus(contract.status) === ContractStatus.Draft ||
+                    normalizeStatus(contract.status) === ContractStatus.PendingApproval) && (
                     <Tooltip title="Edit Contract">
                       <IconButton size="small" onClick={() => onEdit(contract.id)}>
                         <EditIcon />
                       </IconButton>
                     </Tooltip>
                   )}
-                  {contract.status === ContractStatus.PendingApproval && (
+                  {(normalizeStatus(contract.status) === ContractStatus.Draft ||
+                    normalizeStatus(contract.status) === ContractStatus.PendingApproval) && onActivate && (
                     <Tooltip title="Activate Contract">
-                      <IconButton size="small" color="success">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => onActivate(contract.id)}
+                      >
                         <ActivateIcon />
                       </IconButton>
                     </Tooltip>

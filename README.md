@@ -1,8 +1,8 @@
-# Oil Trading & Risk Management System v2.7.0
+# Oil Trading & Risk Management System v2.7.1
 
 An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, and full settlement/shipping operation management.
 
-**Latest Update (Oct 30, 2025)**: Complete external contract number resolution system implemented - users can now create settlements and shipping operations using external contract numbers instead of GUIDs.
+**Latest Update (Oct 31, 2025)**: Position module completely fixed! Contract activation workflow now working - form validation ensures Payment Terms are set before creation, and position display renders correctly with all required fields including currentPrice. External contract number resolution fully functional since v2.7.0.
 
 ## 🚀 Quick Start
 

@@ -72,9 +72,14 @@ export const Dashboard: React.FC = () => {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static" color="default" elevation={1}>
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Oil Trading Dashboard
-          </Typography>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', fontSize: '1.5rem' }}>
+              X Dashboard
+            </Typography>
+            <Typography variant="caption" sx={{ fontSize: '0.7rem', opacity: 0.7, fontStyle: 'italic' }}>
+              made by unispark
+            </Typography>
+          </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip 

@@ -37,6 +37,7 @@ import {
   Add as AddIcon,
   FilterList as FilterIcon,
   Check as ApproveIcon,
+  PlayArrow as ActivateIcon,
   Close as RejectIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
@@ -51,10 +52,33 @@ interface SalesContractsListProps {
   onEdit: (contractId: string) => void;
   onView: (contractId: string) => void;
   onCreate: () => void;
+  onActivate?: (contractId: string) => Promise<void>;
 }
 
-const getStatusColor = (status: ContractStatus): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
-  switch (status) {
+// Convert string status from API to numeric enum (backend returns strings due to JsonStringEnumConverter)
+const normalizeStatus = (status: any): ContractStatus => {
+  if (typeof status === 'string') {
+    switch (status) {
+      case 'Draft':
+        return ContractStatus.Draft;
+      case 'PendingApproval':
+        return ContractStatus.PendingApproval;
+      case 'Active':
+        return ContractStatus.Active;
+      case 'Completed':
+        return ContractStatus.Completed;
+      case 'Cancelled':
+        return ContractStatus.Cancelled;
+      default:
+        return ContractStatus.Draft;
+    }
+  }
+  return status;
+};
+
+const getStatusColor = (status: ContractStatus | string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  const normalizedStatus = normalizeStatus(status);
+  switch (normalizedStatus) {
     case ContractStatus.Draft:
       return 'default';
     case ContractStatus.PendingApproval:
@@ -100,10 +124,11 @@ const getQuantityUnitLabel = (unit: number | string): string => {
   }
 };
 
-export const SalesContractsList: React.FC<SalesContractsListProps> = ({ 
-  onEdit, 
-  onView, 
-  onCreate 
+export const SalesContractsList: React.FC<SalesContractsListProps> = ({
+  onEdit,
+  onView,
+  onCreate,
+  onActivate
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -392,11 +417,26 @@ export const SalesContractsList: React.FC<SalesContractsListProps> = ({
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Edit">
-                    <IconButton size="small" onClick={() => onEdit(contract.id)}>
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
+                  {(normalizeStatus(contract.status) === ContractStatus.Draft ||
+                    normalizeStatus(contract.status) === ContractStatus.PendingApproval) && (
+                    <Tooltip title="Edit">
+                      <IconButton size="small" onClick={() => onEdit(contract.id)}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {(normalizeStatus(contract.status) === ContractStatus.Draft ||
+                    normalizeStatus(contract.status) === ContractStatus.PendingApproval) && onActivate && (
+                    <Tooltip title="Activate Contract">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => onActivate(contract.id)}
+                      >
+                        <ActivateIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Tooltip title="More actions">
                     <IconButton size="small" onClick={(e) => handleMenuClick(e, contract.id)}>
                       <MoreIcon />

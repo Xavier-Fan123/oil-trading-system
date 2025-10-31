@@ -383,7 +383,7 @@ export const ShippingOperationsList: React.FC<ShippingOperationsListProps> = ({
                 </TableCell>
                 <TableCell align="right">
                   <Typography variant="body2">
-                    {operation.plannedQuantity.toLocaleString()} {operation.quantityUnit}
+                    {operation.plannedQuantity.toLocaleString()} {operation.plannedQuantityUnit}
                   </Typography>
                 </TableCell>
                 <TableCell>

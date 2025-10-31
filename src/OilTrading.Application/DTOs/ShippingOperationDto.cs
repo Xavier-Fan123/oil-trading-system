@@ -11,6 +11,8 @@ public class ShippingOperationDto
     public string PlannedQuantityUnit { get; set; } = string.Empty;
     public decimal? ActualQuantity { get; set; }
     public string? ActualQuantityUnit { get; set; }
+    public string? LoadPort { get; set; }
+    public string? DischargePort { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime? LaycanStart { get; set; }
     public DateTime? LaycanEnd { get; set; }
@@ -18,10 +20,10 @@ public class ShippingOperationDto
     public DateTime? BillOfLadingDate { get; set; }
     public DateTime? DischargeDate { get; set; }
     public string? Notes { get; set; }
-    
+
     // Related pricing events
     public ICollection<PricingEventSummaryDto> PricingEvents { get; set; } = new List<PricingEventSummaryDto>();
-    
+
     // Audit Information
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
@@ -32,14 +34,25 @@ public class ShippingOperationDto
 public class ShippingOperationSummaryDto
 {
     public Guid Id { get; set; }
+    public string? ShippingNumber { get; set; }
+    public Guid ContractId { get; set; }
+    public string ContractNumber { get; set; } = string.Empty;
     public string VesselName { get; set; } = string.Empty;
+    public string? ImoNumber { get; set; }
+    public string? LoadPort { get; set; }
+    public string? DischargePort { get; set; }
     public string Status { get; set; } = string.Empty;
     public decimal PlannedQuantity { get; set; }
     public string PlannedQuantityUnit { get; set; } = string.Empty;
     public decimal? ActualQuantity { get; set; }
+    public string? ActualQuantityUnit { get; set; }
     public DateTime? LaycanStart { get; set; }
     public DateTime? LaycanEnd { get; set; }
+    public DateTime? NorDate { get; set; }
     public DateTime? BillOfLadingDate { get; set; }
+    public DateTime? DischargeDate { get; set; }
+    public DateTime? LoadPortETA { get; set; }
+    public DateTime? DischargePortETA { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

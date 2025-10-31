@@ -113,14 +113,25 @@ public class GetShippingOperationsQueryHandler : IRequestHandler<GetShippingOper
         var operationDtos = shippingOperations.Items.Select(operation => new ShippingOperationSummaryDto
         {
             Id = operation.Id,
+            ShippingNumber = operation.ShippingNumber,
+            ContractId = operation.ContractId,
+            ContractNumber = operation.PurchaseContract?.ContractNumber.Value ?? operation.SalesContract?.ContractNumber.Value ?? string.Empty,
             VesselName = operation.VesselName,
+            ImoNumber = operation.IMONumber,
+            LoadPort = operation.LoadPort,
+            DischargePort = operation.DischargePort,
             Status = operation.Status.ToString(),
             PlannedQuantity = operation.PlannedQuantity.Value,
             PlannedQuantityUnit = operation.PlannedQuantity.Unit.ToString(),
             ActualQuantity = operation.ActualQuantity?.Value,
+            ActualQuantityUnit = operation.ActualQuantity?.Unit.ToString(),
             LaycanStart = operation.LoadPortETA,
             LaycanEnd = operation.DischargePortETA,
+            NorDate = operation.NoticeOfReadinessDate,
             BillOfLadingDate = operation.BillOfLadingDate,
+            DischargeDate = operation.CertificateOfDischargeDate,
+            LoadPortETA = operation.LoadPortETA,
+            DischargePortETA = operation.DischargePortETA,
             CreatedAt = operation.CreatedAt
         }).ToList();
 

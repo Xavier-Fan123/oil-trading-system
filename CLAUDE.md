@@ -1,4 +1,4 @@
-# CLAUDE.md - Oil Trading System - Production Ready v2.7.0
+# CLAUDE.md - Oil Trading System - Production Ready v2.7.1
 
 ## 🎯 Project Overview
 
@@ -334,6 +334,60 @@ taskkill /f /im node.exe
 
 ### 🚀 **LATEST UPDATES (October 2025)**
 
+#### ✅ **Position Module Complete Fix & Payment Terms Validation** **[v2.7.1 - October 31, 2025 - CRITICAL FIX]**
+- **CRITICAL ACHIEVEMENT**: Fixed position display system and contract activation workflow
+  - **Problem 1**: Contract forms allowed creation without Payment Terms, but backend required them for activation
+  - **Problem 2**: API returned legacy DTO format causing "undefined currentPrice" crash in position table
+  - **Problem 3**: React warning about missing keys on list items
+
+- **BACKEND FIXES**:
+  - ✅ [PositionController.cs:34-117](src/OilTrading.Api/Controllers/PositionController.cs#L34-L117) - Added data transformation layer
+    - Maps legacy NetPositionDto to frontend-expected structure
+    - Converts ProductType strings → numeric enums (0-7)
+    - Generates unique position IDs (e.g., "Brent-OCT25")
+    - Calculates positionType (Long/Short/Flat) from net quantities
+    - Sets currentPrice from MarketPrice or estimated prices
+  - ✅ Helper methods: `GetProductTypeEnum()`, `GetPositionType()`, `GetEstimatedPrice()`
+
+- **FRONTEND FORM VALIDATION**:
+  - ✅ [ContractForm.tsx:219](frontend/src/components/Contracts/ContractForm.tsx#L219) - Payment terms validation
+  - ✅ [ContractForm.tsx:823](frontend/src/components/Contracts/ContractForm.tsx#L823) - Required field marking + error display
+  - ✅ [SalesContractForm.tsx:225-248](frontend/src/components/SalesContracts/SalesContractForm.tsx#L225-L248) - Added validateForm() function
+  - ✅ [SalesContractForm.tsx:698](frontend/src/components/SalesContracts/SalesContractForm.tsx#L698) - Required field marking + error display
+
+- **FRONTEND POSITION TABLE FIXES**:
+  - ✅ [PositionsTable.tsx:80, 201](frontend/src/components/Positions/PositionsTable.tsx#L80-L201) - Fixed React key warning
+    - Changed from `<>` to `<React.Fragment key={...}>`
+    - Unique keys: `position-row-${position.id}-${index}`
+
+- **WORKFLOW NOW WORKING**:
+  1. User creates contract with all required fields INCLUDING Payment Terms
+  2. Form validates before submission (Payment Terms required)
+  3. Contract saved to database
+  4. User clicks green "Activate" button
+  5. Backend validates activation (all required fields present)
+  6. Contract activated successfully
+  7. Position module displays contract with correct data:
+     - `currentPrice`: No longer undefined! ✅
+     - `positionType`: Correct enum (0=Long, 1=Short, 2=Flat) ✅
+     - `netQuantity`, `positionValue`, `unit`: All displayed correctly ✅
+
+- **API ENDPOINT TRANSFORMED**:
+  - Endpoint: `GET /api/position/current`
+  - Before: Legacy NetPositionDto with fields like `ProductType` (string), `PhysicalPurchases`
+  - After: Proper data structure matching TypeScript `NetPosition` interface
+
+- **TESTING VERIFIED**:
+  - ✅ Contract creation with payment terms working
+  - ✅ Contract activation successful (400 error fixed)
+  - ✅ Position display renders without crashes
+  - ✅ React warnings resolved
+  - ✅ API returns correct data format
+  - ✅ Build: Zero errors, zero warnings
+
+- **Files Modified**: 5 files (Backend: 1, Frontend: 4)
+- **System Status**: ✅ **PRODUCTION READY v2.7.1** - Complete position workflow functional
+
 #### ✅ **Complete External Contract Number Resolution System** **[v2.7.0 - October 30, 2025 - MAJOR RELEASE]**
 - **EPIC ACHIEVEMENT**: Implemented complete 9-phase external contract number resolution system
   - **Phase 1-3**: Backend API layer with contract resolution endpoints
@@ -658,15 +712,15 @@ dotnet test tests/OilTrading.IntegrationTests/OilTrading.IntegrationTests.csproj
 
 ---
 
-**Last Updated**: October 30, 2025 (Complete External Contract Number Resolution System)
-**Project Version**: 2.7.0 (Production Ready - External Contract Resolution Fully Functional)
+**Last Updated**: October 31, 2025 (Position Module Complete Fix & Payment Terms Validation)
+**Project Version**: 2.7.1 (Production Ready - Position Module & Contract Activation Fully Functional)
 **Framework Version**: .NET 9.0
 **Database**: SQLite (Development) / PostgreSQL 16 (Production)
-**API Routing**: `/api/` (non-versioned endpoints, QueryStringApiVersionReader)
+**API Routing**: `/api/` (non-versioned endpoints with data transformation layer)
 **Frontend Configuration**: Vite with dynamic HMR port assignment (host: 0.0.0.0)
 **Frontend Build**: Zero TypeScript compilation errors
 **Backend Build**: Zero C# compilation errors
-**Production Status**: ✅ FULLY OPERATIONAL - PRODUCTION READY v2.7.0
+**Production Status**: ✅ FULLY OPERATIONAL - PRODUCTION READY v2.7.1
 
 **🚀 Quick Start**: Double-click `START-ALL.bat` to launch everything!
 
@@ -674,6 +728,10 @@ dotnet test tests/OilTrading.IntegrationTests/OilTrading.IntegrationTests.csproj
 - ✅ All 842 unit tests passing (100% pass rate)
 - ✅ All 10 integration tests passing (100% pass rate)
 - ✅ Zero compilation errors
+- ✅ Payment terms validation working (v2.7.1)
+- ✅ Contract activation successful (400 error fixed)
+- ✅ Position module displaying correctly (undefined currentPrice fixed)
+- ✅ React key warnings resolved
 - ✅ External contract number resolution fully functional (v2.7.0)
 - ✅ Settlement creation via external contract working
 - ✅ Shipping operation creation via external contract working

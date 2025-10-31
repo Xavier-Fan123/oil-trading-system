@@ -162,15 +162,22 @@ public class NetPositionService : INetPositionService
         var groupedData = new Dictionary<(string product, string month), NetPositionDto>();
         
         // Process purchase contracts
+        // Include both Draft and Active contracts for real-time position calculation
+        // Draft contracts represent ongoing negotiations and are critical for traders to see
+        // This follows commodity trading best practice: traders need visibility into pending positions
         foreach (var contract in purchaseContracts)
         {
-            if (contract.Status != Core.Entities.ContractStatus.Active) continue;
-            if (!contract.LaycanStart.HasValue) continue;
-            
+            // Include Draft and Active contracts - only skip Cancelled and Completed
+            if (contract.Status == Core.Entities.ContractStatus.Cancelled ||
+                contract.Status == Core.Entities.ContractStatus.Completed) continue;
+
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
-            var month = contract.LaycanStart.Value.ToString("MMMyy").ToUpper();
+
+            // Safely get Laycan month - use current month if not set (important for new contracts)
+            var monthDate = contract.LaycanStart ?? DateTime.UtcNow;
+            var month = monthDate.ToString("MMMyy").ToUpper();
             var key = (productType, month);
-            
+
             if (!groupedData.ContainsKey(key))
             {
                 groupedData[key] = new NetPositionDto
@@ -179,20 +186,26 @@ public class NetPositionService : INetPositionService
                     Month = month
                 };
             }
-            
+
             groupedData[key].PurchaseContractQuantity += contract.ContractQuantity.Value;
         }
         
         // Process sales contracts
+        // Include both Draft and Active contracts for real-time position calculation
+        // Draft contracts represent ongoing negotiations and are critical for traders to see
         foreach (var contract in salesContracts)
         {
-            if (contract.Status != Core.Entities.ContractStatus.Active) continue;
-            if (!contract.LaycanStart.HasValue) continue;
-            
+            // Include Draft and Active contracts - only skip Cancelled and Completed
+            if (contract.Status == Core.Entities.ContractStatus.Cancelled ||
+                contract.Status == Core.Entities.ContractStatus.Completed) continue;
+
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
-            var month = contract.LaycanStart.Value.ToString("MMMyy").ToUpper();
+
+            // Safely get Laycan month - use current month if not set (important for new contracts)
+            var monthDate = contract.LaycanStart ?? DateTime.UtcNow;
+            var month = monthDate.ToString("MMMyy").ToUpper();
             var key = (productType, month);
-            
+
             if (!groupedData.ContainsKey(key))
             {
                 groupedData[key] = new NetPositionDto
@@ -201,7 +214,7 @@ public class NetPositionService : INetPositionService
                     Month = month
                 };
             }
-            
+
             groupedData[key].SalesContractQuantity += contract.ContractQuantity.Value;
         }
         
@@ -348,8 +361,6 @@ public class NetPositionService : INetPositionService
         // Calculate P&L for purchase contracts
         foreach (var contract in purchaseContracts)
         {
-            if (contract.Status != Core.Entities.ContractStatus.Active) continue;
-            
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
             var currentPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
             var contractPrice = contract.PriceFormula?.FixedPrice ?? 0;
@@ -374,8 +385,6 @@ public class NetPositionService : INetPositionService
         // Calculate P&L for sales contracts
         foreach (var contract in salesContracts)
         {
-            if (contract.Status != Core.Entities.ContractStatus.Active) continue;
-            
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
             var currentPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
             var contractPrice = contract.PriceFormula?.FixedPrice ?? 0;
@@ -435,13 +444,13 @@ public class NetPositionService : INetPositionService
         var counterpartyExposures = new Dictionary<string, ExposureDto>();
         
         // Process purchase contracts
-        foreach (var contract in purchaseContracts.Where(c => c.Status == Core.Entities.ContractStatus.Active))
+        foreach (var contract in purchaseContracts)
         {
             var counterparty = contract.TradingPartner?.Name ?? "Unknown";
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
             var marketPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
             var exposure = contract.ContractQuantity.Value * marketPrice;
-            
+
             if (!counterpartyExposures.ContainsKey(counterparty))
             {
                 counterpartyExposures[counterparty] = new ExposureDto
@@ -450,15 +459,15 @@ public class NetPositionService : INetPositionService
                     Type = "Counterparty"
                 };
             }
-            
+
             counterpartyExposures[counterparty].TotalQuantity += contract.ContractQuantity.Value;
             counterpartyExposures[counterparty].TotalExposure += exposure;
             counterpartyExposures[counterparty].LongQuantity += contract.ContractQuantity.Value;
             counterpartyExposures[counterparty].ContractCount++;
         }
-        
+
         // Process sales contracts
-        foreach (var contract in salesContracts.Where(c => c.Status == Core.Entities.ContractStatus.Active))
+        foreach (var contract in salesContracts)
         {
             var counterparty = contract.TradingPartner?.Name ?? "Unknown";
             var productType = contract.Product?.Type.ToString() ?? "Unknown";

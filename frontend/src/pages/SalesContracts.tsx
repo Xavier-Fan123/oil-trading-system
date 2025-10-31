@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import { SalesContractsList } from '@/components/SalesContracts/SalesContractsList';
 import { SalesContractForm } from '@/components/SalesContracts/SalesContractForm';
+import { useActivateSalesContract } from '@/hooks/useSalesContracts';
 
 export const SalesContracts: React.FC = () => {
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'view'>('list');
   const [selectedContractId, setSelectedContractId] = useState<string | undefined>();
+
+  const activateMutation = useActivateSalesContract();
 
   const handleCreate = () => {
     setSelectedContractId(undefined);
@@ -32,6 +35,16 @@ export const SalesContracts: React.FC = () => {
     setSelectedContractId(undefined);
   };
 
+  const handleActivate = async (contractId: string) => {
+    try {
+      await activateMutation.mutateAsync(contractId);
+      // Refresh the list after activation
+      setView('list');
+    } catch (error) {
+      console.error('Error activating contract:', error);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {view === 'list' && (
@@ -39,6 +52,7 @@ export const SalesContracts: React.FC = () => {
           onCreate={handleCreate}
           onEdit={handleEdit}
           onView={handleView}
+          onActivate={handleActivate}
         />
       )}
       

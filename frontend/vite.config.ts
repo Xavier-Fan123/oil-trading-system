@@ -16,8 +16,7 @@ export default defineConfig({
     open: false,
     hmr: {
       overlay: false,
-      host: 'localhost',
-      port: 3002,
+      port: 3001,
       protocol: 'ws',
     },
     watch: {

@@ -414,7 +414,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
               <Tabs
                 value={contractSelectionTab === 'external' ? 1 : 0}
-                onChange={(e, newValue) => setContractSelectionTab(newValue === 1 ? 'external' : 'dropdown')}
+                onChange={(_e, newValue) => setContractSelectionTab(newValue === 1 ? 'external' : 'dropdown')}
               >
                 <Tab label="Select from Dropdown" />
                 <Tab label="Resolve by External Number" />

@@ -118,6 +118,12 @@ public class ContractSettlementConfiguration : IEntityTypeConfiguration<Contract
         builder.Property(e => e.FinalizedBy)
                .HasMaxLength(100);
 
+        // Concurrency control - RowVersion is automatically managed by the database
+        builder.Property(e => e.RowVersion)
+               .IsRowVersion()
+               .HasColumnType("BLOB")
+               .HasDefaultValueSql("X'00000000000000000000000000000001'");
+
         // Navigation properties
         builder.HasOne(e => e.PurchaseContract)
                .WithMany()

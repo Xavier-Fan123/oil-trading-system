@@ -89,6 +89,11 @@ export const salesContractsApi = {
   // Reject sales contract
   reject: async (id: string, reason: string): Promise<void> => {
     await api.post(`/sales-contracts/${id}/reject`, { reason });
+  },
+
+  // Activate sales contract
+  activate: async (id: string): Promise<void> => {
+    await api.post(`/sales-contracts/${id}/activate`);
   }
 };
 

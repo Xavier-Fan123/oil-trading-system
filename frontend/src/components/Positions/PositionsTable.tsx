@@ -70,13 +70,14 @@ const getPositionTypeIcon = (type: PositionType) => {
   }
 };
 
-const PositionRow: React.FC<{ position: NetPosition; index: number }> = ({ 
-  position
+const PositionRow: React.FC<{ position: NetPosition; index: number }> = ({
+  position,
+  index
 }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <>
+    <React.Fragment key={`position-row-${position.id}-${index}`}>
       <TableRow hover>
         <TableCell>
           <IconButton 
@@ -197,7 +198,7 @@ const PositionRow: React.FC<{ position: NetPosition; index: number }> = ({
           </Collapse>
         </TableCell>
       </TableRow>
-    </>
+    </React.Fragment>
   );
 };
 

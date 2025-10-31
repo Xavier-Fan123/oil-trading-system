@@ -11,6 +11,7 @@ public interface ICacheInvalidationService
     Task InvalidateMarketDataCacheAsync();
     Task InvalidateDashboardCacheAsync();
     Task InvalidateReferenceDataCacheAsync();
+    Task InvalidatePositionCacheAsync();
 }
 
 public class CacheInvalidationService : ICacheInvalidationService
@@ -150,6 +151,27 @@ public class CacheInvalidationService : ICacheInvalidationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error invalidating reference data cache");
+        }
+    }
+
+    public async Task InvalidatePositionCacheAsync()
+    {
+        try
+        {
+            // Remove position-related caches
+            // This is critical: when contracts are activated or created,
+            // position cache must be invalidated so new data appears immediately
+            await _cacheService.RemovePatternAsync("positions:*");
+            await _cacheService.RemoveAsync("net-positions");
+            await _cacheService.RemoveAsync("position-summary");
+            await _cacheService.RemovePatternAsync("position-pnl:*");
+            await _cacheService.RemovePatternAsync("position-exposure:*");
+
+            _logger.LogInformation("Position cache invalidated");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error invalidating position cache");
         }
     }
 }

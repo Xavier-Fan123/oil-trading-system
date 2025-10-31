@@ -2,19 +2,23 @@ using MediatR;
 using OilTrading.Core.Repositories;
 using OilTrading.Core.Common;
 using OilTrading.Application.Common.Exceptions;
+using OilTrading.Application.Services;
 
 namespace OilTrading.Application.Commands.PurchaseContracts;
 
 public class ActivatePurchaseContractCommandHandler : IRequestHandler<ActivatePurchaseContractCommand, Unit>
 {
     private readonly IPurchaseContractRepository _purchaseContractRepository;
+    private readonly ICacheInvalidationService _cacheInvalidationService;
     private readonly IUnitOfWork _unitOfWork;
 
     public ActivatePurchaseContractCommandHandler(
         IPurchaseContractRepository purchaseContractRepository,
+        ICacheInvalidationService cacheInvalidationService,
         IUnitOfWork unitOfWork)
     {
         _purchaseContractRepository = purchaseContractRepository;
+        _cacheInvalidationService = cacheInvalidationService;
         _unitOfWork = unitOfWork;
     }
 
@@ -35,6 +39,11 @@ public class ActivatePurchaseContractCommandHandler : IRequestHandler<ActivatePu
 
         // Save changes
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Invalidate position-related caches since contract is now Active
+        // This ensures new contract immediately shows in position calculations
+        await _cacheInvalidationService.InvalidatePurchaseContractCacheAsync();
+        await _cacheInvalidationService.InvalidatePositionCacheAsync();
 
         return Unit.Value;
     }

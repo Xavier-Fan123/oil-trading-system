@@ -119,10 +119,10 @@ export const isValidContractType = (contractType: string | undefined): boolean =
 /**
  * Gets a human-readable validation error message
  * @param fieldName - Name of the field that failed validation
- * @param reason - The reason for validation failure
+ * @param _reason - The reason for validation failure
  * @returns A formatted error message
  */
-export const getValidationErrorMessage = (fieldName: string, reason?: string): string => {
+export const getValidationErrorMessage = (fieldName: string, _reason?: string): string => {
   const messages: Record<string, string> = {
     externalContractNumber: 'External contract number must be 1-100 characters and contain only letters, numbers, hyphens, underscores, or dots',
     contractId: 'Please select a valid contract',

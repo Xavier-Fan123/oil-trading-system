@@ -111,15 +111,17 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
         vesselName: existingOperation.vesselName || '',
         imoNumber: existingOperation.imoNumber || '',
         contractId: existingOperation.contractId || '',
-        plannedQuantity: existingOperation.plannedQuantity?.value?.toString() || '',
-        quantityUnit: existingOperation.plannedQuantity?.unit || 'MT',
-        loadPortETA: existingOperation.loadPortATA ? 
-          new Date(existingOperation.loadPortATA).toISOString().slice(0, 16) : '',
-        dischargePortETA: existingOperation.dischargePortATA ? 
-          new Date(existingOperation.dischargePortATA).toISOString().slice(0, 16) : '',
+        plannedQuantity: typeof existingOperation.plannedQuantity === 'number'
+          ? existingOperation.plannedQuantity.toString()
+          : '',
+        quantityUnit: existingOperation.plannedQuantityUnit || 'MT',
+        loadPortETA: existingOperation.laycanStart ?
+          new Date(existingOperation.laycanStart).toISOString().slice(0, 16) : '',
+        dischargePortETA: existingOperation.laycanEnd ?
+          new Date(existingOperation.laycanEnd).toISOString().slice(0, 16) : '',
         loadPort: existingOperation.loadPort || '',
         dischargePort: existingOperation.dischargePort || '',
-        charterParty: existingOperation.charterParty || '',
+        charterParty: '',
         notes: existingOperation.notes || ''
       });
     } else if (!isEditing) {
@@ -211,9 +213,9 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           operation: updateData
         });
       } else {
-        // Create request - must include loadPortETA and dischargePortETA as required fields
-        const loadPortETA = formData.loadPortETA ? new Date(formData.loadPortETA).toISOString() : '';
-        const dischargePortETA = formData.dischargePortETA ? new Date(formData.dischargePortETA).toISOString() : '';
+        // Create request - must include laycanStart and laycanEnd as required fields
+        const laycanStart = formData.loadPortETA ? new Date(formData.loadPortETA).toISOString() : '';
+        const laycanEnd = formData.dischargePortETA ? new Date(formData.dischargePortETA).toISOString() : '';
 
         const createData: CreateShippingOperationDto = {
           contractId: formData.contractId,
@@ -221,8 +223,10 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
           imoNumber: formData.imoNumber || undefined,
           plannedQuantity: Number(formData.plannedQuantity),
           plannedQuantityUnit: formData.quantityUnit,
-          laycanStart: loadPortETA || undefined,
-          laycanEnd: dischargePortETA || undefined,
+          laycanStart: laycanStart || undefined,
+          laycanEnd: laycanEnd || undefined,
+          loadPort: formData.loadPort || undefined,
+          dischargePort: formData.dischargePort || undefined,
           notes: formData.notes || undefined,
         };
 
@@ -232,6 +236,8 @@ export const ShippingOperationForm: React.FC<ShippingOperationFormProps> = ({
         console.log('Planned Quantity Type:', typeof createData.plannedQuantity, 'Value:', createData.plannedQuantity);
         console.log('Laycan Start:', createData.laycanStart);
         console.log('Laycan End:', createData.laycanEnd);
+        console.log('Load Port:', createData.loadPort);
+        console.log('Discharge Port:', createData.dischargePort);
         console.log('Contract ID:', createData.contractId);
         console.log('=========================================');
 

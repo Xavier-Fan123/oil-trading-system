@@ -113,6 +113,27 @@ public class PurchaseContractMappingProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt));
 
         // Shipping Operation mappings
+        CreateMap<ShippingOperation, ShippingOperationDto>()
+            .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => src.PurchaseContract != null ? src.PurchaseContract.ContractNumber.Value : (src.SalesContract != null ? src.SalesContract.ContractNumber.Value : "")))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+            .ForMember(dest => dest.PlannedQuantity, opt => opt.MapFrom(src => src.PlannedQuantity.Value))
+            .ForMember(dest => dest.PlannedQuantityUnit, opt => opt.MapFrom(src => src.PlannedQuantity.Unit.ToString()))
+            .ForMember(dest => dest.ActualQuantity, opt => opt.MapFrom(src => src.ActualQuantity != null ? src.ActualQuantity.Value : (decimal?)null))
+            .ForMember(dest => dest.ActualQuantityUnit, opt => opt.MapFrom(src => src.ActualQuantity != null ? src.ActualQuantity.Unit.ToString() : null))
+            // Map date fields
+            .ForMember(dest => dest.LaycanStart, opt => opt.MapFrom(src => src.LoadPortETA))
+            .ForMember(dest => dest.LaycanEnd, opt => opt.MapFrom(src => src.DischargePortETA))
+            .ForMember(dest => dest.NorDate, opt => opt.MapFrom(src => src.NoticeOfReadinessDate))
+            .ForMember(dest => dest.BillOfLadingDate, opt => opt.MapFrom(src => src.BillOfLadingDate))
+            .ForMember(dest => dest.DischargeDate, opt => opt.MapFrom(src => src.CertificateOfDischargeDate))
+            // Map port information
+            .ForMember(dest => dest.LoadPort, opt => opt.MapFrom(src => src.LoadPort))
+            .ForMember(dest => dest.DischargePort, opt => opt.MapFrom(src => src.DischargePort))
+            // Map notes and audit info
+            .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
+            .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom(src => src.CreatedBy))
+            .ForMember(dest => dest.UpdatedBy, opt => opt.MapFrom(src => src.UpdatedBy));
+
         CreateMap<ShippingOperation, ShippingOperationSummaryDto>()
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
             .ForMember(dest => dest.PlannedQuantity, opt => opt.MapFrom(src => src.PlannedQuantity.Value))

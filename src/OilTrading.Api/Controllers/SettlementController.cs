@@ -7,6 +7,7 @@ using OilTrading.Core.Entities;
 using OilTrading.Api.Attributes;
 using OilTrading.Core.Common;
 using System.ComponentModel.DataAnnotations;
+using OilTrading.Application.Common.Exceptions;
 
 namespace OilTrading.Api.Controllers;
 
@@ -353,6 +354,15 @@ public class SettlementController : ControllerBase
 
             return CreatedAtAction(nameof(GetById), new { settlementId = settlement.Id }, result);
         }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Contract not found for settlement creation: {ContractId}", dto.ContractId);
+            return NotFound(new CreateSettlementResultDto
+            {
+                IsSuccessful = false,
+                ErrorMessage = ex.Message
+            });
+        }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Invalid argument for settlement creation: {ContractId}", dto.ContractId);
@@ -491,6 +501,15 @@ public class SettlementController : ControllerBase
 
             return CreatedAtAction(nameof(GetById), new { settlementId = settlement.Id }, result);
         }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Contract not found for settlement creation by external number: {ExternalNumber}", dto.ExternalContractNumber);
+            return NotFound(new CreateSettlementResultDto
+            {
+                IsSuccessful = false,
+                ErrorMessage = ex.Message
+            });
+        }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Invalid argument for settlement creation: {ExternalNumber}", dto.ExternalContractNumber);
@@ -577,6 +596,11 @@ public class SettlementController : ControllerBase
 
             return Ok(updatedSettlement);
         }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Contract not found for settlement update: {SettlementId}", settlementId);
+            return NotFound(ex.Message);
+        }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Invalid argument for settlement update: {SettlementId}", settlementId);
@@ -590,7 +614,7 @@ public class SettlementController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating settlement: {SettlementId}", settlementId);
-            return StatusCode(StatusCodes.Status500InternalServerError, 
+            return StatusCode(StatusCodes.Status500InternalServerError,
                 "An error occurred while updating the settlement");
         }
     }
@@ -633,6 +657,11 @@ public class SettlementController : ControllerBase
 
             return Ok(recalculatedSettlement);
         }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Contract not found for settlement recalculation: {SettlementId}", settlementId);
+            return NotFound(ex.Message);
+        }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Invalid argument for settlement recalculation: {SettlementId}", settlementId);
@@ -646,7 +675,7 @@ public class SettlementController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recalculating settlement: {SettlementId}", settlementId);
-            return StatusCode(StatusCodes.Status500InternalServerError, 
+            return StatusCode(StatusCodes.Status500InternalServerError,
                 "An error occurred while recalculating the settlement");
         }
     }
@@ -689,6 +718,11 @@ public class SettlementController : ControllerBase
 
             return Ok(finalizedSettlement);
         }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Contract not found for settlement finalization: {SettlementId}", settlementId);
+            return NotFound(ex.Message);
+        }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Invalid argument for settlement finalization: {SettlementId}", settlementId);
@@ -702,7 +736,7 @@ public class SettlementController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error finalizing settlement: {SettlementId}", settlementId);
-            return StatusCode(StatusCodes.Status500InternalServerError, 
+            return StatusCode(StatusCodes.Status500InternalServerError,
                 "An error occurred while finalizing the settlement");
         }
     }

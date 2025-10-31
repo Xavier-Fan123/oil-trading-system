@@ -96,13 +96,27 @@ export const useApproveSalesContract = () => {
 // Reject sales contract
 export const useRejectSalesContract = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => 
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       salesContractsApi.reject(id, reason),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['salesContracts'] });
       queryClient.invalidateQueries({ queryKey: ['salesContract', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['salesContractsSummary'] });
+    },
+  });
+};
+
+// Activate sales contract
+export const useActivateSalesContract = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => salesContractsApi.activate(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['salesContracts'] });
+      queryClient.invalidateQueries({ queryKey: ['salesContract', id] });
       queryClient.invalidateQueries({ queryKey: ['salesContractsSummary'] });
     },
   });

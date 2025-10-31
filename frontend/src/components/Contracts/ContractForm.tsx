@@ -216,10 +216,20 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     if (!formData.quantity || formData.quantity <= 0) newErrors.quantity = 'Valid quantity is required';
     if (!formData.loadPort.trim()) newErrors.loadPort = 'Load port is required';
     if (!formData.dischargePort.trim()) newErrors.dischargePort = 'Discharge port is required';
+    if (!formData.paymentTerms || !formData.paymentTerms.trim()) newErrors.paymentTerms = 'Payment terms are required';
     if (formData.pricingType === PricingType.Fixed && (!formData.fixedPrice || formData.fixedPrice <= 0)) {
       newErrors.fixedPrice = 'Fixed price is required for fixed pricing';
     }
-    if (formData.laycanStart >= formData.laycanEnd) {
+
+    // Validate Laycan dates - check for valid Date objects
+    if (!formData.laycanStart || !(formData.laycanStart instanceof Date) || isNaN(formData.laycanStart.getTime())) {
+      newErrors.laycanStart = 'Valid Laycan start date is required';
+    }
+    if (!formData.laycanEnd || !(formData.laycanEnd instanceof Date) || isNaN(formData.laycanEnd.getTime())) {
+      newErrors.laycanEnd = 'Valid Laycan end date is required';
+    }
+    if (formData.laycanStart instanceof Date && formData.laycanEnd instanceof Date &&
+        formData.laycanStart >= formData.laycanEnd) {
       newErrors.laycanEnd = 'Laycan end must be after laycan start';
     }
 
@@ -271,6 +281,16 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         const pricingTypeNames: Record<number, string> = { 1: 'Fixed', 2: 'Floating', 3: 'Formula' };
         const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP' };
         const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD' };
+
+        // Ensure Laycan dates are valid before submission
+        if (!formData.laycanStart || !(formData.laycanStart instanceof Date) || isNaN(formData.laycanStart.getTime())) {
+          setErrors(prev => ({ ...prev, laycanStart: 'Valid Laycan start date is required' }));
+          return;
+        }
+        if (!formData.laycanEnd || !(formData.laycanEnd instanceof Date) || isNaN(formData.laycanEnd.getTime())) {
+          setErrors(prev => ({ ...prev, laycanEnd: 'Valid Laycan end date is required' }));
+          return;
+        }
 
         const createData = {
           externalContractNumber: formData.externalContractNumber || undefined,
@@ -800,11 +820,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
-                        label="Payment Terms"
+                        label="Payment Terms *"
                         multiline
                         rows={2}
                         value={formData.paymentTerms || ''}
                         onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
+                        error={!!errors.paymentTerms}
+                        helperText={errors.paymentTerms || "e.g., 'TT 30 days after B/L' or 'LC at sight'"}
                       />
                     </Grid>
                   </Grid>

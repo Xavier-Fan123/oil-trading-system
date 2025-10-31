@@ -222,8 +222,35 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.customerId) newErrors.customerId = 'Customer is required';
+    if (!formData.productId) newErrors.productId = 'Product is required';
+    if (!formData.traderId) newErrors.traderId = 'Trader is required';
+    if (!formData.quantity || formData.quantity <= 0) newErrors.quantity = 'Valid quantity is required';
+    if (!formData.loadPort.trim()) newErrors.loadPort = 'Load port is required';
+    if (!formData.dischargePort.trim()) newErrors.dischargePort = 'Discharge port is required';
+    if (!formData.paymentTerms || !formData.paymentTerms.trim()) newErrors.paymentTerms = 'Payment terms are required';
+    if (formData.pricingType === PricingType.Fixed && (!formData.fixedPrice || formData.fixedPrice <= 0)) {
+      newErrors.fixedPrice = 'Fixed price is required for fixed pricing';
+    }
+
+    // Validate Laycan dates
+    if (!laycanStart) newErrors.laycanStart = 'Laycan start date is required';
+    if (!laycanEnd) newErrors.laycanEnd = 'Laycan end date is required';
+    if (laycanStart && laycanEnd && laycanStart >= laycanEnd) {
+      newErrors.laycanEnd = 'Laycan end must be after laycan start';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) return;
 
     // Convert enums to string names for API - using correct enum values
     // Frontend enums are 1-based: ContractType.CARGO = 1, EXW = 2, DEL = 3
@@ -668,11 +695,13 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
                       <Grid item xs={12}>
                         <TextField
                           fullWidth
-                          label="Payment Terms"
+                          label="Payment Terms *"
                           multiline
                           rows={2}
                           value={formData.paymentTerms || ''}
                           onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
+                          error={!!errors.paymentTerms}
+                          helperText={errors.paymentTerms || "e.g., 'TT 30 days after B/L' or 'LC at sight'"}
                         />
                       </Grid>
                     </Grid>
