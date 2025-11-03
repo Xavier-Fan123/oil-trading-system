@@ -1,8 +1,8 @@
-# Oil Trading & Risk Management System v2.7.1
+# Oil Trading & Risk Management System v2.8.0
 
-An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, and full settlement/shipping operation management.
+An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, comprehensive settlement management, and full shipping operation capabilities.
 
-**Latest Update (Oct 31, 2025)**: Position module completely fixed! Contract activation workflow now working - form validation ensures Payment Terms are set before creation, and position display renders correctly with all required fields including currentPrice. External contract number resolution fully functional since v2.7.0.
+**Latest Update (Oct 31, 2025)**: Settlement Module Redesign Complete! New v2.8.0 implements complete purchase and sales settlement workflows with separate CQRS commands/queries, dedicated REST controllers, comprehensive validation, and one-to-many settlement support. Full lifecycle: Create → Calculate → Approve → Finalize with audit trail.
 
 ## 🚀 Quick Start
 
@@ -120,9 +120,9 @@ The web application will be available at `http://localhost:3000`
 ### 📍 Application URLs
 
 - **Main Dashboard**: http://localhost:3000
-- **Purchase Contracts**: http://localhost:3000/purchase-contracts  
+- **Purchase Contracts**: http://localhost:3000/purchase-contracts
 - **Sales Contracts**: http://localhost:3000/sales-contracts
-- **Contract Settlements**: http://localhost:3000/settlements (NEW v2.2.0)
+- **Contract Settlements**: http://localhost:3000/settlements (NEW v2.8.0 - Complete redesign)
 - **Trade Groups**: http://localhost:3000/trade-groups
 - **Tags Management**: http://localhost:3000/tags
 - **API Documentation**: http://localhost:5000/swagger
@@ -157,11 +157,16 @@ docker-compose up -d --build
 - **Products** - Oil products and specifications
 - **PurchaseContracts** - Purchase agreements with suppliers
 - **SalesContracts** - Sales agreements with customers
-- **TradeGroups** - Multi-strategy trading group management (NEW ✨)
-- **Tags** - Trading strategy classification and risk management tags (UPDATED ✨)
+- **PurchaseSettlements** - Settlement management for purchase contracts (NEW v2.8.0 ✨)
+- **SalesSettlements** - Settlement management for sales contracts (NEW v2.8.0 ✨)
+- **TradeGroups** - Multi-strategy trading group management
+- **Tags** - Trading strategy classification and risk management tags
 
 ### Key Features
 
+- **Settlement Management (v2.8.0)** - Complete purchase and sales settlement workflows with CQRS pattern
+- **Settlement Lifecycle** - Create → Calculate → Approve → Finalize with full audit trail
+- **One-to-Many Settlements** - Multiple settlements per contract support
 - **TradeGroup Management** - Advanced multi-leg trading strategies with 9 strategy types
 - **Futures-Spot Integration** - Complete integration between paper and physical positions
 - **Risk Management** - Portfolio VaR, stress testing, and risk limit monitoring
@@ -215,6 +220,127 @@ npm run lint
 
 # Type check
 npx tsc --noEmit
+```
+
+## 📋 Settlement Management API (v2.8.0)
+
+### Purchase Settlement Endpoints
+
+Purchase settlements manage settlement operations for purchase contracts.
+
+```
+GET    /api/purchase-settlements/{settlementId}           - Get settlement details
+GET    /api/purchase-settlements/contract/{contractId}    - Get all settlements for contract
+POST   /api/purchase-settlements                          - Create new settlement
+POST   /api/purchase-settlements/{settlementId}/calculate - Calculate settlement amounts
+POST   /api/purchase-settlements/{settlementId}/approve   - Approve settlement
+POST   /api/purchase-settlements/{settlementId}/finalize  - Finalize settlement (lock for editing)
+```
+
+#### Create Purchase Settlement Request
+
+```json
+{
+  "purchaseContractId": "550e8400-e29b-41d4-a716-446655440000",
+  "externalContractNumber": "EXT-2025-001",
+  "documentNumber": "DOC-2025-001",
+  "documentType": "Invoice",
+  "documentDate": "2025-11-01T00:00:00Z"
+}
+```
+
+#### Calculate Settlement Request
+
+```json
+{
+  "calculationQuantityMT": 1000.0,
+  "calculationQuantityBBL": 5000.0,
+  "benchmarkAmount": 85.50,
+  "adjustmentAmount": 2.25,
+  "calculationNote": "Settlement calculation for November 2025"
+}
+```
+
+### Sales Settlement Endpoints
+
+Sales settlements manage settlement operations for sales contracts.
+
+```
+GET    /api/sales-settlements/{settlementId}             - Get settlement details
+GET    /api/sales-settlements/contract/{contractId}      - Get all settlements for contract
+POST   /api/sales-settlements                            - Create new settlement
+POST   /api/sales-settlements/{settlementId}/calculate   - Calculate settlement amounts
+POST   /api/sales-settlements/{settlementId}/approve     - Approve settlement
+POST   /api/sales-settlements/{settlementId}/finalize    - Finalize settlement (lock for editing)
+```
+
+#### Create Sales Settlement Request
+
+```json
+{
+  "salesContractId": "660e8400-e29b-41d4-a716-446655440001",
+  "externalContractNumber": "EXT-2025-002",
+  "documentNumber": "DOC-2025-002",
+  "documentType": "Invoice",
+  "documentDate": "2025-11-01T00:00:00Z"
+}
+```
+
+### Settlement Response
+
+```json
+{
+  "id": "770e8400-e29b-41d4-a716-446655440002",
+  "contractId": "550e8400-e29b-41d4-a716-446655440000",
+  "settlementNumber": "SETTLE-2025-001",
+  "status": "Approved",
+  "calculationQuantityMT": 1000.0,
+  "calculationQuantityBBL": 5000.0,
+  "benchmarkAmount": 85.50,
+  "adjustmentAmount": 2.25,
+  "totalAmount": 432750.00,
+  "currency": "USD",
+  "createdBy": "trader@example.com",
+  "createdDate": "2025-11-01T10:00:00Z",
+  "approvedBy": "manager@example.com",
+  "approvedDate": "2025-11-01T11:00:00Z"
+}
+```
+
+### Settlement Workflow
+
+1. **Create** - Initialize settlement with contract reference and document details
+2. **Calculate** - Compute settlement amounts based on quantities and prices
+3. **Approve** - Validate settlement and approve for finalization
+4. **Finalize** - Lock settlement preventing further edits, create audit trail
+
+### Validation Rules
+
+- **Quantities**: Both MT and BBL must be non-negative; at least one must be greater than zero
+- **Benchmark Amount**: Must be positive (> 0)
+- **Document Date**: Cannot be in the future
+- **Document Type**: Must be valid enum value (Invoice, BillOfLading, etc.)
+- **Contract Reference**: Must reference existing purchase or sales contract
+
+### Error Responses
+
+```json
+{
+  "status": 400,
+  "error": "Validation Error",
+  "details": [
+    "Calculation quantity MT must be non-negative",
+    "Benchmark amount must be greater than zero"
+  ]
+}
+```
+
+```json
+{
+  "status": 404,
+  "error": "Not Found",
+  "message": "Settlement not found with ID: 770e8400-e29b-41d4-a716-446655440002"
+}
 ```
 
 ## 🧪 Testing
@@ -314,8 +440,12 @@ For support and questions:
 
 ### ✅ Completed (October 2025)
 
+- [x] **Settlement Module Redesign (v2.8.0)** - Complete CQRS implementation with dual controllers, separate services, and comprehensive validation
+- [x] **Position Module Fix (v2.7.1)** - Payment terms validation and position display rendering fully functional
+- [x] **Risk Override Auto-Retry (v2.7.2)** - Automatic header-based retry for concentration limit overrides
+- [x] **External Contract Resolution (v2.7.0)** - Complete system for resolving external contract numbers with GUID mapping
 - [x] **API Routing Fix (v2.6.1)** - Fixed mixed API versioning, all endpoints working ✨
-- [x] **100% Test Pass Rate (v2.6.0)** - 100/100 unit tests passing, 85.1% coverage
+- [x] **100% Test Pass Rate (v2.6.0)** - 842/842 unit tests passing, 85.1% coverage
 - [x] **Contract Matching System (v2.3)** - Manual matching for natural hedging
 - [x] **Frontend-Backend Alignment (v2.4)** - Perfect DTO and API alignment
 - [x] **TradeGroup Management System** - Complete multi-strategy trading group management
