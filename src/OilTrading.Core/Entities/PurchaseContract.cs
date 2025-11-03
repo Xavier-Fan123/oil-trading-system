@@ -113,6 +113,11 @@ public class PurchaseContract : BaseEntity
     public ICollection<ContractTag> ContractTags { get; private set; } = new List<ContractTag>();
     public ICollection<ContractMatching> ContractMatchings { get; private set; } = new List<ContractMatching>();
 
+    // Settlement relationships (one-to-many)
+    // One PurchaseContract can have multiple PurchaseSettlements
+    // Supporting term contracts with multiple delivery periods and partial shipments
+    public ICollection<PurchaseSettlement> PurchaseSettlements { get; private set; } = new List<PurchaseSettlement>();
+
     // Business Methods
     public void UpdatePricing(PriceFormula priceFormula, Money contractValue, Money? premium = null, Money? discount = null)
     {

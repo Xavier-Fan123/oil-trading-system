@@ -20,7 +20,13 @@
       "Bash(dotnet clean:*)",
       "Bash(Start-Sleep -Seconds 3)",
       "Bash(ping:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(where npm:*)",
+      "Bash(\"C:\\Users\\itg\\nodejs\\npm.cmd\" run build)",
+      "Bash(find:*)",
+      "Bash(git rm:*)",
+      "Bash(del:*)"
     ],
     "deny": [],
     "ask": [],

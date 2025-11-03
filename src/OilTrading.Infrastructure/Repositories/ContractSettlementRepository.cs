@@ -104,14 +104,13 @@ public class ContractSettlementRepository : Repository<ContractSettlement>, ICon
     }
 
     /// <summary>
-    /// Gets settlement with related contract information (Purchase or Sales contract)
+    /// Gets settlement with related information
+    /// Note: Contract information (Purchase or Sales) is populated in service layer via GetContractInfoAsync
     /// </summary>
     public async Task<ContractSettlement?> GetWithContractAsync(Guid settlementId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .Include(s => s.Charges)
-            .Include(s => s.PurchaseContract)
-            .Include(s => s.SalesContract)
             .FirstOrDefaultAsync(s => s.Id == settlementId, cancellationToken);
     }
 

@@ -1,15 +1,28 @@
 using OilTrading.Core.Common;
-using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Events;
 
 namespace OilTrading.Core.Entities;
 
-public class ContractSettlement : BaseEntity
+/// <summary>
+/// PurchaseSettlement represents the financial confirmation and settlement of a purchase contract.
+///
+/// Key Design Principles:
+/// - One Purchase Contract can have MULTIPLE settlements (one-to-many relationship)
+/// - Supports term contracts with multiple delivery periods
+/// - Supports partial shipments requiring separate settlements
+/// - Lifecycle: Draft -> DataEntered -> Calculated -> Reviewed -> Approved -> Finalized
+///
+/// Difference from SalesSettlement:
+/// - PurchaseSettlement: Seller confirms delivery, buyer confirms receipt and payment
+/// - SalesSettlement: Buyer confirms delivery, seller confirms payment collection
+/// - Both follow same data structure but different business workflow
+/// </summary>
+public class PurchaseSettlement : BaseEntity
 {
-    private ContractSettlement() { } // For EF Core
+    private PurchaseSettlement() { } // For EF Core
 
-    public ContractSettlement(
-        Guid contractId,
+    public PurchaseSettlement(
+        Guid purchaseContractId,
         string contractNumber,
         string externalContractNumber,
         string? documentNumber = null,
@@ -17,7 +30,7 @@ public class ContractSettlement : BaseEntity
         DateTime? documentDate = null,
         string createdBy = "System")
     {
-        ContractId = contractId;
+        PurchaseContractId = purchaseContractId;
         ContractNumber = contractNumber ?? throw new ArgumentNullException(nameof(contractNumber));
         ExternalContractNumber = externalContractNumber ?? throw new ArgumentNullException(nameof(externalContractNumber));
         DocumentNumber = documentNumber;
@@ -26,39 +39,42 @@ public class ContractSettlement : BaseEntity
         Status = ContractSettlementStatus.Draft;
         CreatedDate = DateTime.UtcNow;
         CreatedBy = createdBy;
-        
+
         // Initialize collection
         Charges = new List<SettlementCharge>();
-        
-        AddDomainEvent(new ContractSettlementCreatedEvent(Id, ContractId, externalContractNumber));
+
+        AddDomainEvent(new ContractSettlementCreatedEvent(Id, purchaseContractId, externalContractNumber));
     }
 
-    // Contract reference
-    public Guid ContractId { get; private set; }
+    // Foreign key and navigation
+    public Guid PurchaseContractId { get; private set; }
+    public PurchaseContract PurchaseContract { get; private set; } = null!;
+
+    // Contract reference (denormalized for easy access)
     public string ContractNumber { get; private set; } = string.Empty;
     public string ExternalContractNumber { get; private set; } = string.Empty;
-    
+
     // Document information (B/L or CQ)
     public string? DocumentNumber { get; private set; }
     public DocumentType DocumentType { get; private set; }
     public DateTime DocumentDate { get; private set; }
-    
+
     // Actual quantities from B/L or CQ
     public decimal ActualQuantityMT { get; private set; }
     public decimal ActualQuantityBBL { get; private set; }
-    
+
     // Calculation quantities (may differ based on calculation mode)
     public decimal CalculationQuantityMT { get; private set; }
     public decimal CalculationQuantityBBL { get; private set; }
     public string? QuantityCalculationNote { get; private set; }
-    
+
     // Price information (from market data)
     public decimal BenchmarkPrice { get; private set; }
     public string? BenchmarkPriceFormula { get; private set; }
     public DateTime? PricingStartDate { get; private set; }
     public DateTime? PricingEndDate { get; private set; }
     public string BenchmarkPriceCurrency { get; private set; } = "USD";
-    
+
     // Calculation results
     public decimal BenchmarkAmount { get; private set; }    // Benchmark price calculation
     public decimal AdjustmentAmount { get; private set; }   // Adjustment price calculation
@@ -66,11 +82,11 @@ public class ContractSettlement : BaseEntity
     public decimal TotalCharges { get; private set; }       // Sum of all charges
     public decimal TotalSettlementAmount { get; private set; } // Final settlement amount
     public string SettlementCurrency { get; private set; } = "USD";
-    
+
     // Exchange rate handling
     public decimal? ExchangeRate { get; private set; }
     public string? ExchangeRateNote { get; private set; }
-    
+
     // Status management
     public ContractSettlementStatus Status { get; private set; }
     public bool IsFinalized { get; private set; }
@@ -80,11 +96,8 @@ public class ContractSettlement : BaseEntity
     public string? LastModifiedBy { get; private set; }
     public DateTime? FinalizedDate { get; private set; }
     public string? FinalizedBy { get; private set; }
-    
+
     // Navigation properties
-    // Note: PurchaseContract and SalesContract are not navigation properties in the database
-    // Instead, ContractId (Guid) can reference either table. Navigation properties are
-    // populated manually in the service layer (GetContractInfoAsync) based on lookup.
     public ICollection<SettlementCharge> Charges { get; private set; } = new List<SettlementCharge>();
 
     // Business methods
@@ -100,13 +113,13 @@ public class ContractSettlement : BaseEntity
         ActualQuantityBBL = actualBBL;
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = updatedBy;
-        
+
         AddDomainEvent(new ContractSettlementQuantitiesUpdatedEvent(Id, actualMT, actualBBL));
     }
 
     public void SetCalculationQuantities(
-        decimal calculationMT, 
-        decimal calculationBBL, 
+        decimal calculationMT,
+        decimal calculationBBL,
         string calculationNote,
         string updatedBy)
     {
@@ -118,7 +131,7 @@ public class ContractSettlement : BaseEntity
         QuantityCalculationNote = calculationNote;
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = updatedBy;
-        
+
         AddDomainEvent(new ContractSettlementCalculationQuantitiesUpdatedEvent(Id, calculationMT, calculationBBL, calculationNote));
     }
 
@@ -143,10 +156,10 @@ public class ContractSettlement : BaseEntity
         BenchmarkPriceCurrency = currency;
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = updatedBy;
-        
+
         // Trigger recalculation
         RecalculateAmounts();
-        
+
         AddDomainEvent(new ContractSettlementBenchmarkPriceUpdatedEvent(Id, benchmarkPrice, priceFormula));
     }
 
@@ -155,7 +168,7 @@ public class ContractSettlement : BaseEntity
         // This will be implemented by the settlement calculation service
         // For now, just update the modification timestamp
         LastModifiedDate = DateTime.UtcNow;
-        
+
         AddDomainEvent(new ContractSettlementRecalculatedEvent(Id, TotalSettlementAmount));
     }
 
@@ -171,14 +184,14 @@ public class ContractSettlement : BaseEntity
         BenchmarkAmount = benchmarkAmount;
         AdjustmentAmount = adjustmentAmount;
         CargoValue = cargoValue;
-        
+
         // Recalculate total charges
         TotalCharges = Charges.Sum(c => c.Amount);
         TotalSettlementAmount = CargoValue + TotalCharges;
-        
+
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = updatedBy;
-        
+
         AddDomainEvent(new ContractSettlementAmountsUpdatedEvent(Id, TotalSettlementAmount));
     }
 
@@ -210,16 +223,16 @@ public class ContractSettlement : BaseEntity
             addedBy);
 
         Charges.Add(charge);
-        
+
         // Recalculate totals
         TotalCharges = Charges.Sum(c => c.Amount);
         TotalSettlementAmount = CargoValue + TotalCharges;
-        
+
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = addedBy;
-        
+
         AddDomainEvent(new ContractSettlementChargeAddedEvent(Id, charge.Id, chargeType, amount));
-        
+
         return charge;
     }
 
@@ -233,14 +246,14 @@ public class ContractSettlement : BaseEntity
             throw new DomainException($"Charge with ID {chargeId} not found");
 
         Charges.Remove(charge);
-        
+
         // Recalculate totals
         TotalCharges = Charges.Sum(c => c.Amount);
         TotalSettlementAmount = CargoValue + TotalCharges;
-        
+
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = removedBy;
-        
+
         AddDomainEvent(new ContractSettlementChargeRemovedEvent(Id, chargeId));
     }
 
@@ -250,7 +263,7 @@ public class ContractSettlement : BaseEntity
         Status = newStatus;
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = updatedBy;
-        
+
         AddDomainEvent(new ContractSettlementStatusChangedEvent(Id, previousStatus, newStatus, updatedBy));
     }
 
@@ -271,7 +284,7 @@ public class ContractSettlement : BaseEntity
         FinalizedBy = finalizedBy;
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = finalizedBy;
-        
+
         AddDomainEvent(new ContractSettlementFinalizedEvent(Id, TotalSettlementAmount, FinalizedDate.Value));
     }
 
@@ -287,107 +300,13 @@ public class ContractSettlement : BaseEntity
         ExchangeRateNote = note;
         LastModifiedDate = DateTime.UtcNow;
         LastModifiedBy = updatedBy;
-        
+
         AddDomainEvent(new ContractSettlementExchangeRateUpdatedEvent(Id, exchangeRate, note));
     }
 
     public bool CanBeModified() => !IsFinalized && Status != ContractSettlementStatus.Finalized;
 
-    public bool RequiresRecalculation() => 
-        Status == ContractSettlementStatus.Draft && 
+    public bool RequiresRecalculation() =>
+        Status == ContractSettlementStatus.Draft &&
         (BenchmarkAmount == 0 || CalculationQuantityMT == 0);
-}
-
-public class SettlementCharge : BaseEntity
-{
-    private SettlementCharge() { } // For EF Core
-
-    public SettlementCharge(
-        Guid settlementId,
-        ChargeType chargeType,
-        string description,
-        decimal amount,
-        string currency = "USD",
-        DateTime? incurredDate = null,
-        string? referenceDocument = null,
-        string? notes = null,
-        string createdBy = "System")
-    {
-        SettlementId = settlementId;
-        ChargeType = chargeType;
-        Description = description ?? throw new ArgumentNullException(nameof(description));
-        Amount = amount;
-        Currency = currency;
-        IncurredDate = incurredDate;
-        ReferenceDocument = referenceDocument;
-        Notes = notes;
-        CreatedDate = DateTime.UtcNow;
-        CreatedBy = createdBy;
-    }
-
-    public Guid SettlementId { get; private set; }
-    public ChargeType ChargeType { get; private set; }
-    public string Description { get; private set; } = string.Empty;
-    public decimal Amount { get; private set; }
-    public string Currency { get; private set; } = "USD";
-    public DateTime? IncurredDate { get; private set; }
-    public string? ReferenceDocument { get; private set; }
-    public string? Notes { get; private set; }
-    public DateTime CreatedDate { get; private set; }
-    public new string CreatedBy { get; private set; } = string.Empty;
-
-    // Navigation property
-    public ContractSettlement Settlement { get; private set; } = null!;
-
-    public void UpdateAmount(decimal newAmount, string updatedBy)
-    {
-        if (newAmount < 0)
-            throw new DomainException("Charge amount cannot be negative");
-
-        Amount = newAmount;
-        SetUpdatedBy(updatedBy);
-    }
-
-    public void UpdateDescription(string newDescription, string updatedBy)
-    {
-        if (string.IsNullOrWhiteSpace(newDescription))
-            throw new DomainException("Description cannot be empty");
-
-        Description = newDescription.Trim();
-        SetUpdatedBy(updatedBy);
-    }
-}
-
-// Enums
-public enum DocumentType
-{
-    BillOfLading = 1,
-    QuantityCertificate = 2,
-    QualityCertificate = 3,
-    Other = 99
-}
-
-public enum ContractSettlementStatus
-{
-    Draft = 1,
-    DataEntered = 2,
-    Calculated = 3,
-    Reviewed = 4,
-    Approved = 5,
-    Finalized = 6,
-    Cancelled = 7
-}
-
-public enum ChargeType
-{
-    Demurrage = 1,        // Demurrage fee
-    Despatch = 2,         // Despatch fee
-    InspectionFee = 3,    // Inspection fee
-    PortCharges = 4,      // Port charges
-    FreightCost = 5,      // Freight cost
-    InsurancePremium = 6, // Insurance premium
-    BankCharges = 7,      // Bank charges
-    StorageFee = 8,       // Storage fee
-    AgencyFee = 9,        // Agency fee
-    Other = 99            // Other charges
 }

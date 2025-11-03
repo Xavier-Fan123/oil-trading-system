@@ -114,6 +114,11 @@ public class SalesContract : BaseEntity
     public ICollection<ContractTag> ContractTags { get; private set; } = new List<ContractTag>();
     public ICollection<ContractMatching> ContractMatchings { get; private set; } = new List<ContractMatching>();
 
+    // Settlement relationships (one-to-many)
+    // One SalesContract can have multiple SalesSettlements
+    // Supporting term contracts with multiple delivery periods and partial shipments
+    public ICollection<SalesSettlement> SalesSettlements { get; private set; } = new List<SalesSettlement>();
+
     // Business Methods
     public void LinkToPurchaseContract(Guid purchaseContractId)
     {

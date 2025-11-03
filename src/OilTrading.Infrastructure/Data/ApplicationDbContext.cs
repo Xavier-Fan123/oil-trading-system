@@ -63,8 +63,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<Payment> Payments { get; set; }
     public DbSet<SettlementAdjustment> SettlementAdjustments { get; set; }
     
-    // Contract settlement system with mixed-unit pricing support
+    // Contract settlement system with mixed-unit pricing support (LEGACY - for backward compatibility)
     public DbSet<ContractSettlement> ContractSettlements { get; set; }
+
+    // New separated settlement system (PurchaseSettlement and SalesSettlement)
+    public DbSet<PurchaseSettlement> PurchaseSettlements { get; set; }
+    public DbSet<SalesSettlement> SalesSettlements { get; set; }
     public DbSet<SettlementCharge> SettlementCharges { get; set; }
     
     // Inventory reservations
@@ -127,6 +131,10 @@ public class ApplicationDbContext : DbContext
         
         // Apply contract settlement configurations (mixed-unit pricing support)
         modelBuilder.ApplyConfiguration(new ContractSettlementConfiguration());
+
+        // Apply new separated settlement configurations
+        modelBuilder.ApplyConfiguration(new PurchaseSettlementConfiguration());
+        modelBuilder.ApplyConfiguration(new SalesSettlementConfiguration());
         modelBuilder.ApplyConfiguration(new SettlementChargeConfiguration());
         
         // Apply tag configurations

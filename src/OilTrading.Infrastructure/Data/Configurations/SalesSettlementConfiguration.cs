@@ -4,14 +4,21 @@ using OilTrading.Core.Entities;
 
 namespace OilTrading.Infrastructure.Data.Configurations;
 
-public class ContractSettlementConfiguration : IEntityTypeConfiguration<ContractSettlement>
+public class SalesSettlementConfiguration : IEntityTypeConfiguration<SalesSettlement>
 {
-    public void Configure(EntityTypeBuilder<ContractSettlement> builder)
+    public void Configure(EntityTypeBuilder<SalesSettlement> builder)
     {
         builder.HasKey(e => e.Id);
 
+        // Foreign key relationship to SalesContract (NOT NULL - required)
+        builder.HasOne(e => e.SalesContract)
+               .WithMany(sc => sc.SalesSettlements)
+               .HasForeignKey(e => e.SalesContractId)
+               .OnDelete(DeleteBehavior.Restrict) // Prevent accidental deletion of contract with settlements
+               .HasConstraintName("FK_SalesSettlements_SalesContracts");
+
         // Contract reference properties
-        builder.Property(e => e.ContractId)
+        builder.Property(e => e.SalesContractId)
                .IsRequired();
 
         builder.Property(e => e.ContractNumber)
@@ -124,53 +131,49 @@ public class ContractSettlementConfiguration : IEntityTypeConfiguration<Contract
                .HasColumnType("BLOB")
                .HasDefaultValueSql("X'00000000000000000000000000000001'");
 
-        // Navigation properties
-        // Note: ContractSettlement doesn't have explicit foreign keys to PurchaseContract or SalesContract
-        // because a settlement can reference either type and EF Core cannot have two HasOne relationships
-        // pointing to the same foreign key column. The ContractId is a Guid that references one of them.
-        // Navigation properties are populated manually in the service layer based on contract type.
-
         // Collection of settlement charges
+        // Note: SettlementCharge.Settlement references ContractSettlement base type
+        // We don't configure this relationship here to avoid conflicts with the base ContractSettlement
         builder.HasMany(e => e.Charges)
-               .WithOne(c => c.Settlement)
+               .WithOne()
                .HasForeignKey(c => c.SettlementId)
                .OnDelete(DeleteBehavior.Cascade)
-               .HasConstraintName("FK_SettlementCharges_ContractSettlements");
+               .HasConstraintName("FK_SettlementCharges_SalesSettlements");
 
         // Indexes for performance
-        builder.HasIndex(e => e.ContractId)
-               .HasDatabaseName("IX_ContractSettlements_ContractId");
+        builder.HasIndex(e => e.SalesContractId)
+               .HasDatabaseName("IX_SalesSettlements_SalesContractId");
 
         builder.HasIndex(e => e.ExternalContractNumber)
-               .HasDatabaseName("IX_ContractSettlements_ExternalContractNumber");
+               .HasDatabaseName("IX_SalesSettlements_ExternalContractNumber");
 
         builder.HasIndex(e => e.DocumentNumber)
-               .HasDatabaseName("IX_ContractSettlements_DocumentNumber");
+               .HasDatabaseName("IX_SalesSettlements_DocumentNumber");
 
         builder.HasIndex(e => e.Status)
-               .HasDatabaseName("IX_ContractSettlements_Status");
+               .HasDatabaseName("IX_SalesSettlements_Status");
 
         builder.HasIndex(e => e.IsFinalized)
-               .HasDatabaseName("IX_ContractSettlements_IsFinalized");
+               .HasDatabaseName("IX_SalesSettlements_IsFinalized");
 
         builder.HasIndex(e => e.CreatedDate)
-               .HasDatabaseName("IX_ContractSettlements_CreatedDate");
+               .HasDatabaseName("IX_SalesSettlements_CreatedDate");
 
         builder.HasIndex(e => e.DocumentDate)
-               .HasDatabaseName("IX_ContractSettlements_DocumentDate");
+               .HasDatabaseName("IX_SalesSettlements_DocumentDate");
 
         // Composite indexes for common query patterns
-        builder.HasIndex(e => new { e.ContractId, e.Status })
-               .HasDatabaseName("IX_ContractSettlements_ContractId_Status");
+        builder.HasIndex(e => new { e.SalesContractId, e.Status })
+               .HasDatabaseName("IX_SalesSettlements_SalesContractId_Status");
 
         builder.HasIndex(e => new { e.Status, e.CreatedDate })
-               .HasDatabaseName("IX_ContractSettlements_Status_CreatedDate");
+               .HasDatabaseName("IX_SalesSettlements_Status_CreatedDate");
 
         builder.HasIndex(e => new { e.IsFinalized, e.CreatedDate })
-               .HasDatabaseName("IX_ContractSettlements_IsFinalized_CreatedDate");
+               .HasDatabaseName("IX_SalesSettlements_IsFinalized_CreatedDate");
 
         // Table configuration
-        builder.ToTable("ContractSettlements");
+        builder.ToTable("SalesSettlements");
 
         // Ignore domain events collection for EF
         builder.Ignore(e => e.DomainEvents);

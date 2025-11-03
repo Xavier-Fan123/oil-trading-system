@@ -46,11 +46,25 @@ export const salesContractsApi = {
   },
 
   // Create new sales contract
-  create: async (contract: CreateSalesContractDto): Promise<string> => {
+  create: async (contract: CreateSalesContractDto, options?: { forceCreate?: boolean }): Promise<string> => {
     try {
       const response = await api.post('/sales-contracts', contract);
       return response.data;
     } catch (error: any) {
+      // If we get a risk violation and haven't tried to override yet
+      if (error.response?.status === 400 &&
+          error.response?.data?.error === 'Risk limit violation' &&
+          error.response?.data?.riskDetails?.allowOverride &&
+          !options?.forceCreate) {
+        // Retry with risk override header
+        const response = await api.post('/sales-contracts', contract, {
+          headers: {
+            'X-Risk-Override': 'true'
+          }
+        });
+        return response.data;
+      }
+
       console.error('Sales contract creation failed', {
         status: error.response?.status,
         statusText: error.response?.statusText,
@@ -66,8 +80,25 @@ export const salesContractsApi = {
   },
 
   // Update existing sales contract
-  update: async (id: string, contract: UpdateSalesContractDto): Promise<void> => {
-    await api.put(`/sales-contracts/${id}`, contract);
+  update: async (id: string, contract: UpdateSalesContractDto, options?: { forceUpdate?: boolean }): Promise<void> => {
+    try {
+      await api.put(`/sales-contracts/${id}`, contract);
+    } catch (error: any) {
+      // If we get a risk violation and haven't tried to override yet
+      if (error.response?.status === 400 &&
+          error.response?.data?.error === 'Risk limit violation' &&
+          error.response?.data?.riskDetails?.allowOverride &&
+          !options?.forceUpdate) {
+        // Retry with risk override header
+        await api.put(`/sales-contracts/${id}`, contract, {
+          headers: {
+            'X-Risk-Override': 'true'
+          }
+        });
+        return;
+      }
+      throw error;
+    }
   },
 
   // Delete sales contract

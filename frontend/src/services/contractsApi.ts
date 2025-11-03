@@ -64,23 +64,57 @@ export const purchaseContractsApi = {
     ]);
   },
 
-  create: async (contract: CreatePurchaseContractDto): Promise<string> => {
+  create: async (contract: CreatePurchaseContractDto, options?: { forceCreate?: boolean }): Promise<string> => {
     // Format date fields for API request
     const formattedContract = formatApiDateFields(contract, [
       'laycanStart', 'laycanEnd', 'pricingPeriodStart', 'pricingPeriodEnd'
     ]);
-    
-    const response = await api.post('/purchase-contracts', formattedContract);
-    return response.data;
+
+    try {
+      const response = await api.post('/purchase-contracts', formattedContract);
+      return response.data;
+    } catch (error: any) {
+      // If we get a risk violation and haven't tried to override yet
+      if (error.response?.status === 400 &&
+          error.response?.data?.error === 'Risk limit violation' &&
+          error.response?.data?.riskDetails?.allowOverride &&
+          !options?.forceCreate) {
+        // Retry with risk override header
+        const response = await api.post('/purchase-contracts', formattedContract, {
+          headers: {
+            'X-Risk-Override': 'true'
+          }
+        });
+        return response.data;
+      }
+      throw error;
+    }
   },
 
-  update: async (id: string, contract: UpdatePurchaseContractDto): Promise<void> => {
+  update: async (id: string, contract: UpdatePurchaseContractDto, options?: { forceUpdate?: boolean }): Promise<void> => {
     // Format date fields for API request
     const formattedContract = formatApiDateFields(contract, [
       'laycanStart', 'laycanEnd', 'pricingPeriodStart', 'pricingPeriodEnd'
     ]);
-    
-    await api.put(`/purchase-contracts/${id}`, formattedContract);
+
+    try {
+      await api.put(`/purchase-contracts/${id}`, formattedContract);
+    } catch (error: any) {
+      // If we get a risk violation and haven't tried to override yet
+      if (error.response?.status === 400 &&
+          error.response?.data?.error === 'Risk limit violation' &&
+          error.response?.data?.riskDetails?.allowOverride &&
+          !options?.forceUpdate) {
+        // Retry with risk override header
+        await api.put(`/purchase-contracts/${id}`, formattedContract, {
+          headers: {
+            'X-Risk-Override': 'true'
+          }
+        });
+        return;
+      }
+      throw error;
+    }
   },
 
   activate: async (id: string): Promise<void> => {

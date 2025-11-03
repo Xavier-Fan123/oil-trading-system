@@ -301,6 +301,14 @@ public class SalesContractConfiguration : IEntityTypeConfiguration<SalesContract
                .HasPrincipalKey(e => e.Id)
                .OnDelete(DeleteBehavior.Cascade);
 
+        // Settlement Relationship (one-to-many)
+        // One SalesContract can have multiple SalesSettlements
+        builder.HasMany(e => e.SalesSettlements)
+               .WithOne(ss => ss.SalesContract)
+               .HasForeignKey(ss => ss.SalesContractId)
+               .OnDelete(DeleteBehavior.Restrict) // Prevent accidental deletion of contract with settlements
+               .HasConstraintName("FK_SalesSettlements_SalesContracts");
+
         // Configure RowVersion for optimistic concurrency control
         builder.Property(e => e.RowVersion)
                .IsRowVersion()

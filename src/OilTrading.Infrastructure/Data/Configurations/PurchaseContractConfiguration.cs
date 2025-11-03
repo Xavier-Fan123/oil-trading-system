@@ -315,6 +315,14 @@ public class PurchaseContractConfiguration : IEntityTypeConfiguration<PurchaseCo
                .HasPrincipalKey(e => e.Id)
                .OnDelete(DeleteBehavior.Cascade);
 
+        // Settlement Relationship (one-to-many)
+        // One PurchaseContract can have multiple PurchaseSettlements
+        builder.HasMany(e => e.PurchaseSettlements)
+               .WithOne(ps => ps.PurchaseContract)
+               .HasForeignKey(ps => ps.PurchaseContractId)
+               .OnDelete(DeleteBehavior.Restrict) // Prevent accidental deletion of contract with settlements
+               .HasConstraintName("FK_PurchaseSettlements_PurchaseContracts");
+
         // Configure RowVersion for optimistic concurrency control
         builder.Property(e => e.RowVersion)
                .IsRowVersion()
