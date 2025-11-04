@@ -4,6 +4,7 @@ using OilTrading.Application.Commands.PurchaseContracts;
 using OilTrading.Application.Queries.PurchaseContracts;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Common;
+using OilTrading.Application.Services;
 using OilTrading.Api.Attributes;
 
 namespace OilTrading.Api.Controllers;
@@ -15,11 +16,16 @@ public class PurchaseContractController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<PurchaseContractController> _logger;
+    private readonly IPaymentStatusCalculationService _paymentStatusService;
 
-    public PurchaseContractController(IMediator mediator, ILogger<PurchaseContractController> logger)
+    public PurchaseContractController(
+        IMediator mediator,
+        ILogger<PurchaseContractController> logger,
+        IPaymentStatusCalculationService paymentStatusService)
     {
         _mediator = mediator;
         _logger = logger;
+        _paymentStatusService = paymentStatusService ?? throw new ArgumentNullException(nameof(paymentStatusService));
     }
 
     private string GetCurrentUserName()
@@ -262,5 +268,39 @@ public class PurchaseContractController : ControllerBase
         };
         
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Gets the current payment status for a purchase contract
+    /// </summary>
+    /// <param name="id">Purchase contract ID</param>
+    /// <returns>Current ContractPaymentStatus</returns>
+    [HttpGet("{id:guid}/payment-status")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPaymentStatus(Guid id)
+    {
+        var paymentStatus = await _paymentStatusService.CalculatePurchaseContractPaymentStatusAsync(id);
+
+        return Ok(new
+        {
+            contractId = id,
+            paymentStatus = paymentStatus?.ToString() ?? "Unknown"
+        });
+    }
+
+    /// <summary>
+    /// Gets comprehensive payment status details for a purchase contract
+    /// </summary>
+    /// <param name="id">Purchase contract ID</param>
+    /// <returns>PaymentStatusDetailsDto with amounts, dates, settlement breakdown</returns>
+    [HttpGet("{id:guid}/payment-status/details")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPaymentStatusDetails(Guid id)
+    {
+        var details = await _paymentStatusService.GetPaymentStatusDetailsAsync(id, isPurchaseContract: true);
+
+        return Ok(details);
     }
 }
