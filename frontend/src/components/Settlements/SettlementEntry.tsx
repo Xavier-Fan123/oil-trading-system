@@ -18,7 +18,8 @@ import {
   StepLabel,
   StepContent,
   Tabs,
-  Tab
+  Tab,
+  InputAdornment
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -72,6 +73,7 @@ const steps = [
   'Document Information',
   'Quantity Calculation',
   'Settlement Calculation',
+  'Payment Terms',
   'Initial Charges',
   'Review & Submit'
 ];
@@ -108,6 +110,14 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     benchmarkAmount: 0,
     adjustmentAmount: 0,
     calculationNote: ''
+  });
+
+  // Payment terms data
+  const [paymentTermsData, setPaymentTermsData] = useState({
+    paymentTerms: '',
+    creditPeriodDays: 30,
+    settlementType: 'TT',
+    prepaymentPercentage: 0
   });
 
   // Store created settlement for calculation step
@@ -356,7 +366,23 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         }
         return true;
 
-      case 4: // Initial Charges
+      case 4: // Payment Terms
+        // Validate that payment terms are provided
+        if (!paymentTermsData.paymentTerms || !paymentTermsData.paymentTerms.trim()) {
+          setError('Payment terms are required');
+          return false;
+        }
+        if (paymentTermsData.creditPeriodDays < 0) {
+          setError('Credit period days cannot be negative');
+          return false;
+        }
+        if (paymentTermsData.prepaymentPercentage < 0 || paymentTermsData.prepaymentPercentage > 100) {
+          setError('Prepayment percentage must be between 0 and 100');
+          return false;
+        }
+        return true;
+
+      case 5: // Initial Charges
         // Charges are optional, always valid
         return true;
 
@@ -419,6 +445,45 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         contractId: contract.id,
         externalContractNumber: contract.externalContractNumber || ''
       }));
+      // Load payment terms from contract (if available from full contract data)
+      loadPaymentTermsFromContract(contractId);
+    }
+  };
+
+  const loadPaymentTermsFromContract = async (contractId: string) => {
+    try {
+      // Try to load the full contract to get payment terms
+      const contract = selectedContract;
+      if (contract?.type === 'purchase') {
+        const fullContract = await purchaseContractsApi.getById(contractId);
+        if (fullContract) {
+          const settlementTypeValue = typeof fullContract.settlementType === 'string'
+            ? fullContract.settlementType
+            : String(fullContract.settlementType);
+          setPaymentTermsData({
+            paymentTerms: fullContract.paymentTerms || '',
+            creditPeriodDays: fullContract.creditPeriodDays || 30,
+            settlementType: settlementTypeValue || 'TT',
+            prepaymentPercentage: fullContract.prepaymentPercentage || 0
+          });
+        }
+      } else if (contract?.type === 'sales') {
+        const fullContract = await salesContractsApi.getById(contractId);
+        if (fullContract) {
+          const settlementTypeValue = typeof fullContract.settlementType === 'string'
+            ? fullContract.settlementType
+            : String(fullContract.settlementType);
+          setPaymentTermsData({
+            paymentTerms: fullContract.paymentTerms || '',
+            creditPeriodDays: fullContract.creditPeriodDays || 30,
+            settlementType: settlementTypeValue || 'TT',
+            prepaymentPercentage: fullContract.prepaymentPercentage || 0
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error loading payment terms from contract:', err);
+      // Use defaults if loading fails
     }
   };
 
@@ -646,7 +711,79 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
           </Box>
         );
 
-      case 4: // Initial Charges
+      case 4: // Payment Terms
+        return (
+          <Box>
+            <Typography paragraph>
+              Configure payment terms for this settlement. These terms define the settlement timeline and payment method.
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Payment Terms"
+                  placeholder="e.g., NET 30, CASH ON DELIVERY, LC AT SIGHT"
+                  value={paymentTermsData.paymentTerms}
+                  onChange={(e) => setPaymentTermsData(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                  disabled={loading}
+                  helperText="Specify the agreed payment terms (e.g., NET 30, LC, SWIFT)"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Credit Period (Days)"
+                  type="number"
+                  value={paymentTermsData.creditPeriodDays}
+                  onChange={(e) => setPaymentTermsData(prev => ({ ...prev, creditPeriodDays: parseInt(e.target.value) || 0 }))}
+                  disabled={loading}
+                  inputProps={{ min: 0, max: 365 }}
+                  helperText="Number of days for payment settlement after delivery"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Settlement Type</InputLabel>
+                  <Select
+                    value={paymentTermsData.settlementType}
+                    label="Settlement Type"
+                    onChange={(e) => setPaymentTermsData(prev => ({ ...prev, settlementType: e.target.value }))}
+                    disabled={loading}
+                  >
+                    <MenuItem value="TT">Telegraphic Transfer (TT)</MenuItem>
+                    <MenuItem value="LC">Letter of Credit (LC)</MenuItem>
+                    <MenuItem value="DP">Documents Against Payment (DP)</MenuItem>
+                    <MenuItem value="DA">Documents Against Acceptance (DA)</MenuItem>
+                    <MenuItem value="CAD">Cash Against Documents (CAD)</MenuItem>
+                    <MenuItem value="OA">Open Account (OA)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Prepayment Percentage"
+                  type="number"
+                  value={paymentTermsData.prepaymentPercentage}
+                  onChange={(e) => setPaymentTermsData(prev => ({ ...prev, prepaymentPercentage: parseFloat(e.target.value) || 0 }))}
+                  disabled={loading}
+                  inputProps={{ min: 0, max: 100, step: 0.01 }}
+                  helperText="Percentage of contract value required as prepayment (0-100%)"
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">%</InputAdornment>
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        );
+
+      case 5: // Initial Charges
         return (
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -722,7 +859,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
           </Box>
         );
 
-      case 5: // Review & Submit
+      case 6: // Review & Submit
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Review Settlement Details</Typography>
@@ -759,6 +896,16 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
                   <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 1 }}>
                     Calculation MT: {calculationData.calculationQuantityMT.toLocaleString()} MT
                   </Typography>
+                )}
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>Payment Terms</Typography>
+                <Typography variant="body2">Payment Terms: {paymentTermsData.paymentTerms}</Typography>
+                <Typography variant="body2">Credit Period: {paymentTermsData.creditPeriodDays} days</Typography>
+                <Typography variant="body2">Settlement Type: {paymentTermsData.settlementType}</Typography>
+                {paymentTermsData.prepaymentPercentage > 0 && (
+                  <Typography variant="body2">Prepayment: {paymentTermsData.prepaymentPercentage}%</Typography>
                 )}
               </Grid>
 

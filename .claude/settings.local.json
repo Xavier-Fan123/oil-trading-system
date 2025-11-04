@@ -47,7 +47,8 @@
       "Bash(PowerShell -File:*)",
       "Bash(PowerShell -Command \"Get-Process dotnet -ErrorAction SilentlyContinue | Select-Object -Property Name, ID, Handles\")",
       "Bash(PowerShell -Command \"Start-Sleep -Seconds 5; Invoke-RestMethod -Uri ''http://localhost:5000/api/health'' -Method GET -ErrorAction SilentlyContinue | Select-Object -Property status\")",
-      "Bash(PowerShell -Command \"Invoke-RestMethod -Uri ''''http://localhost:5000/api/purchase-contracts?pageNumber=1&pageSize=10'''' -Method GET | ConvertTo-Json -Depth 3\")"
+      "Bash(PowerShell -Command \"Invoke-RestMethod -Uri ''''http://localhost:5000/api/purchase-contracts?pageNumber=1&pageSize=10'''' -Method GET | ConvertTo-Json -Depth 3\")",
+      "Bash(\"C:\\Users\\itg\\nodejs\\npm.cmd\" run build --prefix \"C:\\Users\\itg\\Desktop\\X\\frontend\")"
     ],
     "deny": [],
     "ask": [],
