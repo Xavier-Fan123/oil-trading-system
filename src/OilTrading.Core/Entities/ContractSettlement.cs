@@ -80,7 +80,24 @@ public class ContractSettlement : BaseEntity
     public string? LastModifiedBy { get; private set; }
     public DateTime? FinalizedDate { get; private set; }
     public string? FinalizedBy { get; private set; }
-    
+
+    // Payment Dates - Three-tier date tracking system
+    /// <summary>
+    /// Actual payable/receivable due date - filled by user when creating/editing settlement
+    /// For purchases: when we need to pay
+    /// For sales: when the customer needs to pay us
+    /// This is determined after the settlement is created, potentially different from contract estimate
+    /// </summary>
+    public DateTime? ActualPayableDueDate { get; private set; }
+
+    /// <summary>
+    /// Actual payment/collection date - filled by finance department after payment is made
+    /// For purchases: when we actually paid the supplier
+    /// For sales: when we actually received payment from customer
+    /// Will be null until the payment is actually made
+    /// </summary>
+    public DateTime? ActualPaymentDate { get; private set; }
+
     // Navigation properties
     // Note: PurchaseContract and SalesContract are not navigation properties in the database
     // Instead, ContractId (Guid) can reference either table. Navigation properties are
@@ -289,6 +306,31 @@ public class ContractSettlement : BaseEntity
         LastModifiedBy = updatedBy;
         
         AddDomainEvent(new ContractSettlementExchangeRateUpdatedEvent(Id, exchangeRate, note));
+    }
+
+    /// <summary>
+    /// Set the actual payable/receivable due date for the settlement
+    /// Filled by user when creating/editing the settlement
+    /// For purchases: when we need to pay
+    /// For sales: when the customer needs to pay us
+    /// </summary>
+    public void SetActualPayableDueDate(DateTime actualPayableDueDate, string updatedBy)
+    {
+        ActualPayableDueDate = actualPayableDueDate;
+        LastModifiedDate = DateTime.UtcNow;
+        LastModifiedBy = updatedBy;
+    }
+
+    /// <summary>
+    /// Set the actual payment/collection date for the settlement
+    /// Filled by finance department after payment is actually made
+    /// Can be updated even after finalization
+    /// </summary>
+    public void SetActualPaymentDate(DateTime? actualPaymentDate, string updatedBy)
+    {
+        ActualPaymentDate = actualPaymentDate;
+        LastModifiedDate = DateTime.UtcNow;
+        LastModifiedBy = updatedBy;
     }
 
     public bool CanBeModified() => !IsFinalized && Status != ContractSettlementStatus.Finalized;

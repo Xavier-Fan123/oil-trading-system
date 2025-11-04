@@ -11,12 +11,13 @@ namespace OilTrading.Core.Repositories;
 public interface IContractSettlementRepository : IRepository<ContractSettlement>
 {
     /// <summary>
-    /// Gets settlement by contract ID (Purchase or Sales contract)
+    /// Gets all settlements for a contract ID (Purchase or Sales contract).
+    /// A contract can have multiple settlements (one-to-many relationship).
     /// </summary>
     /// <param name="contractId">Contract ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Settlement if found</returns>
-    Task<ContractSettlement?> GetByContractIdAsync(Guid contractId, CancellationToken cancellationToken = default);
+    /// <returns>List of settlements for the contract</returns>
+    Task<IReadOnlyList<ContractSettlement>> GetByContractIdAsync(Guid contractId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets settlement by external contract number for easy lookup from trading systems

@@ -94,7 +94,17 @@ public class TradingPartnerRepository : Repository<TradingPartner>, ITradingPart
         {
             partner.CurrentExposure = exposure;
             partner.SetUpdatedBy("System");
-            await _context.SaveChangesAsync(cancellationToken);
+            // CRITICAL FIX (v2.8.2): Do NOT call SaveChangesAsync here!
+            // This method is called within command handlers that manage their own UnitOfWork.
+            // Calling SaveChangesAsync directly here would:
+            // 1. Bypass the transaction coordination of UnitOfWork
+            // 2. Potentially commit only partial changes if other modifications are pending
+            // 3. Make it impossible to test in transaction scope
+            // 4. Cause double-commit issues when handler also calls SaveChangesAsync
+            //
+            // Responsibility: The caller (e.g., CreatePhysicalContractCommandHandler)
+            // is responsible for calling await _unitOfWork.SaveChangesAsync(cancellationToken)
+            // after all modifications are complete.
         }
     }
 

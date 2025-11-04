@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<SettlementCalculationEngine>();
         services.AddScoped<PurchaseSettlementService>();
         services.AddScoped<SalesSettlementService>();
+        services.AddScoped<IPaymentStatusCalculationService, PaymentStatusCalculationService>();
 
         return services;
     }

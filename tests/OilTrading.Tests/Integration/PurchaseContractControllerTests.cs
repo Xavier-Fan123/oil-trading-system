@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Collections.Generic;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OilTrading.Application.Commands.PurchaseContracts;
@@ -29,42 +32,43 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            // Use Testing environment - this makes DependencyInjection.ConfigureDatabase use InMemory
             builder.UseEnvironment("Testing");
+
+            // Set the actual environment variable so DependencyInjection.ConfigureDatabase detects it
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
+
+            // Also configure a test-specific connection string
+            builder.ConfigureAppConfiguration(configBuilder =>
+            {
+                configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    { "ConnectionStrings:DefaultConnection", "InMemory" }
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
-                // Remove the default DbContext
-                var dbContextDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
-                if (dbContextDescriptor != null)
-                {
-                    services.Remove(dbContextDescriptor);
-                }
-
                 // Remove the real IRealTimeRiskMonitoringService if it exists
-                var riskServiceDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IRealTimeRiskMonitoringService));
-                if (riskServiceDescriptor != null)
-                {
-                    services.Remove(riskServiceDescriptor);
-                }
-
-                // Add in-memory database for testing
-                services.AddDbContext<ApplicationDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase("TestDb_PurchaseContract");
-                });
+                RemoveServiceByType(services, typeof(IRealTimeRiskMonitoringService));
 
                 // Register mock IRealTimeRiskMonitoringService for RiskCheckAttribute
                 services.AddScoped<IRealTimeRiskMonitoringService, MockRealTimeRiskMonitoringService>();
-
-                // Ensure the database is created
-                var serviceProvider = services.BuildServiceProvider();
-                using var scope = serviceProvider.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                context.Database.EnsureCreated();
-
-                // Seed data
-                SeedTestData(context);
             });
         });
+
+        // After factory is created, set up database
+        try
+        {
+            using var scope = _factory.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            context.Database.EnsureCreated();
+            SeedTestData(context);
+        }
+        catch (Exception ex)
+        {
+            _output?.WriteLine($"Failed to seed test data: {ex.Message}");
+        }
 
         _client = _factory.CreateClient();
         _output = output;
@@ -74,7 +78,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
     public async Task GetPurchaseContracts_ShouldReturnPagedResult()
     {
         // Act
-        var response = await _client.GetAsync("/api/v2/purchase-contracts");
+        var response = await _client.GetAsync("/api/purchase-contracts");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -94,7 +98,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         var pageSize = 10;
 
         // Act
-        var response = await _client.GetAsync($"/api/v2/purchase-contracts?pageNumber={pageNumber}&pageSize={pageSize}");
+        var response = await _client.GetAsync($"/api/purchase-contracts?pageNumber={pageNumber}&pageSize={pageSize}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -140,7 +144,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v2/purchase-contracts", command);
+        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command);
 
         // Debug output
         if (response.StatusCode != HttpStatusCode.Created)
@@ -155,7 +159,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
 
         var location = response.Headers.Location?.ToString();
         location.Should().NotBeNullOrEmpty();
-        location.Should().Contain("/api/v2/purchase-contracts/");
+        location.Should().Contain("/api/purchase-contracts/");
     }
 
     [Fact]
@@ -180,7 +184,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v2/purchase-contracts", command);
+        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command);
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
@@ -193,7 +197,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         var contractId = await CreateTestContract();
 
         // Act
-        var response = await _client.GetAsync($"/api/v2/purchase-contracts/{contractId}");
+        var response = await _client.GetAsync($"/api/purchase-contracts/{contractId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -214,7 +218,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         var invalidId = Guid.NewGuid();
 
         // Act
-        var response = await _client.GetAsync($"/api/v2/purchase-contracts/{invalidId}");
+        var response = await _client.GetAsync($"/api/purchase-contracts/{invalidId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -243,7 +247,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         };
 
         // Act
-        var response = await _client.PutAsJsonAsync($"/api/v2/purchase-contracts/{contractId}", updateDto);
+        var response = await _client.PutAsJsonAsync($"/api/purchase-contracts/{contractId}", updateDto);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -256,7 +260,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         var contractId = await CreateTestContract();
 
         // Act
-        var response = await _client.PostAsync($"/api/v2/purchase-contracts/{contractId}/activate", null);
+        var response = await _client.PostAsync($"/api/purchase-contracts/{contractId}/activate", null);
 
         // Debug output
         if (response.StatusCode != HttpStatusCode.NoContent)
@@ -277,7 +281,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         var contractId = await CreateTestContract();
 
         // Act
-        var response = await _client.GetAsync($"/api/v2/purchase-contracts/{contractId}/available-quantity");
+        var response = await _client.GetAsync($"/api/purchase-contracts/{contractId}/available-quantity");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -297,7 +301,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         var supplierId = GetTestTradingPartnerId();
 
         // Act
-        var response = await _client.GetAsync($"/api/v2/purchase-contracts?supplierId={supplierId}");
+        var response = await _client.GetAsync($"/api/purchase-contracts?supplierId={supplierId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -344,7 +348,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             PaymentTerms = "TT 30 days after B/L date" // Required for activation
         };
 
-        var response = await _client.PostAsJsonAsync("/api/v2/purchase-contracts", command);
+        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command);
         response.EnsureSuccessStatusCode();
 
         var content = await response.Content.ReadAsStringAsync();
@@ -423,5 +427,18 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         return context.Products.First(p => p.Code == "TEST_CRUDE").Id;
+    }
+
+    /// <summary>
+    /// Helper method to remove all services of a given type from the service collection.
+    /// This prevents conflicts when registering multiple database providers.
+    /// </summary>
+    private static void RemoveServiceByType(IServiceCollection services, Type serviceType)
+    {
+        var descriptors = services.Where(d => d.ServiceType == serviceType).ToList();
+        foreach (var descriptor in descriptors)
+        {
+            services.Remove(descriptor);
+        }
     }
 }

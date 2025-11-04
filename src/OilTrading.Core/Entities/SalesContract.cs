@@ -1,6 +1,7 @@
 using OilTrading.Core.Common;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Events;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OilTrading.Core.Entities;
 
@@ -83,7 +84,21 @@ public class SalesContract : BaseEntity
     public int? CreditPeriodDays { get; private set; }
     public SettlementType SettlementType { get; private set; } = SettlementType.ContractPayment;
     public decimal? PrepaymentPercentage { get; private set; }
-    
+
+    // Payment Dates - Three-tier date tracking system
+    /// <summary>
+    /// Estimated collection date - filled by user when creating the contract
+    /// Based on Payment Terms and business agreement
+    /// </summary>
+    public DateTime? EstimatedPaymentDate { get; private set; }
+
+    /// <summary>
+    /// Payment status - dynamically calculated based on ActualPayableDueDate and ActualPaymentDate
+    /// from related settlements. Not persisted to database.
+    /// </summary>
+    [NotMapped]
+    public ContractPaymentStatus? PaymentStatus { get; set; }
+
     // Additional Fields
     public string? Incoterms { get; private set; }
     public string? QualitySpecifications { get; private set; }
@@ -250,6 +265,22 @@ public class SalesContract : BaseEntity
             throw new DomainException("Load port is required for submission");
         if (string.IsNullOrWhiteSpace(DischargePort))
             throw new DomainException("Discharge port is required for submission");
+    }
+
+    /// <summary>
+    /// Update the estimated collection date for the contract
+    /// Used when creating or editing a sales contract to set the expected collection date
+    /// </summary>
+    public void SetEstimatedPaymentDate(DateTime estimatedPaymentDate, string updatedBy = "")
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update estimated collection date for contract in {Status} status");
+
+        EstimatedPaymentDate = estimatedPaymentDate;
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
     }
 
     public Money? CalculateProfitMargin()

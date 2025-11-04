@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,11 +16,19 @@ public class ProductsControllerIntegrationTests : IClassFixture<InMemoryWebAppli
 {
     private readonly InMemoryWebApplicationFactory _factory;
     private readonly HttpClient _client;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     public ProductsControllerIntegrationTests(InMemoryWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();
+
+        // Use same serialization options as backend
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
     }
 
     [Fact]
@@ -36,11 +45,8 @@ public class ProductsControllerIntegrationTests : IClassFixture<InMemoryWebAppli
         
         var content = await response.Content.ReadAsStringAsync();
         content.Should().NotBeNullOrEmpty();
-        
-        var products = JsonSerializer.Deserialize<Product[]>(content, new JsonSerializerOptions 
-        { 
-            PropertyNameCaseInsensitive = true 
-        });
+
+        var products = JsonSerializer.Deserialize<Product[]>(content, _jsonOptions);
         
         products.Should().NotBeNull();
         products.Should().HaveCountGreaterThan(0);
@@ -62,10 +68,7 @@ public class ProductsControllerIntegrationTests : IClassFixture<InMemoryWebAppli
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadAsStringAsync();
-        var product = JsonSerializer.Deserialize<Product>(content, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var product = JsonSerializer.Deserialize<Product>(content, _jsonOptions);
 
         product.Should().NotBeNull();
         product!.Id.Should().NotBe(Guid.Empty);
@@ -106,10 +109,7 @@ public class ProductsControllerIntegrationTests : IClassFixture<InMemoryWebAppli
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var content = await response.Content.ReadAsStringAsync();
-        var createdProduct = JsonSerializer.Deserialize<Product>(content, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var createdProduct = JsonSerializer.Deserialize<Product>(content, _jsonOptions);
 
         createdProduct.Should().NotBeNull();
         createdProduct!.ProductName.Should().Be(newProduct.Name);

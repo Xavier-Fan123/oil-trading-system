@@ -61,7 +61,10 @@ public class SettlementCalculationService : ISettlementCalculationService
             var (contractNumber, externalContractNumber, contractEntity) = await GetContractInfoAsync(contractId, cancellationToken);
 
             // Check if settlement already exists for this contract
-            var existingSettlement = await _settlementRepository.GetByContractIdAsync(contractId, cancellationToken);
+            // Note: A contract can have multiple settlements (one-to-many).
+            // For update, we modify the most recent one (first in the list).
+            var existingSettlements = await _settlementRepository.GetByContractIdAsync(contractId, cancellationToken);
+            var existingSettlement = existingSettlements.FirstOrDefault();
 
             ContractSettlement settlement;
             if (existingSettlement != null)
@@ -298,7 +301,9 @@ public class SettlementCalculationService : ISettlementCalculationService
     {
         try
         {
-            var settlement = await _settlementRepository.GetByContractIdAsync(contractId, cancellationToken);
+            // A contract can have multiple settlements. Return the most recent one (first in list).
+            var settlements = await _settlementRepository.GetByContractIdAsync(contractId, cancellationToken);
+            var settlement = settlements.FirstOrDefault();
             return settlement != null ? await MapToDto(settlement, cancellationToken) : null;
         }
         catch (Exception ex)

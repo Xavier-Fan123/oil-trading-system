@@ -15,13 +15,16 @@ public class ContractSettlementRepository : Repository<ContractSettlement>, ICon
     public ContractSettlementRepository(ApplicationDbContext context) : base(context) { }
 
     /// <summary>
-    /// Gets settlement by contract ID (Purchase or Sales contract)
+    /// Gets all settlements for a contract ID (Purchase or Sales contract).
+    /// A contract can have multiple settlements (one-to-many relationship).
     /// </summary>
-    public async Task<ContractSettlement?> GetByContractIdAsync(Guid contractId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ContractSettlement>> GetByContractIdAsync(Guid contractId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .Include(s => s.Charges)
-            .FirstOrDefaultAsync(s => s.ContractId == contractId, cancellationToken);
+            .Where(s => s.ContractId == contractId)
+            .OrderByDescending(s => s.CreatedDate)
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>

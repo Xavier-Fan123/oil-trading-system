@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -111,6 +114,21 @@ public class InMemoryWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Set environment FIRST before service configuration
+        builder.UseEnvironment("Testing");
+
+        // Set the actual environment variable so DependencyInjection.ConfigureDatabase detects it
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
+
+        // Configure connection string for InMemory database
+        builder.ConfigureAppConfiguration(configBuilder =>
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "ConnectionStrings:DefaultConnection", "InMemory" }
+            });
+        });
+
         builder.ConfigureServices(services =>
         {
             // Remove the existing DbContext registration
@@ -170,8 +188,6 @@ public class InMemoryWebApplicationFactory : WebApplicationFactory<Program>
                 }
             }
         });
-
-        builder.UseEnvironment("Testing");
 
         builder.ConfigureLogging(logging =>
         {

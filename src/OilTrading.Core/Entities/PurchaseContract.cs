@@ -1,6 +1,7 @@
 using OilTrading.Core.Common;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Events;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OilTrading.Core.Entities;
 
@@ -81,7 +82,21 @@ public class PurchaseContract : BaseEntity
     public int? CreditPeriodDays { get; private set; }
     public SettlementType SettlementType { get; private set; } = SettlementType.ContractPayment;
     public decimal? PrepaymentPercentage { get; private set; }
-    
+
+    // Payment Dates - Three-tier date tracking system
+    /// <summary>
+    /// Estimated payment date - filled by user when creating the contract
+    /// Based on Payment Terms and business agreement
+    /// </summary>
+    public DateTime? EstimatedPaymentDate { get; private set; }
+
+    /// <summary>
+    /// Payment status - dynamically calculated based on ActualPayableDueDate and ActualPaymentDate
+    /// from related settlements. Not persisted to database.
+    /// </summary>
+    [NotMapped]
+    public ContractPaymentStatus? PaymentStatus { get; set; }
+
     // Additional Fields
     public string? Incoterms { get; private set; }
     public string? QualitySpecifications { get; private set; }
@@ -300,6 +315,22 @@ public class PurchaseContract : BaseEntity
             throw new DomainException($"Cannot update settlement type for contract in {Status} status");
 
         SettlementType = settlementType;
+    }
+
+    /// <summary>
+    /// Update the estimated payment date for the contract
+    /// Used when creating or editing a purchase contract to set the expected payment date
+    /// </summary>
+    public void SetEstimatedPaymentDate(DateTime estimatedPaymentDate, string updatedBy = "")
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update estimated payment date for contract in {Status} status");
+
+        EstimatedPaymentDate = estimatedPaymentDate;
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
     }
 
     public void SetPrepaymentPercentage(decimal prepaymentPercentage)
@@ -564,7 +595,23 @@ public enum ContractStatus
     Draft = 1,
     PendingApproval = 2,
     Active = 3,
-    Completed = 4,
-    Cancelled = 5,
-    Suspended = 6
+    PartiallySettled = 4,  // Added: for contracts with multiple settlements where some are finalized
+    Completed = 5,         // Updated: moved from 4 to 5
+    Cancelled = 6,         // Updated: moved from 5 to 6
+    Suspended = 7          // Updated: moved from 6 to 7
+}
+
+/// <summary>
+/// Contract Payment Status enumeration - tracks the payment status of a contract
+/// Used to indicate whether a contract has been paid, partially paid, is overdue, etc.
+/// Calculated dynamically based on ActualPayableDueDate and ActualPaymentDate
+/// Note: Different from Payment.PaymentStatus which tracks individual payment workflow
+/// </summary>
+public enum ContractPaymentStatus
+{
+    NotDue = 1,          // Payment/collection not yet due
+    Due = 2,             // Payment/collection due but not yet received
+    PartiallyPaid = 3,   // Partially paid (e.g., down payment, partial settlement)
+    Paid = 4,            // Fully paid/collected
+    Overdue = 5          // Payment/collection is overdue
 }
