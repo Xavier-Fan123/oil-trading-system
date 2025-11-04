@@ -45,6 +45,36 @@ export enum CalculationMode {
   UseContractSpecified = 4
 }
 
+// Payment-related enums for P2
+export enum PaymentStatus {
+  NotDue = 0,
+  Pending = 1,
+  Processing = 2,
+  PartiallyPaid = 3,
+  Paid = 4,
+  Failed = 5,
+  Cancelled = 6,
+  Disputed = 7
+}
+
+export enum PaymentMethod {
+  BankTransfer = 1,
+  TelegraphicTransfer = 2,
+  Letter_of_Credit = 3,
+  ChequePayment = 4,
+  Cash = 5,
+  Other = 99
+}
+
+export enum PaymentTerms {
+  Immediate = 1,
+  Net10 = 2,
+  Net30 = 3,
+  Net60 = 4,
+  Net90 = 5,
+  Custom = 99
+}
+
 // Main settlement DTOs
 export interface ContractSettlementDto {
   id: string;
@@ -400,6 +430,76 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
+// Payment-related DTOs for P2 phase
+export interface PaymentDto {
+  id: string;
+  settlementId: string;
+  paymentReference?: string;
+  amount: number;
+  currency: string;
+  paymentStatus: PaymentStatus | string;
+  paymentMethod: PaymentMethod | string;
+  paymentTerms: PaymentTerms | string;
+  paymentDate?: Date;
+  dueDate?: Date;
+  receivedDate?: Date;
+  notes?: string;
+  createdDate: Date;
+  createdBy: string;
+  lastModifiedDate?: Date;
+  lastModifiedBy?: string;
+  formattedAmount: string;
+  formattedDueDate?: string;
+}
+
+export interface PaymentHistoryDto {
+  id: string;
+  settlementId: string;
+  paymentId?: string;
+  amount: number;
+  currency: string;
+  previousStatus: PaymentStatus | string;
+  newStatus: PaymentStatus | string;
+  transitionDate: Date;
+  notes?: string;
+  transitionedBy: string;
+  formattedAmount: string;
+  formattedTransitionDate: string;
+}
+
+export interface PaymentTrackingDto {
+  settlementId: string;
+  totalAmount: number;
+  currency: string;
+  amountDue: number;
+  amountPaid: number;
+  amountOverdue: number;
+  paymentStatus: PaymentStatus | string;
+  paymentMethod?: PaymentMethod | string;
+  paymentTerms?: PaymentTerms | string;
+  nextDueDate?: Date;
+  lastPaymentDate?: Date;
+  paymentCount: number;
+  completionPercentage: number;
+  formattedTotalAmount: string;
+  formattedAmountPaid: string;
+  formattedAmountDue: string;
+  formattedAmountOverdue: string;
+}
+
+export interface SettlementHistoryDto {
+  settlementId: string;
+  contractId: string;
+  contractNumber: string;
+  timestamp: Date;
+  action: 'Created' | 'Calculated' | 'Reviewed' | 'Approved' | 'Finalized' | 'Cancelled' | 'PaymentRecorded' | 'StatusChanged';
+  previousStatus?: string;
+  newStatus?: string;
+  description: string;
+  performedBy: string;
+  formattedTimestamp: string;
+}
+
 // Utility types for forms
 export interface SettlementFormData {
   contractId: string;
@@ -411,6 +511,9 @@ export interface SettlementFormData {
   actualQuantityBBL: number;
   notes?: string;
   charges: ChargeFormData[];
+  paymentTerms?: PaymentTerms;
+  paymentMethod?: PaymentMethod;
+  expectedPaymentDate?: Date;
 }
 
 export interface ChargeFormData {
@@ -478,6 +581,35 @@ export const QuantityUnitLabels: Record<QuantityUnit, string> = {
   [QuantityUnit.LOTS]: 'LOTS'
 };
 
+export const PaymentStatusLabels: Record<PaymentStatus, string> = {
+  [PaymentStatus.NotDue]: 'Not Due',
+  [PaymentStatus.Pending]: 'Pending',
+  [PaymentStatus.Processing]: 'Processing',
+  [PaymentStatus.PartiallyPaid]: 'Partially Paid',
+  [PaymentStatus.Paid]: 'Paid',
+  [PaymentStatus.Failed]: 'Failed',
+  [PaymentStatus.Cancelled]: 'Cancelled',
+  [PaymentStatus.Disputed]: 'Disputed'
+};
+
+export const PaymentMethodLabels: Record<PaymentMethod, string> = {
+  [PaymentMethod.BankTransfer]: 'Bank Transfer',
+  [PaymentMethod.TelegraphicTransfer]: 'Telegraphic Transfer',
+  [PaymentMethod.Letter_of_Credit]: 'Letter of Credit',
+  [PaymentMethod.ChequePayment]: 'Cheque Payment',
+  [PaymentMethod.Cash]: 'Cash',
+  [PaymentMethod.Other]: 'Other'
+};
+
+export const PaymentTermsLabels: Record<PaymentTerms, string> = {
+  [PaymentTerms.Immediate]: 'Immediate',
+  [PaymentTerms.Net10]: 'Net 10',
+  [PaymentTerms.Net30]: 'Net 30',
+  [PaymentTerms.Net60]: 'Net 60',
+  [PaymentTerms.Net90]: 'Net 90',
+  [PaymentTerms.Custom]: 'Custom'
+};
+
 // Helper functions
 export const getDocumentTypeLabel = (type: DocumentType): string => {
   return DocumentTypeLabels[type] || 'Unknown';
@@ -493,6 +625,36 @@ export const getChargeTypeLabel = (type: ChargeType): string => {
 
 export const getQuantityUnitLabel = (unit: QuantityUnit): string => {
   return QuantityUnitLabels[unit] || 'Unknown';
+};
+
+export const getPaymentStatusLabel = (status: PaymentStatus | string): string => {
+  if (typeof status === 'string') {
+    const statusNum = Object.entries(PaymentStatusLabels).find(
+      ([, label]) => label === status
+    );
+    return statusNum ? statusNum[1] : status;
+  }
+  return PaymentStatusLabels[status] || 'Unknown';
+};
+
+export const getPaymentMethodLabel = (method: PaymentMethod | string): string => {
+  if (typeof method === 'string') {
+    const methodNum = Object.entries(PaymentMethodLabels).find(
+      ([, label]) => label === method
+    );
+    return methodNum ? methodNum[1] : method;
+  }
+  return PaymentMethodLabels[method] || 'Unknown';
+};
+
+export const getPaymentTermsLabel = (terms: PaymentTerms | string): string => {
+  if (typeof terms === 'string') {
+    const termsNum = Object.entries(PaymentTermsLabels).find(
+      ([, label]) => label === terms
+    );
+    return termsNum ? termsNum[1] : terms;
+  }
+  return PaymentTermsLabels[terms] || 'Unknown';
 };
 
 // Status color mappings for UI
@@ -543,6 +705,33 @@ export const getChargeTypeColor = (type: ChargeType): 'default' | 'primary' | 's
       return 'info';
     case ChargeType.Other:
       return 'default';
+    default:
+      return 'default';
+  }
+};
+
+export const getPaymentStatusColor = (status: PaymentStatus | string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  const statusNum = typeof status === 'string' ?
+    Object.entries(PaymentStatusLabels).findIndex(([, label]) => label === status) as PaymentStatus :
+    status;
+
+  switch (statusNum) {
+    case PaymentStatus.NotDue:
+      return 'default';
+    case PaymentStatus.Pending:
+      return 'info';
+    case PaymentStatus.Processing:
+      return 'primary';
+    case PaymentStatus.PartiallyPaid:
+      return 'warning';
+    case PaymentStatus.Paid:
+      return 'success';
+    case PaymentStatus.Failed:
+      return 'error';
+    case PaymentStatus.Cancelled:
+      return 'error';
+    case PaymentStatus.Disputed:
+      return 'warning';
     default:
       return 'default';
   }

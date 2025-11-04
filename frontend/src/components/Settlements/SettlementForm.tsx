@@ -12,11 +12,38 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Grid,
+  Typography,
+  Divider,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { settlementApi, CreateSettlementDto } from '../../services/settlementApi';
 import { purchaseContractsApi } from '../../services/contractsApi';
 import { salesContractsApi } from '../../services/salesContractsApi';
+import { PaymentTerms, PaymentMethod, PaymentTermsLabels, PaymentMethodLabels } from '../../types/settlement';
+
+/**
+ * Calculate expected payment date based on payment terms
+ */
+function calculateExpectedPaymentDate(terms: PaymentTerms | string): Date {
+  const today = new Date();
+  const termsNum = typeof terms === 'string' ? parseInt(terms) : terms;
+
+  switch (termsNum) {
+    case PaymentTerms.Immediate:
+      return today;
+    case PaymentTerms.Net10:
+      return new Date(today.setDate(today.getDate() + 10));
+    case PaymentTerms.Net30:
+      return new Date(today.setDate(today.getDate() + 30));
+    case PaymentTerms.Net60:
+      return new Date(today.setDate(today.getDate() + 60));
+    case PaymentTerms.Net90:
+      return new Date(today.setDate(today.getDate() + 90));
+    default:
+      return new Date(today.setDate(today.getDate() + 30));
+  }
+}
 
 export interface SettlementFormProps {
   contractType: 'purchase' | 'sales';
@@ -40,6 +67,9 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({
     documentType: 'Invoice',
     documentDate: new Date().toISOString().split('T')[0],
     externalContractNumber: '',
+    paymentTerms: PaymentTerms.Net30.toString(),
+    paymentMethod: PaymentMethod.BankTransfer.toString(),
+    expectedPaymentDate: calculateExpectedPaymentDate(PaymentTerms.Net30).toISOString().split('T')[0],
   });
 
   // Fetch contract details to display
@@ -152,7 +182,67 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({
             placeholder="e.g., EXT-2025-001"
           />
 
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          {/* Payment Terms Section */}
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Payment Terms
+          </Typography>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Payment Terms</InputLabel>
+                <Select
+                  value={formData.paymentTerms}
+                  onChange={(e) => {
+                    const newTerms = parseInt(e.target.value);
+                    setFormData((prev) => ({
+                      ...prev,
+                      paymentTerms: e.target.value,
+                      expectedPaymentDate: calculateExpectedPaymentDate(newTerms).toISOString().split('T')[0],
+                    }));
+                  }}
+                  label="Payment Terms"
+                >
+                  {Object.entries(PaymentTermsLabels).map(([key, label]) => (
+                    <MenuItem key={key} value={key}>
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Payment Method</InputLabel>
+                <Select
+                  value={formData.paymentMethod}
+                  onChange={handleInputChange('paymentMethod')}
+                  label="Payment Method"
+                >
+                  {Object.entries(PaymentMethodLabels).map(([key, label]) => (
+                    <MenuItem key={key} value={key}>
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Expected Payment Date"
+                type="date"
+                value={formData.expectedPaymentDate}
+                onChange={handleInputChange('expectedPaymentDate')}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 3 }}>
             <Button
               variant="contained"
               color="primary"

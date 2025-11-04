@@ -45,6 +45,9 @@ import { ChargeManager } from './ChargeManager';
 import { SettlementTab } from './SettlementTab';
 import { PaymentTab } from './PaymentTab';
 import { ExecutionTab } from './ExecutionTab';
+import { SettlementHistoryTab } from './SettlementHistoryTab';
+import { PaymentTrackingTab } from './PaymentTrackingTab';
+import { ExecutionStatusTab } from './ExecutionStatusTab';
 
 interface SettlementDetailProps {
   settlementId: string;
@@ -216,17 +219,23 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
 
       {/* Tabbed Content Section */}
       <Card sx={{ mb: 3 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', overflowX: 'auto' }}>
+          <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} variant="scrollable" scrollButtons="auto">
             <Tab label="Settlement Details" />
-            <Tab label="Payment Information" />
+            <Tab label="Payment Tracking" />
+            <Tab label="Settlement History" />
             <Tab label="Execution Status" />
+            <Tab label="Payment Information" />
+            <Tab label="Charges & Fees" />
           </Tabs>
         </Box>
         <CardContent sx={{ pt: 3 }}>
           {activeTab === 0 && <SettlementTab settlement={settlement} />}
-          {activeTab === 1 && <PaymentTab settlement={settlement} />}
-          {activeTab === 2 && <ExecutionTab settlement={settlement} />}
+          {activeTab === 1 && <PaymentTrackingTab settlementId={settlementId} />}
+          {activeTab === 2 && <SettlementHistoryTab settlementId={settlementId} />}
+          {activeTab === 3 && <ExecutionStatusTab settlementId={settlementId} />}
+          {activeTab === 4 && <PaymentTab settlement={settlement} />}
+          {activeTab === 5 && <ChargeManager settlementId={settlementId} canEdit={settlement.canBeModified} />}
         </CardContent>
       </Card>
 

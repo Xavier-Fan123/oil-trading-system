@@ -11,6 +11,13 @@ import {
   SettlementChargeDto,
   SettlementSearchFilters,
   PagedResult,
+  PaymentDto,
+  PaymentHistoryDto,
+  PaymentTrackingDto,
+  SettlementHistoryDto,
+  PaymentStatus,
+  PaymentMethod,
+  PaymentTerms,
 } from '@/types/settlement';
 
 // Re-export types for convenience
@@ -26,6 +33,13 @@ export type {
   SettlementChargeDto,
   SettlementSearchFilters,
   PagedResult,
+  PaymentDto,
+  PaymentHistoryDto,
+  PaymentTrackingDto,
+  SettlementHistoryDto,
+  PaymentStatus,
+  PaymentMethod,
+  PaymentTerms,
 };
 
 const API_BASE_URL = 'http://localhost:5000/api'; // Force correct baseURL
@@ -215,6 +229,81 @@ export const settlementApi = {
   // Recalculate settlement (convenience method)
   recalculateSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
     return settlementApi.calculateSettlement(settlementId, {});
+  }
+};
+
+// Payment management endpoints (P2 phase)
+export const settlementPaymentApi = {
+  // Get all payments for a settlement
+  getPayments: async (settlementId: string): Promise<PaymentDto[]> => {
+    const response = await api.get(`/settlements/${settlementId}/payments`);
+    return response.data;
+  },
+
+  // Get a specific payment
+  getPayment: async (settlementId: string, paymentId: string): Promise<PaymentDto> => {
+    const response = await api.get(`/settlements/${settlementId}/payments/${paymentId}`);
+    return response.data;
+  },
+
+  // Record a new payment for a settlement
+  recordPayment: async (settlementId: string, paymentData: Omit<PaymentDto, 'id' | 'createdDate' | 'createdBy' | 'formattedAmount' | 'formattedDueDate'>): Promise<PaymentDto> => {
+    const response = await api.post(`/settlements/${settlementId}/payments`, paymentData);
+    return response.data;
+  },
+
+  // Update an existing payment
+  updatePayment: async (settlementId: string, paymentId: string, paymentData: Partial<PaymentDto>): Promise<PaymentDto> => {
+    const response = await api.put(`/settlements/${settlementId}/payments/${paymentId}`, paymentData);
+    return response.data;
+  },
+
+  // Cancel/delete a payment
+  cancelPayment: async (settlementId: string, paymentId: string): Promise<void> => {
+    await api.delete(`/settlements/${settlementId}/payments/${paymentId}`);
+  },
+
+  // Get payment tracking summary for a settlement
+  getPaymentTracking: async (settlementId: string): Promise<PaymentTrackingDto> => {
+    const response = await api.get(`/settlements/${settlementId}/payment-tracking`);
+    return response.data;
+  },
+
+  // Get payment history timeline for a settlement
+  getPaymentHistory: async (settlementId: string): Promise<PaymentHistoryDto[]> => {
+    const response = await api.get(`/settlements/${settlementId}/payment-history`);
+    return response.data;
+  },
+
+  // Update payment terms for a settlement
+  updatePaymentTerms: async (settlementId: string, paymentTerms: PaymentTerms, paymentMethod: PaymentMethod, expectedPaymentDate?: Date): Promise<ContractSettlementDto> => {
+    const response = await api.put(`/settlements/${settlementId}/payment-terms`, {
+      paymentTerms,
+      paymentMethod,
+      expectedPaymentDate
+    });
+    return response.data;
+  },
+
+  // Mark settlement payment as complete
+  markPaymentComplete: async (settlementId: string): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/settlements/${settlementId}/mark-payment-complete`);
+    return response.data;
+  }
+};
+
+// Settlement history endpoints (P2 phase)
+export const settlementHistoryApi = {
+  // Get settlement history timeline
+  getHistory: async (settlementId: string): Promise<SettlementHistoryDto[]> => {
+    const response = await api.get(`/settlements/${settlementId}/history`);
+    return response.data;
+  },
+
+  // Get settlement history for a contract (all settlements for that contract)
+  getContractHistory: async (contractId: string): Promise<SettlementHistoryDto[]> => {
+    const response = await api.get(`/contracts/${contractId}/settlement-history`);
+    return response.data;
   }
 };
 
