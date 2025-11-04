@@ -10,13 +10,16 @@ namespace OilTrading.Application.Commands.SalesContracts;
 public class RejectSalesContractCommandHandler : IRequestHandler<RejectSalesContractCommand>
 {
     private readonly ISalesContractRepository _salesContractRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RejectSalesContractCommandHandler> _logger;
 
     public RejectSalesContractCommandHandler(
         ISalesContractRepository salesContractRepository,
+        IUnitOfWork unitOfWork,
         ILogger<RejectSalesContractCommandHandler> logger)
     {
         _salesContractRepository = salesContractRepository;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -37,7 +40,10 @@ public class RejectSalesContractCommandHandler : IRequestHandler<RejectSalesCont
 
         await _salesContractRepository.UpdateAsync(salesContract, cancellationToken);
 
-        _logger.LogInformation("Sales contract {ContractId} rejected by {RejectedBy}. Reason: {Reason}", 
+        // CRITICAL: Persist changes to database
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Sales contract {ContractId} rejected by {RejectedBy}. Reason: {Reason}",
             request.Id, request.RejectedBy, request.Reason);
     }
 }

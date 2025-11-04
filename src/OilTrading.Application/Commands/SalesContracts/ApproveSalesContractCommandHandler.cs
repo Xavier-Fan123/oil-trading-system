@@ -10,13 +10,16 @@ namespace OilTrading.Application.Commands.SalesContracts;
 public class ApproveSalesContractCommandHandler : IRequestHandler<ApproveSalesContractCommand>
 {
     private readonly ISalesContractRepository _salesContractRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ApproveSalesContractCommandHandler> _logger;
 
     public ApproveSalesContractCommandHandler(
         ISalesContractRepository salesContractRepository,
+        IUnitOfWork unitOfWork,
         ILogger<ApproveSalesContractCommandHandler> logger)
     {
         _salesContractRepository = salesContractRepository;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -39,7 +42,10 @@ public class ApproveSalesContractCommandHandler : IRequestHandler<ApproveSalesCo
 
         await _salesContractRepository.UpdateAsync(salesContract, cancellationToken);
 
-        _logger.LogInformation("Sales contract {ContractId} approved by {ApprovedBy}", 
+        // CRITICAL: Persist changes to database
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Sales contract {ContractId} approved by {ApprovedBy}",
             request.Id, request.ApprovedBy);
     }
 }
