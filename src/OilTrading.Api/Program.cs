@@ -322,6 +322,10 @@ builder.Services.AddScoped<IBusinessWorkflowService, BusinessWorkflowService>();
 builder.Services.AddScoped<ITradeChainService, TradeChainService>();
 builder.Services.AddScoped<ITradeChainRepository, TradeChainRepository>();
 
+// Contract execution report service
+builder.Services.AddScoped<IContractExecutionReportService, ContractExecutionReportService>();
+builder.Services.AddScoped<IContractExecutionReportRepository, ContractExecutionReportRepository>();
+
 // GraphQL services removed for production stability
 
 // Configure CORS

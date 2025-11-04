@@ -22,7 +22,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -33,13 +35,16 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
-import { 
+import {
   ContractSettlementDto,
   ContractSettlementStatus,
   getSettlementStatusColor
 } from '@/types/settlement';
 import { getSettlementWithFallback, settlementApi } from '@/services/settlementApi';
 import { ChargeManager } from './ChargeManager';
+import { SettlementTab } from './SettlementTab';
+import { PaymentTab } from './PaymentTab';
+import { ExecutionTab } from './ExecutionTab';
 
 interface SettlementDetailProps {
   settlementId: string;
@@ -59,6 +64,7 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
   const [recalculating, setRecalculating] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
 
   const loadSettlement = async () => {
     try {
@@ -208,7 +214,23 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
         </Box>
       </Box>
 
-      {/* Status and Basic Info */}
+      {/* Tabbed Content Section */}
+      <Card sx={{ mb: 3 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+            <Tab label="Settlement Details" />
+            <Tab label="Payment Information" />
+            <Tab label="Execution Status" />
+          </Tabs>
+        </Box>
+        <CardContent sx={{ pt: 3 }}>
+          {activeTab === 0 && <SettlementTab settlement={settlement} />}
+          {activeTab === 1 && <PaymentTab settlement={settlement} />}
+          {activeTab === 2 && <ExecutionTab settlement={settlement} />}
+        </CardContent>
+      </Card>
+
+      {/* Status and Basic Info - Legacy Content (Optional) */}
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Card>

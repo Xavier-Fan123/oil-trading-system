@@ -77,6 +77,12 @@ public class ApplicationDbContext : DbContext
     // Audit logging
     public DbSet<OperationAuditLog> OperationAuditLogs { get; set; }
 
+    // Contract Execution Reports
+    public DbSet<ContractExecutionReport> ContractExecutionReports { get; set; }
+
+    // Risk reports
+    public DbSet<RiskReport> RiskReports { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
