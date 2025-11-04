@@ -45,6 +45,7 @@ import { purchaseContractsApi } from '@/services/contractsApi';
 import { salesContractsApi } from '@/services/salesContractsApi';
 import { QuantityCalculator } from './QuantityCalculator';
 import { ContractResolver } from '../Contracts/ContractResolver';
+import { SettlementCalculationForm } from './SettlementCalculationForm';
 
 interface SettlementEntryProps {
   mode: 'create' | 'edit';
@@ -70,6 +71,7 @@ const steps = [
   'Contract Selection',
   'Document Information',
   'Quantity Calculation',
+  'Settlement Calculation',
   'Initial Charges',
   'Review & Submit'
 ];
@@ -98,6 +100,18 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     notes: '',
     charges: []
   });
+
+  // Settlement calculation data
+  const [calculationData, setCalculationData] = useState({
+    calculationQuantityMT: 0,
+    calculationQuantityBBL: 0,
+    benchmarkAmount: 0,
+    adjustmentAmount: 0,
+    calculationNote: ''
+  });
+
+  // Store created settlement for calculation step
+  const [createdSettlement, setCreatedSettlement] = useState<any>(null);
 
   // Load existing settlement for edit mode
   useEffect(() => {
@@ -241,9 +255,62 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (validateStep(activeStep)) {
-      setActiveStep((prev) => prev + 1);
+      // If we're about to move to settlement calculation step in create mode, create the settlement first
+      if (activeStep === 2 && mode === 'create' && !createdSettlement) {
+        await handleCreateSettlement();
+      }
+      if (!loading) {
+        setActiveStep((prev) => prev + 1);
+      }
+    }
+  };
+
+  const handleCreateSettlement = async () => {
+    if (!selectedContract) {
+      setError('No contract selected');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const dto: CreateSettlementDto = {
+        contractId: selectedContract.id,
+        documentNumber: formData.documentNumber?.trim(),
+        documentType: formData.documentType,
+        documentDate: formData.documentDate,
+        actualQuantityMT: formData.actualQuantityMT,
+        actualQuantityBBL: formData.actualQuantityBBL,
+        createdBy: 'CurrentUser',
+        notes: formData.notes?.trim(),
+        settlementCurrency: 'USD',
+        autoCalculatePrices: false, // Don't auto-calculate, user will do it manually
+        autoTransitionStatus: false
+      };
+
+      const result = await settlementApi.createSettlement(dto);
+      if (result.isSuccessful && result.settlementId) {
+        // Reload the created settlement to get its full data
+        const createdData = await getSettlementWithFallback(result.settlementId);
+        setCreatedSettlement(createdData);
+      } else {
+        setError(result.errorMessage || 'Failed to create settlement');
+        throw new Error(result.errorMessage || 'Failed to create settlement');
+      }
+    } catch (err: any) {
+      console.error('Error creating settlement:', err);
+      const errorMessage = err?.response?.data?.errorMessage || err?.response?.data?.message || err?.message || 'Failed to create settlement';
+      const validationErrors = err?.response?.data?.validationErrors || [];
+      const detailedErrors = validationErrors.length > 0
+        ? `${errorMessage} - ${validationErrors.join(', ')}`
+        : errorMessage;
+      setError(`Failed to create settlement: ${detailedErrors}`);
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -280,7 +347,16 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         }
         return true;
 
-      case 3: // Initial Charges
+      case 3: // Settlement Calculation
+        // In create mode, we need to create the settlement first before calculating
+        // In edit mode, calculation is optional
+        if (mode === 'create' && !createdSettlement) {
+          setError('Settlement must be created before proceeding to calculation. Please review your information.');
+          return false;
+        }
+        return true;
+
+      case 4: // Initial Charges
         // Charges are optional, always valid
         return true;
 
@@ -290,68 +366,47 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!selectedContract) {
-      setError('No contract selected');
-      return;
-    }
-
-    // Validate that the contract ID is a valid GUID (not a mock ID)
-    const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!guidPattern.test(selectedContract.id)) {
-      setError(`Invalid contract ID: ${selectedContract.id}. Please make sure you have loaded real contracts from the API.`);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const dto: CreateSettlementDto = {
-        contractId: selectedContract.id,
-        documentNumber: formData.documentNumber?.trim(),
-        documentType: formData.documentType,
-        documentDate: formData.documentDate,
-        actualQuantityMT: formData.actualQuantityMT,
-        actualQuantityBBL: formData.actualQuantityBBL,
-        createdBy: 'CurrentUser', // This would come from auth context
-        notes: formData.notes?.trim(),
-        settlementCurrency: 'USD',
-        autoCalculatePrices: true,
-        autoTransitionStatus: false
-      };
-
-      if (mode === 'create') {
-        const result = await settlementApi.createSettlement(dto);
-        if (result.isSuccessful && result.settlementId) {
-          // Add initial charges if any
-          if (formData.charges.length > 0) {
-            // Would add charges here using settlementChargeApi
-          }
-          onSuccess();
-        } else {
-          setError(result.errorMessage || 'Failed to create settlement');
-        }
-      } else if (mode === 'edit' && settlementId) {
-        await settlementApi.updateSettlement(settlementId, {
-          documentNumber: dto.documentNumber,
-          documentType: dto.documentType,
-          documentDate: dto.documentDate,
-          actualQuantityMT: dto.actualQuantityMT,
-          actualQuantityBBL: dto.actualQuantityBBL,
-          notes: dto.notes
-        });
-        onSuccess();
+    if (mode === 'create') {
+      // In create mode, we already created the settlement when transitioning to calculation step
+      // Just call onSuccess to complete the workflow
+      if (!createdSettlement) {
+        setError('Settlement was not created. Please go back and review your information.');
+        return;
       }
-    } catch (err: any) {
-      console.error('Error saving settlement:', err);
-      const errorMessage = err?.response?.data?.errorMessage || err?.response?.data?.message || err?.message || 'Failed to save settlement';
-      const validationErrors = err?.response?.data?.validationErrors || [];
-      const detailedErrors = validationErrors.length > 0
-        ? `${errorMessage} - ${validationErrors.join(', ')}`
-        : errorMessage;
-      setError(`Failed to save settlement: ${detailedErrors}`);
-    } finally {
-      setLoading(false);
+      onSuccess();
+    } else if (mode === 'edit' && settlementId) {
+      // In edit mode, update the settlement
+      if (!selectedContract) {
+        setError('No contract selected');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const dto: any = {
+          documentNumber: formData.documentNumber?.trim(),
+          documentType: formData.documentType,
+          documentDate: formData.documentDate,
+          actualQuantityMT: formData.actualQuantityMT,
+          actualQuantityBBL: formData.actualQuantityBBL,
+          notes: formData.notes?.trim()
+        };
+
+        await settlementApi.updateSettlement(settlementId, dto);
+        onSuccess();
+      } catch (err: any) {
+        console.error('Error updating settlement:', err);
+        const errorMessage = err?.response?.data?.errorMessage || err?.response?.data?.message || err?.message || 'Failed to update settlement';
+        const validationErrors = err?.response?.data?.validationErrors || [];
+        const detailedErrors = validationErrors.length > 0
+          ? `${errorMessage} - ${validationErrors.join(', ')}`
+          : errorMessage;
+        setError(`Failed to update settlement: ${detailedErrors}`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -561,7 +616,37 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
           </Box>
         );
 
-      case 3: // Initial Charges
+      case 3: // Settlement Calculation
+        return (
+          <Box>
+            {createdSettlement && (
+              <>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  Settlement has been created. Now enter the benchmark amount and adjustment amount for final settlement price calculation.
+                </Alert>
+                <SettlementCalculationForm
+                  settlement={createdSettlement}
+                  contractType={selectedContract?.type || 'purchase'}
+                  onSuccess={(updatedSettlement) => {
+                    setCreatedSettlement(updatedSettlement);
+                    setCalculationData({
+                      calculationQuantityMT: updatedSettlement.calculationQuantityMT || 0,
+                      calculationQuantityBBL: updatedSettlement.calculationQuantityBBL || 0,
+                      benchmarkAmount: updatedSettlement.benchmarkAmount || 0,
+                      adjustmentAmount: updatedSettlement.adjustmentAmount || 0,
+                      calculationNote: updatedSettlement.quantityCalculationNote || ''
+                    });
+                  }}
+                  onError={(error) => {
+                    setError(`Calculation failed: ${error.message}`);
+                  }}
+                />
+              </>
+            )}
+          </Box>
+        );
+
+      case 4: // Initial Charges
         return (
           <Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -637,11 +722,11 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
           </Box>
         );
 
-      case 4: // Review & Submit
+      case 5: // Review & Submit
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Review Settlement Details</Typography>
-            
+
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Contract Information</Typography>
@@ -652,20 +737,31 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
                 </Typography>
                 <Typography variant="body2">Product: {selectedContract?.productName}</Typography>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Document Information</Typography>
                 <Typography variant="body2">Document: {formData.documentNumber}</Typography>
                 <Typography variant="body2">Type: {DocumentTypeLabels[formData.documentType]}</Typography>
                 <Typography variant="body2">Date: {formData.documentDate.toDateString()}</Typography>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" gutterBottom>Quantities</Typography>
+                <Typography variant="subtitle2" gutterBottom>Actual Quantities</Typography>
                 <Typography variant="body2">MT: {formData.actualQuantityMT.toLocaleString()}</Typography>
                 <Typography variant="body2">BBL: {formData.actualQuantityBBL.toLocaleString()}</Typography>
               </Grid>
-              
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>Settlement Calculation</Typography>
+                <Typography variant="body2">Benchmark Amount: ${calculationData.benchmarkAmount.toFixed(2)}</Typography>
+                <Typography variant="body2">Adjustment Amount: ${calculationData.adjustmentAmount.toFixed(2)}</Typography>
+                {calculationData.benchmarkAmount > 0 && (
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', mt: 1 }}>
+                    Calculation MT: {calculationData.calculationQuantityMT.toLocaleString()} MT
+                  </Typography>
+                )}
+              </Grid>
+
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Initial Charges</Typography>
                 <Typography variant="body2">{formData.charges.length} charges added</Typography>
