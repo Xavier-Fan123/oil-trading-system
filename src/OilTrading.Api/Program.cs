@@ -355,17 +355,36 @@ using (var scope = app.Services.CreateScope())
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
         logger.LogInformation("Applying pending database migrations...");
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        try
+        {
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
 
-        if (pendingMigrations.Any())
-        {
-            logger.LogInformation("Found {MigrationCount} pending migrations. Applying...", pendingMigrations.Count());
-            await context.Database.MigrateAsync();
-            logger.LogInformation("Successfully applied all pending migrations");
+            if (pendingMigrations.Any())
+            {
+                logger.LogInformation("Found {MigrationCount} pending migrations. Applying...", pendingMigrations.Count());
+                await context.Database.MigrateAsync();
+                logger.LogInformation("Successfully applied all pending migrations");
+            }
+            else
+            {
+                logger.LogInformation("No pending migrations to apply");
+            }
         }
-        else
+        catch (Exception migrationEx)
         {
-            logger.LogInformation("No pending migrations to apply");
+            logger.LogWarning(migrationEx, "Skipping migration due to error. Database may already be at target version.");
+        }
+
+        // Seed initial data if database is empty
+        try
+        {
+            logger.LogInformation("Checking if database seeding is needed...");
+            var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+            await seeder.SeedAsync();
+        }
+        catch (Exception seedEx)
+        {
+            logger.LogError(seedEx, "An error occurred while seeding the database");
         }
     }
     catch (Exception ex)

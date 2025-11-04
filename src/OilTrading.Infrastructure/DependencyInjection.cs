@@ -196,6 +196,9 @@ public static class DependencyInjection
     
     private static void ConfigureRepositories(IServiceCollection services)
     {
+        // Generic repository factory for entities that don't have specific repository implementations
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
         // Core repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IPurchaseContractRepository, PurchaseContractRepository>();
@@ -211,33 +214,36 @@ public static class DependencyInjection
         services.AddScoped<IPhysicalContractRepository, PhysicalContractRepository>();
         services.AddScoped<IPriceBenchmarkRepository, PriceBenchmarkRepository>();
         services.AddScoped<ISettlementRepository, SettlementRepository>();
-        
+
         // Inventory repositories
         services.AddScoped<IInventoryLocationRepository, InventoryLocationRepository>();
         services.AddScoped<IInventoryPositionRepository, InventoryPositionRepository>();
         services.AddScoped<IInventoryMovementRepository, InventoryMovementRepository>();
-        
+
         // Trade management repositories
         services.AddScoped<ITradeGroupRepository, TradeGroupRepository>();
         services.AddScoped<ITradeChainRepository, TradeChainRepository>();
-        
+
         // Tag management repositories
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IContractTagRepository, ContractTagRepository>();
-        
+
         // Settlement repositories
         services.AddScoped<IContractSettlementRepository, ContractSettlementRepository>();
-        
+
         // Financial Reporting
         services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
     }
     
     private static void ConfigureApplicationServices(IServiceCollection services, IConfiguration configuration)
     {
+        // Data seeding service
+        services.AddScoped<DataSeeder>();
+
         // Database services
         services.AddScoped<ITimescaleDbService, TimescaleDbService>();
         services.AddScoped<IPositionCacheService, PositionCacheService>();
-        
+
         // Cache services
         services.AddScoped<ICacheService, CacheService>();
         services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
