@@ -55,7 +55,14 @@ public class PurchaseContractDto
     public int? CreditPeriodDays { get; set; }
     public ContractPaymentMethod SettlementType { get; set; }
     public decimal? PrepaymentPercentage { get; set; }
-    
+
+    // Payment Status Information - NEW
+    public ContractPaymentStatus? PaymentStatus { get; set; }
+    public DateTime? EstimatedPaymentDate { get; set; }
+    public decimal TotalSettledAmount { get; set; }
+    public decimal PaidSettledAmount { get; set; }
+    public decimal UnpaidSettledAmount { get; set; }
+
     // Additional Information
     public string? Incoterms { get; set; }
     public string? QualitySpecifications { get; set; }
@@ -87,14 +94,14 @@ public class PurchaseContractListDto
     public string? ExternalContractNumber { get; set; } // 外部/手动合同编号
     public ContractType ContractType { get; set; }
     public ContractStatus Status { get; set; }
-    
+
     // Include IDs for frontend filtering/referencing
     public Guid SupplierId { get; set; }
     public string SupplierName { get; set; } = string.Empty;
     public Guid ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public string TraderName { get; set; } = string.Empty;
-    
+
     public decimal Quantity { get; set; }
     public QuantityUnit QuantityUnit { get; set; }
     public decimal? ContractValue { get; set; }
@@ -104,6 +111,11 @@ public class PurchaseContractListDto
     public string? LoadPort { get; set; }
     public string? DischargePort { get; set; }
     public bool IsPriceFinalized { get; set; }
+
+    // Payment Status Information - NEW
+    public ContractPaymentStatus? PaymentStatus { get; set; }
+    public decimal UnpaidSettledAmount { get; set; }
+
     public int ShippingOperationsCount { get; set; }
     public int LinkedSalesContractsCount { get; set; }
     public DateTime CreatedAt { get; set; }

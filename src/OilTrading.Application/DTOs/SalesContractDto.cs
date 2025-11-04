@@ -57,7 +57,14 @@ public class SalesContractDto
     public int? CreditPeriodDays { get; set; }
     public ContractPaymentMethod SettlementType { get; set; }
     public decimal? PrepaymentPercentage { get; set; }
-    
+
+    // Payment Status Information - NEW
+    public ContractPaymentStatus? PaymentStatus { get; set; }
+    public DateTime? EstimatedPaymentDate { get; set; }
+    public decimal TotalSettledAmount { get; set; }
+    public decimal PaidSettledAmount { get; set; }
+    public decimal UnpaidSettledAmount { get; set; }
+
     // Additional Information
     public string? Incoterms { get; set; }
     public string? QualitySpecifications { get; set; }
@@ -97,6 +104,11 @@ public class SalesContractSummaryDto
     public decimal? ContractValue { get; set; }
     public decimal? EstimatedProfit { get; set; }
     public decimal? Margin { get; set; }
+
+    // Payment Status Information - NEW
+    public ContractPaymentStatus? PaymentStatus { get; set; }
+    public decimal UnpaidSettledAmount { get; set; }
+
     public DateTime? LaycanStart { get; set; }
     public DateTime? LaycanEnd { get; set; }
     public DateTime CreatedAt { get; set; }

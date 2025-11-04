@@ -13,14 +13,14 @@ public class PurchaseContractMappingProfile : Profile
         CreateMap<PurchaseContract, PurchaseContractDto>()
             .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => new ContractNumberDto { Value = src.ContractNumber.Value }))
             .ForMember(dest => dest.ExternalContractNumber, opt => opt.MapFrom(src => src.ExternalContractNumber))
-            .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => new SupplierDto 
-            { 
+            .ForMember(dest => dest.Supplier, opt => opt.MapFrom(src => new SupplierDto
+            {
                 Id = src.TradingPartnerId,
                 Name = src.TradingPartner != null ? src.TradingPartner.CompanyName : "",
                 Code = src.TradingPartner != null ? src.TradingPartner.CompanyCode : ""
             }))
-            .ForMember(dest => dest.Product, opt => opt.MapFrom(src => new ContractProductDto 
-            { 
+            .ForMember(dest => dest.Product, opt => opt.MapFrom(src => new ContractProductDto
+            {
                 Id = src.ProductId,
                 Name = src.Product != null ? src.Product.ProductName : "",
                 Code = src.Product != null ? src.Product.ProductCode : ""
@@ -36,6 +36,12 @@ public class PurchaseContractMappingProfile : Profile
             .ForMember(dest => dest.Discount, opt => opt.MapFrom(src => src.Discount != null ? src.Discount.Amount : (decimal?)null))
             .ForMember(dest => dest.DeliveryTerms, opt => opt.MapFrom(src => src.DeliveryTerms))
             .ForMember(dest => dest.SettlementType, opt => opt.MapFrom(src => src.SettlementType))
+            .ForMember(dest => dest.EstimatedPaymentDate, opt => opt.MapFrom(src => src.EstimatedPaymentDate))
+            // Payment status fields - will be populated from PaymentStatusCalculationService during query execution
+            .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
+            .ForMember(dest => dest.TotalSettledAmount, opt => opt.Ignore())
+            .ForMember(dest => dest.PaidSettledAmount, opt => opt.Ignore())
+            .ForMember(dest => dest.UnpaidSettledAmount, opt => opt.Ignore())
             .ForMember(dest => dest.BenchmarkContractNumber, opt => opt.MapFrom(src => src.BenchmarkContract != null ? src.BenchmarkContract.ContractNumber.Value : null))
             .ForMember(dest => dest.LinkedSalesContracts, opt => opt.MapFrom(src => src.LinkedSalesContracts))
             .ForMember(dest => dest.ShippingOperations, opt => opt.MapFrom(src => src.ShippingOperations))
@@ -54,6 +60,9 @@ public class PurchaseContractMappingProfile : Profile
             .ForMember(dest => dest.QuantityUnit, opt => opt.MapFrom(src => src.ContractQuantity.Unit))
             .ForMember(dest => dest.ContractValue, opt => opt.MapFrom(src => src.ContractValue != null ? src.ContractValue.Amount : (decimal?)null))
             .ForMember(dest => dest.ContractValueCurrency, opt => opt.MapFrom(src => src.ContractValue != null ? src.ContractValue.Currency : null))
+            // Payment status fields - will be populated from PaymentStatusCalculationService during query execution
+            .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
+            .ForMember(dest => dest.UnpaidSettledAmount, opt => opt.Ignore())
             .ForMember(dest => dest.ShippingOperationsCount, opt => opt.MapFrom(src => src.ShippingOperations != null ? src.ShippingOperations.Count : 0))
             .ForMember(dest => dest.LinkedSalesContractsCount, opt => opt.MapFrom(src => src.LinkedSalesContracts != null ? src.LinkedSalesContracts.Count : 0))
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt));
@@ -66,14 +75,14 @@ public class PurchaseContractMappingProfile : Profile
         CreateMap<SalesContract, SalesContractDto>()
             .ForMember(dest => dest.ContractNumber, opt => opt.MapFrom(src => new ContractNumberDto { Value = src.ContractNumber.Value }))
             .ForMember(dest => dest.ExternalContractNumber, opt => opt.MapFrom(src => src.ExternalContractNumber))
-            .ForMember(dest => dest.Customer, opt => opt.MapFrom(src => new CustomerDto 
-            { 
+            .ForMember(dest => dest.Customer, opt => opt.MapFrom(src => new CustomerDto
+            {
                 Id = src.TradingPartnerId,
                 Name = src.TradingPartner != null ? src.TradingPartner.CompanyName : "",
                 Code = src.TradingPartner != null ? src.TradingPartner.CompanyCode : ""
             }))
-            .ForMember(dest => dest.Product, opt => opt.MapFrom(src => new ContractProductDto 
-            { 
+            .ForMember(dest => dest.Product, opt => opt.MapFrom(src => new ContractProductDto
+            {
                 Id = src.ProductId,
                 Name = src.Product != null ? src.Product.ProductName : "",
                 Code = src.Product != null ? src.Product.ProductCode : ""
@@ -89,6 +98,12 @@ public class PurchaseContractMappingProfile : Profile
             .ForMember(dest => dest.Discount, opt => opt.MapFrom(src => src.Discount != null ? src.Discount.Amount : (decimal?)null))
             .ForMember(dest => dest.DeliveryTerms, opt => opt.MapFrom(src => src.DeliveryTerms))
             .ForMember(dest => dest.SettlementType, opt => opt.MapFrom(src => src.SettlementType))
+            .ForMember(dest => dest.EstimatedPaymentDate, opt => opt.MapFrom(src => src.EstimatedPaymentDate))
+            // Payment status fields - will be populated from PaymentStatusCalculationService during query execution
+            .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
+            .ForMember(dest => dest.TotalSettledAmount, opt => opt.Ignore())
+            .ForMember(dest => dest.PaidSettledAmount, opt => opt.Ignore())
+            .ForMember(dest => dest.UnpaidSettledAmount, opt => opt.Ignore())
             .ForMember(dest => dest.LinkedPurchaseContractNumber, opt => opt.MapFrom(src => src.LinkedPurchaseContract != null ? src.LinkedPurchaseContract.ContractNumber.Value : null))
             .ForMember(dest => dest.ShippingOperations, opt => opt.MapFrom(src => src.ShippingOperations))
             .ForMember(dest => dest.PricingEvents, opt => opt.MapFrom(src => src.PricingEvents))
@@ -110,6 +125,9 @@ public class PurchaseContractMappingProfile : Profile
             .ForMember(dest => dest.ContractValue, opt => opt.MapFrom(src => src.ContractValue != null ? src.ContractValue.Amount : (decimal?)null))
             .ForMember(dest => dest.EstimatedProfit, opt => opt.MapFrom(src => CalculateEstimatedProfit(src)))
             .ForMember(dest => dest.Margin, opt => opt.MapFrom(src => CalculateMargin(src)))
+            // Payment status fields - will be populated from PaymentStatusCalculationService during query execution
+            .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
+            .ForMember(dest => dest.UnpaidSettledAmount, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt));
 
         // Shipping Operation mappings
