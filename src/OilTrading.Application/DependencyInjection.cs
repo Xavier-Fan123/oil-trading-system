@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<PurchaseSettlementService>();
         services.AddScoped<SalesSettlementService>();
         services.AddScoped<IPaymentStatusCalculationService, PaymentStatusCalculationService>();
+        services.AddScoped<OilTrading.Application.EventHandlers.ContractSettlementFinalizedEventHandler>();
 
         return services;
     }
