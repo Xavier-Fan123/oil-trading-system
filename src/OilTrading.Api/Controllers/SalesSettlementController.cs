@@ -170,9 +170,9 @@ public class SalesSettlementController : ControllerBase
     /// </summary>
     /// <param name="settlementId">Settlement ID</param>
     /// <param name="request">Calculation request with amounts</param>
-    /// <returns>No content</returns>
+    /// <returns>Updated settlement with calculation results</returns>
     [HttpPost("{settlementId:guid}/calculate")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(SettlementDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CalculateSettlement(
@@ -202,7 +202,14 @@ public class SalesSettlementController : ControllerBase
 
             _logger.LogInformation("Calculated sales settlement {SettlementId}", settlementId);
 
-            return NoContent();
+            // Return updated settlement
+            var query = new GetSettlementByIdQuery
+            {
+                SettlementId = settlementId,
+                IsPurchaseSettlement = false
+            };
+            var settlement = await _mediator.Send(query);
+            return Ok(settlement);
         }
         catch (Exception ex)
         {
@@ -217,9 +224,9 @@ public class SalesSettlementController : ControllerBase
     /// Transitions from Calculated to Approved status
     /// </summary>
     /// <param name="settlementId">Settlement ID</param>
-    /// <returns>No content</returns>
+    /// <returns>Updated settlement with approved status</returns>
     [HttpPost("{settlementId:guid}/approve")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(SettlementDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ApproveSettlement(Guid settlementId)
@@ -237,7 +244,14 @@ public class SalesSettlementController : ControllerBase
 
             _logger.LogInformation("Approved sales settlement {SettlementId}", settlementId);
 
-            return NoContent();
+            // Return updated settlement
+            var query = new GetSettlementByIdQuery
+            {
+                SettlementId = settlementId,
+                IsPurchaseSettlement = false
+            };
+            var settlement = await _mediator.Send(query);
+            return Ok(settlement);
         }
         catch (Exception ex)
         {
@@ -251,9 +265,9 @@ public class SalesSettlementController : ControllerBase
     /// Finalizes a settlement (locks it for editing)
     /// </summary>
     /// <param name="settlementId">Settlement ID</param>
-    /// <returns>No content</returns>
+    /// <returns>Updated settlement with finalized status</returns>
     [HttpPost("{settlementId:guid}/finalize")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(SettlementDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> FinalizeSettlement(Guid settlementId)
@@ -271,7 +285,14 @@ public class SalesSettlementController : ControllerBase
 
             _logger.LogInformation("Finalized sales settlement {SettlementId}", settlementId);
 
-            return NoContent();
+            // Return updated settlement
+            var query = new GetSettlementByIdQuery
+            {
+                SettlementId = settlementId,
+                IsPurchaseSettlement = false
+            };
+            var settlement = await _mediator.Send(query);
+            return Ok(settlement);
         }
         catch (Exception ex)
         {

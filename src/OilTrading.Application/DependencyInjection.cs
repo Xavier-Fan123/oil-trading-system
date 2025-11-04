@@ -36,7 +36,10 @@ public static class DependencyInjection
         services.AddScoped<ITradeGroupRiskCalculationService, TradeGroupRiskCalculationService>();
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<ISettlementCalculationService, SettlementCalculationService>();
-        
+        services.AddScoped<SettlementCalculationEngine>();
+        services.AddScoped<PurchaseSettlementService>();
+        services.AddScoped<SalesSettlementService>();
+
         return services;
     }
 }

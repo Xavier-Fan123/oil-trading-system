@@ -1,5 +1,6 @@
 using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
+using OilTrading.Application.DTOs;
 
 namespace OilTrading.Application.Services;
 
@@ -199,9 +200,9 @@ public class SalesSettlementService
     /// <summary>
     /// Adds a charge to the settlement
     /// </summary>
-    public async Task<SalesSettlement> AddChargeAsync(
+    public async Task<SettlementChargeDto> AddChargeAsync(
         Guid settlementId,
-        ChargeType chargeType,
+        string chargeTypeString,
         string description,
         decimal amount,
         string currency = "USD",
@@ -211,10 +212,16 @@ public class SalesSettlementService
         string addedBy = "System",
         CancellationToken cancellationToken = default)
     {
+        // Parse charge type string to enum
+        if (!Enum.TryParse<ChargeType>(chargeTypeString, true, out var chargeType))
+        {
+            throw new InvalidOperationException($"Invalid charge type: {chargeTypeString}");
+        }
+
         var settlement = await GetSettlementAsync(settlementId, cancellationToken)
             ?? throw new InvalidOperationException($"Settlement with ID {settlementId} not found");
 
-        settlement.AddCharge(
+        var charge = settlement.AddCharge(
             chargeType,
             description,
             amount,
@@ -227,13 +234,63 @@ public class SalesSettlementService
         await _settlementRepository.UpdateAsync(settlement, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return settlement;
+        return MapChargeToDto(charge);
+    }
+
+    /// <summary>
+    /// Updates an existing charge in the settlement
+    /// </summary>
+    public async Task<SettlementChargeDto> UpdateChargeAsync(
+        Guid settlementId,
+        Guid chargeId,
+        string? description = null,
+        decimal? amount = null,
+        string updatedBy = "System",
+        CancellationToken cancellationToken = default)
+    {
+        var settlement = await GetSettlementAsync(settlementId, cancellationToken)
+            ?? throw new InvalidOperationException($"Settlement with ID {settlementId} not found");
+
+        if (settlement.IsFinalized)
+        {
+            throw new InvalidOperationException("Cannot update charges in finalized settlement");
+        }
+
+        var charge = settlement.Charges?.FirstOrDefault(c => c.Id == chargeId)
+            ?? throw new InvalidOperationException($"Charge with ID {chargeId} not found in settlement");
+
+        // Update charge properties using domain methods
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            charge.UpdateDescription(description, updatedBy);
+        }
+
+        if (amount.HasValue && amount.Value >= 0)
+        {
+            charge.UpdateAmount(amount.Value, updatedBy);
+        }
+
+        // Update settlement - recalculate totals by removing and re-adding the charge
+        // This ensures domain methods handle all updates consistently
+        if (amount.HasValue)
+        {
+            // The domain methods are responsible for updating TotalCharges, TotalSettlementAmount,
+            // LastModifiedDate, and LastModifiedBy through their own logic
+            var chargesAmount = settlement.Charges?.Sum(c => c.Amount) ?? 0;
+            // Trigger a status update to ensure modification tracking is updated
+            settlement.UpdateStatus(settlement.Status, updatedBy);
+        }
+
+        await _settlementRepository.UpdateAsync(settlement, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return MapChargeToDto(charge);
     }
 
     /// <summary>
     /// Removes a charge from the settlement
     /// </summary>
-    public async Task<SalesSettlement> RemoveChargeAsync(
+    public async Task RemoveChargeAsync(
         Guid settlementId,
         Guid chargeId,
         string removedBy = "System",
@@ -246,8 +303,40 @@ public class SalesSettlementService
 
         await _settlementRepository.UpdateAsync(settlement, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
 
-        return settlement;
+    /// <summary>
+    /// Gets all charges for a settlement
+    /// </summary>
+    public async Task<List<SettlementChargeDto>> GetChargesAsync(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        var settlement = await GetSettlementAsync(settlementId, cancellationToken)
+            ?? throw new InvalidOperationException($"Settlement with ID {settlementId} not found");
+
+        return settlement.Charges?.Select(c => MapChargeToDto(c)).ToList() ?? new List<SettlementChargeDto>();
+    }
+
+    /// <summary>
+    /// Maps a SettlementCharge entity to SettlementChargeDto
+    /// </summary>
+    private static SettlementChargeDto MapChargeToDto(SettlementCharge charge)
+    {
+        return new SettlementChargeDto
+        {
+            Id = charge.Id,
+            SettlementId = charge.SettlementId,
+            ChargeType = charge.ChargeType.ToString(),
+            Description = charge.Description,
+            Amount = charge.Amount,
+            Currency = charge.Currency,
+            IncurredDate = charge.IncurredDate,
+            ReferenceDocument = charge.ReferenceDocument,
+            Notes = charge.Notes,
+            CreatedDate = charge.CreatedDate,
+            CreatedBy = charge.CreatedBy
+        };
     }
 
     /// <summary>

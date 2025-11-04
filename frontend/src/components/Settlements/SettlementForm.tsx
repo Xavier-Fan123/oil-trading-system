@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  Grid,
   TextField,
   CircularProgress,
   Alert,
@@ -13,15 +12,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Typography,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import settlementApi, {
-  CreatePurchaseSettlementRequest,
-  CreateSalesSettlementRequest,
-} from '../../services/settlementsApi';
-import contractsApi from '../../services/contractsApi';
-import salesContractsApi from '../../services/salesContractsApi';
+import { settlementApi, CreateSettlementDto } from '../../services/settlementApi';
+import { purchaseContractsApi } from '../../services/contractsApi';
+import { salesContractsApi } from '../../services/salesContractsApi';
 
 export interface SettlementFormProps {
   contractType: 'purchase' | 'sales';
@@ -52,9 +47,9 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({
     queryKey: ['contract', contractId, contractType],
     queryFn: async () => {
       if (contractType === 'purchase') {
-        return contractsApi.getPurchaseContract(contractId);
+        return purchaseContractsApi.getById(contractId);
       } else {
-        return salesContractsApi.getSalesContract(contractId);
+        return salesContractsApi.getById(contractId);
       }
     },
   });
@@ -62,28 +57,24 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({
   // Create settlement mutation
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (contractType === 'purchase') {
-        const request: CreatePurchaseSettlementRequest = {
-          purchaseContractId: contractId,
-          documentNumber: formData.documentNumber,
-          documentType: formData.documentType,
-          documentDate: `${formData.documentDate}T00:00:00Z`,
-          externalContractNumber: formData.externalContractNumber || undefined,
-        };
-        return settlementApi.createPurchaseSettlement(request);
-      } else {
-        const request: CreateSalesSettlementRequest = {
-          salesContractId: contractId,
-          documentNumber: formData.documentNumber,
-          documentType: formData.documentType,
-          documentDate: `${formData.documentDate}T00:00:00Z`,
-          externalContractNumber: formData.externalContractNumber || undefined,
-        };
-        return settlementApi.createSalesSettlement(request);
-      }
+      const request: CreateSettlementDto = {
+        contractId: contractId,
+        documentNumber: formData.documentNumber,
+        documentType: parseInt(formData.documentType) || 1, // BillOfLading = 1
+        documentDate: new Date(`${formData.documentDate}T00:00:00Z`),
+        actualQuantityMT: 0, // Will be entered in next step
+        actualQuantityBBL: 0, // Will be entered in next step
+        createdBy: 'CurrentUser',
+        settlementCurrency: 'USD',
+        autoCalculatePrices: true,
+        autoTransitionStatus: false
+      };
+      return settlementApi.createSettlement(request);
     },
     onSuccess: (data) => {
-      onSuccess?.(data.id);
+      if (data.settlementId) {
+        onSuccess?.(data.settlementId);
+      }
     },
     onError: (error) => {
       onError?.(error instanceof Error ? error : new Error('Failed to create settlement'));
@@ -91,7 +82,7 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({
   });
 
   const handleInputChange = (field: keyof typeof formData) => (
-    e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>
+    e: any
   ) => {
     setFormData((prev) => ({
       ...prev,

@@ -260,6 +260,26 @@ export interface UpdateSettlementDto {
   notes?: string;
 }
 
+// Calculation and workflow request DTOs
+export interface CalculateSettlementRequest {
+  settlementId: string;
+  calculationQuantityMT: number;
+  calculationQuantityBBL: number;
+  benchmarkAmount: number;
+  adjustmentAmount: number;
+  calculationNote?: string;
+}
+
+export interface ApproveSettlementRequest {
+  settlementId: string;
+  approvedBy?: string;
+}
+
+export interface FinalizeSettlementRequest {
+  settlementId: string;
+  finalizedBy?: string;
+}
+
 export interface CreateSettlementResultDto {
   isSuccessful: boolean;
   settlementId?: string;

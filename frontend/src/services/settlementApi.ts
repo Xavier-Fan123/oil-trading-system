@@ -13,6 +13,21 @@ import {
   PagedResult,
 } from '@/types/settlement';
 
+// Re-export types for convenience
+export type {
+  ContractSettlementDto,
+  ContractSettlementListDto,
+  CreateSettlementDto,
+  CreateSettlementResultDto,
+  UpdateSettlementDto,
+  AddChargeDto,
+  UpdateChargeDto,
+  ChargeOperationResultDto,
+  SettlementChargeDto,
+  SettlementSearchFilters,
+  PagedResult,
+};
+
 const API_BASE_URL = 'http://localhost:5000/api'; // Force correct baseURL
 
 const api = axios.create({
@@ -22,30 +37,20 @@ const api = axios.create({
   },
 });
 
-// Settlement query endpoints
+// Settlement query endpoints - NOW ALIGNED WITH BACKEND SETTLEMENT CONTROLLER
 export const settlementApi = {
-  // Get settlement by external contract number
-  getByExternalContractNumber: async (externalContractNumber: string): Promise<ContractSettlementDto> => {
-    const response = await api.get(`/settlements/by-external-contract/${encodeURIComponent(externalContractNumber)}`);
-    return response.data;
-  },
-
-  // Get settlement by contract ID
-  getByContractId: async (contractId: string): Promise<ContractSettlementDto> => {
-    const response = await api.get(`/settlements/contract/${contractId}`);
-    return response.data;
-  },
-
   // Get settlement by settlement ID
+  // Backend: GET /api/settlements/{settlementId}
   getById: async (settlementId: string): Promise<ContractSettlementDto> => {
     const response = await api.get(`/settlements/${settlementId}`);
     return response.data;
   },
 
-  // Get settlements with filtering options
+  // Get settlements with filtering options (includes contractId filter)
+  // Backend: GET /api/settlements?pageNumber=1&pageSize=20&contractId=xxx&startDate=xxx&status=xxx&etc
   getSettlements: async (filters: SettlementSearchFilters): Promise<PagedResult<ContractSettlementListDto>> => {
     const params = new URLSearchParams();
-    
+
     if (filters.startDate) {
       params.append('startDate', filters.startDate.toISOString());
     }
@@ -64,7 +69,7 @@ export const settlementApi = {
     if (filters.documentNumber) {
       params.append('documentNumber', filters.documentNumber);
     }
-    
+
     params.append('pageNumber', filters.pageNumber.toString());
     params.append('pageSize', filters.pageSize.toString());
 
@@ -72,86 +77,144 @@ export const settlementApi = {
     return response.data;
   },
 
-  // Search settlements by various criteria (convenience method)
-  searchSettlements: async (searchTerm: string, pageNumber: number = 1, pageSize: number = 20): Promise<PagedResult<ContractSettlementListDto>> => {
-    // First try to search by external contract number
-    try {
-      const settlement = await settlementApi.getByExternalContractNumber(searchTerm);
-      if (!settlement) {
-        // Settlement not found, fall back to partial search
-        const filters: SettlementSearchFilters = {
-          externalContractNumber: searchTerm,
-          pageNumber,
-          pageSize
-        };
-        return await settlementApi.getSettlements(filters);
-      }
-
-      return {
-        data: [{
-          id: settlement.id,
-          contractId: settlement.contractId,
-          contractNumber: settlement.contractNumber,
-          externalContractNumber: settlement.externalContractNumber,
-          documentNumber: settlement.documentNumber,
-          documentType: settlement.documentType,
-          documentDate: settlement.documentDate,
-          actualQuantityMT: settlement.actualQuantityMT,
-          actualQuantityBBL: settlement.actualQuantityBBL,
-          totalSettlementAmount: settlement.totalSettlementAmount,
-          settlementCurrency: settlement.settlementCurrency,
-          status: settlement.status,
-          isFinalized: settlement.isFinalized,
-          createdDate: settlement.createdDate,
-          createdBy: settlement.createdBy,
-          chargesCount: settlement.charges?.length || 0,
-          formattedAmount: settlement.formattedTotalAmount,
-          displayStatus: settlement.displayStatus
-        }],
-        totalCount: 1,
-        page: 1,
-        pageSize: 1,
-        totalPages: 1
-      };
-    } catch (error) {
-      // If exact match fails, do a partial search
-      const filters: SettlementSearchFilters = {
-        externalContractNumber: searchTerm,
-        pageNumber,
-        pageSize
-      };
-      return await settlementApi.getSettlements(filters);
-    }
+  // Get settlements by contract ID (convenience method using getSettlements with contractId filter)
+  getByContractId: async (contractId: string): Promise<ContractSettlementDto[]> => {
+    const result = await settlementApi.getSettlements({
+      contractId,
+      pageNumber: 1,
+      pageSize: 100
+    });
+    // Convert list DTOs to full DTOs
+    return await Promise.all(
+      result.data.map(item => settlementApi.getById(item.id))
+    );
   },
 
-  // Create a new settlement
+  // Search settlements by various criteria (convenience method)
+  searchSettlements: async (searchTerm: string, pageNumber: number = 1, pageSize: number = 20): Promise<PagedResult<ContractSettlementListDto>> => {
+    // Search by external contract number using query filter
+    const filters: SettlementSearchFilters = {
+      externalContractNumber: searchTerm,
+      pageNumber,
+      pageSize
+    };
+    return await settlementApi.getSettlements(filters);
+  },
+
+  // Create a new settlement (generic endpoint)
+  // Backend: POST /api/settlements
+  // Accepts CreateSettlementRequestDto with contractId
+  // Backend determines if purchase or sales and routes to appropriate handler
   createSettlement: async (dto: CreateSettlementDto): Promise<CreateSettlementResultDto> => {
-    const response = await api.post('/settlements', dto);
+    const response = await api.post('/settlements', {
+      contractId: dto.contractId,
+      documentNumber: dto.documentNumber,
+      documentType: dto.documentType,
+      documentDate: dto.documentDate,
+      actualQuantityMT: dto.actualQuantityMT,
+      actualQuantityBBL: dto.actualQuantityBBL,
+      createdBy: dto.createdBy,
+      notes: dto.notes,
+      settlementCurrency: dto.settlementCurrency,
+      autoCalculatePrices: dto.autoCalculatePrices,
+      autoTransitionStatus: dto.autoTransitionStatus
+    });
     return response.data;
   },
 
   // Create settlement by external contract number
+  // Backend: POST /api/settlements/create-by-external-contract
+  // Accepts CreateSettlementByExternalContractDto with externalContractNumber
   createByExternalContractNumber: async (dto: any): Promise<CreateSettlementResultDto> => {
-    const response = await api.post('/settlements/create-by-external-contract', dto);
+    const response = await api.post('/settlements/create-by-external-contract', {
+      externalContractNumber: dto.externalContractNumber,
+      documentNumber: dto.documentNumber,
+      documentType: dto.documentType,
+      documentDate: dto.documentDate
+    });
     return response.data;
   },
 
   // Update an existing settlement
+  // Backend: PUT /api/settlements/{settlementId}
   updateSettlement: async (settlementId: string, dto: UpdateSettlementDto): Promise<ContractSettlementDto> => {
-    const response = await api.put(`/settlements/${settlementId}`, dto);
+    const response = await api.put(`/settlements/${settlementId}`, {
+      documentNumber: dto.documentNumber,
+      documentType: dto.documentType,
+      documentDate: dto.documentDate
+    });
     return response.data;
   },
 
-  // Recalculate settlement amounts
-  recalculateSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
-    const response = await api.post(`/settlements/${settlementId}/recalculate`);
+  // Calculate settlement amounts (benchmark, adjustment, cargo value)
+  // Backend: POST /api/settlements/{settlementId}/calculate
+  // Generic endpoint that determines if purchase or sales
+  calculateSettlement: async (settlementId: string, request: any): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/settlements/${settlementId}/calculate`, request);
     return response.data;
   },
 
-  // Finalize a settlement
+  // Calculate purchase settlement specifically
+  // Backend: POST /api/purchase-settlements/{settlementId}/calculate
+  calculatePurchaseSettlement: async (settlementId: string, request: any): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/purchase-settlements/${settlementId}/calculate`, request);
+    return response.data;
+  },
+
+  // Calculate sales settlement specifically
+  // Backend: POST /api/sales-settlements/{settlementId}/calculate
+  calculateSalesSettlement: async (settlementId: string, request: any): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/sales-settlements/${settlementId}/calculate`, request);
+    return response.data;
+  },
+
+  // Approve settlement for finalization
+  // Backend: POST /api/settlements/{settlementId}/approve
+  // Generic endpoint that determines if purchase or sales
+  approveSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/settlements/${settlementId}/approve`);
+    return response.data;
+  },
+
+  // Approve purchase settlement specifically
+  // Backend: POST /api/purchase-settlements/{settlementId}/approve
+  approvePurchaseSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/purchase-settlements/${settlementId}/approve`);
+    return response.data;
+  },
+
+  // Approve sales settlement specifically
+  // Backend: POST /api/sales-settlements/{settlementId}/approve
+  approveSalesSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/sales-settlements/${settlementId}/approve`);
+    return response.data;
+  },
+
+  // Finalize settlement (lock for editing)
+  // Backend: POST /api/settlements/{settlementId}/finalize
+  // Generic endpoint that determines if purchase or sales
   finalizeSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
     const response = await api.post(`/settlements/${settlementId}/finalize`);
     return response.data;
+  },
+
+  // Finalize purchase settlement specifically
+  // Backend: POST /api/purchase-settlements/{settlementId}/finalize
+  finalizePurchaseSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/purchase-settlements/${settlementId}/finalize`);
+    return response.data;
+  },
+
+  // Finalize sales settlement specifically
+  // Backend: POST /api/sales-settlements/{settlementId}/finalize
+  finalizeSalesSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
+    const response = await api.post(`/sales-settlements/${settlementId}/finalize`);
+    return response.data;
+  },
+
+  // Recalculate settlement (convenience method)
+  recalculateSettlement: async (settlementId: string): Promise<ContractSettlementDto> => {
+    return settlementApi.calculateSettlement(settlementId, {});
   }
 };
 
@@ -197,7 +260,13 @@ export const settlementChargeApi = {
 export const settlementApiWithErrorHandling = {
   async getByExternalContractNumber(externalContractNumber: string): Promise<ContractSettlementDto | null> {
     try {
-      return await settlementApi.getByExternalContractNumber(externalContractNumber);
+      // Search for settlements by external contract number
+      const result = await settlementApi.searchSettlements(externalContractNumber, 1, 1);
+      if (result.data && result.data.length > 0) {
+        // Get full settlement details
+        return await settlementApi.getById(result.data[0].id);
+      }
+      return null;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return null; // Settlement not found
@@ -206,12 +275,12 @@ export const settlementApiWithErrorHandling = {
     }
   },
 
-  async getByContractId(contractId: string): Promise<ContractSettlementDto | null> {
+  async getByContractId(contractId: string): Promise<ContractSettlementDto[] | null> {
     try {
       return await settlementApi.getByContractId(contractId);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
-        return null; // Settlement not found
+        return null; // No settlements found
       }
       throw error;
     }

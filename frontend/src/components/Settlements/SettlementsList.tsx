@@ -20,12 +20,13 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import settlementApi, { Settlement } from '../../services/settlementsApi';
+import { settlementApi } from '../../services/settlementApi';
+import { ContractSettlementDto } from '../../types/settlement';
 
 export interface SettlementsListProps {
   contractId: string;
   contractType: 'purchase' | 'sales';
-  onViewSettlement?: (settlement: Settlement) => void;
+  onViewSettlement?: (settlement: ContractSettlementDto) => void;
 }
 
 /**
@@ -37,16 +38,13 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
   contractType,
   onViewSettlement,
 }) => {
-  const [selectedSettlement, setSelectedSettlement] = React.useState<Settlement | null>(null);
+  const [selectedSettlement, setSelectedSettlement] = React.useState<ContractSettlementDto | null>(null);
 
   const { data: settlements, isLoading, error } = useQuery({
     queryKey: ['settlements', contractId, contractType],
     queryFn: async () => {
-      if (contractType === 'purchase') {
-        return settlementApi.getPurchaseSettlementsByContract(contractId);
-      } else {
-        return settlementApi.getSalesSettlementsByContract(contractId);
-      }
+      // Use generic getByContractId method for both purchase and sales contracts
+      return settlementApi.getByContractId(contractId);
     },
   });
 
@@ -110,7 +108,7 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
           <TableBody>
             {settlements.map((settlement) => (
               <TableRow key={settlement.id} hover>
-                <TableCell>{settlement.settlementNumber}</TableCell>
+                <TableCell>{settlement.contractNumber}</TableCell>
                 <TableCell>
                   <Chip
                     label={settlement.status}
@@ -123,7 +121,7 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
                   {settlement.calculationQuantityMT?.toFixed(2) || '0.00'}
                 </TableCell>
                 <TableCell align="right">
-                  {settlement.currency} {settlement.totalAmount?.toFixed(2) || '0.00'}
+                  {settlement.settlementCurrency} {settlement.totalSettlementAmount?.toFixed(2) || '0.00'}
                 </TableCell>
                 <TableCell>
                   {new Date(settlement.createdDate).toLocaleDateString()}
@@ -154,9 +152,9 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
             <Stack spacing={2} sx={{ pt: 2 }}>
               <Box>
                 <Typography variant="caption" color="textSecondary">
-                  Settlement Number
+                  Contract Number
                 </Typography>
-                <Typography variant="body1">{selectedSettlement.settlementNumber}</Typography>
+                <Typography variant="body1">{selectedSettlement.contractNumber}</Typography>
               </Box>
 
               <Divider />
@@ -217,10 +215,10 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
 
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                  Total Amount
+                  Total Settlement Amount
                 </Typography>
                 <Typography variant="h6" color="primary">
-                  {selectedSettlement.currency} {selectedSettlement.totalAmount?.toFixed(2) || '0.00'}
+                  {selectedSettlement.settlementCurrency} {selectedSettlement.totalSettlementAmount?.toFixed(2) || '0.00'}
                 </Typography>
               </Box>
 
@@ -243,24 +241,13 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
                   </Typography>
                 </Box>
 
-                {selectedSettlement.approvedBy && (
-                  <>
-                    <Box>
-                      <Typography variant="caption" color="textSecondary">
-                        Approved By
-                      </Typography>
-                      <Typography variant="body2">{selectedSettlement.approvedBy}</Typography>
-                    </Box>
-
-                    <Box>
-                      <Typography variant="caption" color="textSecondary">
-                        Approved Date
-                      </Typography>
-                      <Typography variant="body2">
-                        {new Date(selectedSettlement.approvedDate!).toLocaleString()}
-                      </Typography>
-                    </Box>
-                  </>
+                {selectedSettlement.lastModifiedBy && (
+                  <Box>
+                    <Typography variant="caption" color="textSecondary">
+                      Last Modified By
+                    </Typography>
+                    <Typography variant="body2">{selectedSettlement.lastModifiedBy}</Typography>
+                  </Box>
                 )}
 
                 {selectedSettlement.finalizedBy && (
@@ -277,7 +264,7 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
                         Finalized Date
                       </Typography>
                       <Typography variant="body2">
-                        {new Date(selectedSettlement.finalizedDate!).toLocaleString()}
+                        {selectedSettlement.finalizedDate ? new Date(selectedSettlement.finalizedDate).toLocaleString() : 'N/A'}
                       </Typography>
                     </Box>
                   </>

@@ -14,15 +14,13 @@ import {
   Divider,
 } from '@mui/material';
 import { useMutation } from '@tanstack/react-query';
-import settlementApi, {
-  CalculateSettlementRequest,
-  Settlement,
-} from '../../services/settlementsApi';
+import { settlementApi } from '../../services/settlementApi';
+import { ContractSettlementDto } from '../../types/settlement';
 
 export interface SettlementCalculationFormProps {
-  settlement: Settlement;
+  settlement: ContractSettlementDto;
   contractType: 'purchase' | 'sales';
-  onSuccess?: (settlement: Settlement) => void;
+  onSuccess?: (settlement: ContractSettlementDto) => void;
   onError?: (error: Error) => void;
 }
 
@@ -36,12 +34,12 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
   onSuccess,
   onError,
 }) => {
-  const [formData, setFormData] = useState<CalculateSettlementRequest>({
+  const [formData, setFormData] = useState({
     calculationQuantityMT: settlement.calculationQuantityMT || 0,
     calculationQuantityBBL: settlement.calculationQuantityBBL || 0,
     benchmarkAmount: settlement.benchmarkAmount || 0,
     adjustmentAmount: settlement.adjustmentAmount || 0,
-    calculationNote: '',
+    calculationNote: settlement.quantityCalculationNote || '',
   });
 
   const [calculatedTotal, setCalculatedTotal] = useState<number | null>(null);
@@ -77,7 +75,7 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
     },
   });
 
-  const handleInputChange = (field: keyof CalculateSettlementRequest) => (
+  const handleInputChange = (field: keyof typeof formData) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const value =
@@ -104,7 +102,7 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
     <Card>
       <CardHeader
         title="Calculate Settlement"
-        subheader={`Settlement: ${settlement.settlementNumber}`}
+        subheader={`Settlement: ${settlement.contractNumber}`}
       />
       <CardContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

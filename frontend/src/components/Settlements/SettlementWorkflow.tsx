@@ -18,12 +18,13 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassBottomIcon from '@mui/icons-material/HourglassBottom';
-import settlementApi, { Settlement } from '../../services/settlementsApi';
+import { settlementApi } from '../../services/settlementApi';
+import { ContractSettlementDto } from '../../types/settlement';
 
 export interface SettlementWorkflowProps {
-  settlement: Settlement;
+  settlement: ContractSettlementDto;
   contractType: 'purchase' | 'sales';
-  onStatusChange?: (settlement: Settlement) => void;
+  onStatusChange?: (settlement: ContractSettlementDto) => void;
   onError?: (error: Error) => void;
 }
 
@@ -40,8 +41,8 @@ export const SettlementWorkflow: React.FC<SettlementWorkflowProps> = ({
 }) => {
   const queryClient = useQueryClient();
 
-  const statusSteps = ['Draft', 'Calculated', 'Approved', 'Finalized'];
-  const currentStep = statusSteps.indexOf(settlement.status);
+  const statusSteps = ['Draft', 'DataEntered', 'Calculated', 'Reviewed', 'Approved', 'Finalized'];
+  const currentStep = statusSteps.indexOf(settlement.displayStatus || settlement.status);
 
   // Approve mutation
   const approveMutation = useMutation({
@@ -105,7 +106,7 @@ export const SettlementWorkflow: React.FC<SettlementWorkflowProps> = ({
     <Card>
       <CardHeader
         title="Settlement Workflow"
-        subheader={`Settlement: ${settlement.settlementNumber}`}
+        subheader={`Settlement: ${settlement.contractNumber}`}
         action={
           <Chip
             label={settlement.status}
@@ -154,8 +155,8 @@ export const SettlementWorkflow: React.FC<SettlementWorkflowProps> = ({
               </Typography>
               <Stack spacing={1} sx={{ bgcolor: '#f9f9f9', p: 2, borderRadius: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                  <span>Number:</span>
-                  <strong>{settlement.settlementNumber}</strong>
+                  <span>Contract Number:</span>
+                  <strong>{settlement.contractNumber}</strong>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                   <span>Status:</span>
@@ -164,13 +165,13 @@ export const SettlementWorkflow: React.FC<SettlementWorkflowProps> = ({
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                   <span>Total Amount:</span>
                   <strong>
-                    {settlement.currency} {settlement.totalAmount?.toFixed(2) || '0.00'}
+                    {settlement.settlementCurrency} {settlement.totalSettlementAmount?.toFixed(2) || '0.00'}
                   </strong>
                 </Box>
-                {settlement.approvedBy && (
+                {settlement.lastModifiedBy && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                    <span>Approved By:</span>
-                    <span>{settlement.approvedBy}</span>
+                    <span>Last Modified By:</span>
+                    <span>{settlement.lastModifiedBy}</span>
                   </Box>
                 )}
                 {settlement.finalizedBy && (
