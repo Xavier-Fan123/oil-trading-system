@@ -3,6 +3,7 @@ using OilTrading.Core.Entities;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Common;
 using OilTrading.Core.Events;
+using OilTrading.Core.Enums;
 using Xunit;
 
 namespace OilTrading.Tests.Domain.Entities;

@@ -326,6 +326,29 @@ builder.Services.AddScoped<ITradeChainRepository, TradeChainRepository>();
 builder.Services.AddScoped<IContractExecutionReportService, ContractExecutionReportService>();
 builder.Services.AddScoped<IContractExecutionReportRepository, ContractExecutionReportRepository>();
 
+// Trading partner exposure service
+builder.Services.AddScoped<TradingPartnerExposureService>();
+
+// Payment risk alert service
+builder.Services.AddScoped<PaymentRiskAlertService>();
+
+// Auto-settlement event handler for automatic settlement creation when contracts complete
+builder.Services.AddScoped<OilTrading.Application.EventHandlers.AutoSettlementEventHandler>();
+
+// Configure auto-settlement options
+builder.Services.Configure<OilTrading.Application.EventHandlers.AutoSettlementOptions>(options =>
+{
+    options.EnableAutoSettlementOnCompletion = builder.Configuration.GetValue<bool>("AutoSettlement:EnableAutoSettlementOnCompletion", true);
+    options.AutoCalculatePrices = builder.Configuration.GetValue<bool>("AutoSettlement:AutoCalculatePrices", false);
+    options.AutoTransitionStatus = builder.Configuration.GetValue<bool>("AutoSettlement:AutoTransitionStatus", false);
+
+    var defaultDocTypeStr = builder.Configuration.GetValue<string>("AutoSettlement:DefaultDocumentType", "BillOfLading");
+    options.DefaultDocumentType = Enum.TryParse<DocumentType>(defaultDocTypeStr, out var docType) ? docType : DocumentType.BillOfLading;
+
+    options.DefaultCurrency = builder.Configuration.GetValue<string>("AutoSettlement:DefaultCurrency", "USD");
+    options.FailOnError = builder.Configuration.GetValue<bool>("AutoSettlement:FailOnError", false);
+});
+
 // GraphQL services removed for production stability
 
 // Configure CORS

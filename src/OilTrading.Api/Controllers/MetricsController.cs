@@ -346,20 +346,22 @@ public class MetricsController : ControllerBase
 
     private async Task<object> GetSettlementEfficiencyAsync()
     {
-        var lastWeek = DateTime.UtcNow.AddDays(-7);
-        var settlements = await _context.Settlements
-            .Where(s => s.DueDate >= lastWeek)
+        // Settlement efficiency metric is calculated from ContractSettlement entities
+        // This method returns placeholder metrics since we've consolidated settlement modules
+        var contractSettlements = await _context.ContractSettlements
+            .Where(cs => cs.CreatedDate >= DateTime.UtcNow.AddDays(-7))
             .ToListAsync();
 
-        if (!settlements.Any())
+        if (!contractSettlements.Any())
         {
             return new { efficiency_percent = 100.0, total_settlements = 0 };
         }
 
-        var onTimeSettlements = settlements.Count(s => s.Status == SettlementStatus.Completed);
-        var efficiency = (double)onTimeSettlements / settlements.Count * 100;
+        // Calculate efficiency based on finalized settlements
+        var finalizedSettlements = contractSettlements.Count(cs => cs.Status == ContractSettlementStatus.Finalized);
+        var efficiency = (double)finalizedSettlements / contractSettlements.Count * 100;
 
-        return new { efficiency_percent = efficiency, total_settlements = settlements.Count };
+        return new { efficiency_percent = efficiency, total_settlements = contractSettlements.Count };
     }
 
     private async Task<object> GetPriceFeedQualityAsync()

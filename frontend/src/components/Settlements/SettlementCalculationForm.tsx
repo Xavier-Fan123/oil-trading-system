@@ -43,6 +43,7 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
   });
 
   const [calculatedTotal, setCalculatedTotal] = useState<number | null>(null);
+  const [autoCalculationAttempted, setAutoCalculationAttempted] = useState(false);
 
   // Calculate total whenever quantities or prices change
   React.useEffect(() => {
@@ -57,6 +58,19 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
     formData.adjustmentAmount,
     formData.calculationQuantityBBL,
   ]);
+
+  // Auto-calculate settlement if data is already populated on component mount
+  // This handles the case where user filled in the form and expects data to be persisted
+  React.useEffect(() => {
+    if (!autoCalculationAttempted && settlement && formData.benchmarkAmount > 0 && formData.calculationQuantityMT > 0) {
+      setAutoCalculationAttempted(true);
+      // Auto-trigger calculation with a small delay for UX feedback
+      const timer = setTimeout(() => {
+        calculateMutation.mutate();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [settlement?.id, autoCalculationAttempted]);
 
   // Calculate mutation
   const calculateMutation = useMutation({
@@ -106,11 +120,23 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
       />
       <CardContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {calculateMutation.isSuccess && (
+            <Alert severity="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              ✅ Settlement calculation saved successfully! The amounts have been persisted to your settlement record.
+            </Alert>
+          )}
+
           {calculateMutation.isError && (
             <Alert severity="error">
               {calculateMutation.error instanceof Error
                 ? calculateMutation.error.message
                 : 'Failed to calculate settlement'}
+            </Alert>
+          )}
+
+          {calculateMutation.isPending && (
+            <Alert severity="info">
+              ⏳ Calculating settlement amounts...
             </Alert>
           )}
 

@@ -74,10 +74,34 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
       setLoading(true);
       setError(null);
       const data = await getSettlementWithFallback(settlementId);
-      setSettlement(data);
+
+      if (!data) {
+        setError('Settlement not found');
+        setSettlement(null);
+        return;
+      }
+
+      // Ensure all required properties are present (provide defaults if missing)
+      const enrichedData: ContractSettlementDto = {
+        ...data,
+        // Ensure navigation properties exist
+        charges: (data as any).charges || [],
+        purchaseContract: (data as any).purchaseContract || undefined,
+        salesContract: (data as any).salesContract || undefined,
+        // Ensure computed properties exist
+        canBeModified: (data as any).canBeModified !== false && data.isFinalized === false,
+        requiresRecalculation: (data as any).requiresRecalculation !== false && (data as any).benchmarkAmount === 0,
+        netCharges: ((data as any).charges?.reduce((sum: number, c: any) => sum + (c.amount || 0), 0) || 0),
+        displayStatus: data.isFinalized ? 'Finalized' : data.status,
+        formattedTotalAmount: `${data.totalSettlementAmount.toFixed(2)} ${data.settlementCurrency}`,
+        formattedCargoValue: `${((data as any).cargoValue || 0).toFixed(2)} ${data.settlementCurrency}`,
+        formattedTotalCharges: `${((data as any).totalCharges || 0).toFixed(2)} ${data.settlementCurrency}`
+      };
+
+      setSettlement(enrichedData);
     } catch (err) {
       console.error('Error loading settlement:', err);
-      setError('Failed to load settlement details');
+      setError('Failed to load settlement details. Please try again.');
     } finally {
       setLoading(false);
     }

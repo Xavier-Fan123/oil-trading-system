@@ -93,12 +93,7 @@ public class UpdatePurchaseContractCommandHandler : IRequestHandler<UpdatePurcha
             contract.UpdateDeliveryTerms(deliveryTerms);
         }
 
-        // Update settlement type
-        if (!string.IsNullOrEmpty(request.SettlementType))
-        {
-            var settlementType = MapSettlementType(request.SettlementType);
-            contract.UpdateSettlementType(settlementType);
-        }
+        // Note: Settlement type updates are handled via UpdateSettlementTypeCommand in CQRS pattern
 
         // Update payment terms
         if (!string.IsNullOrEmpty(request.PaymentTerms) && request.CreditPeriodDays.HasValue)
@@ -166,19 +161,4 @@ public class UpdatePurchaseContractCommandHandler : IRequestHandler<UpdatePurcha
         };
     }
 
-    private static SettlementType MapSettlementType(string type)
-    {
-        return type.ToUpper() switch
-        {
-            "CONTRACT" => SettlementType.ContractPayment,
-            "PARTIAL" => SettlementType.PartialPayment,
-            "FINAL" => SettlementType.FinalPayment,
-            "ADJUSTMENT" => SettlementType.Adjustment,
-            "REFUND" => SettlementType.Refund,
-            "PENALTY" => SettlementType.Penalty,
-            "INTEREST" => SettlementType.Interest,
-            "ADVANCE" => SettlementType.Advance,
-            _ => SettlementType.ContractPayment // Default
-        };
-    }
 }

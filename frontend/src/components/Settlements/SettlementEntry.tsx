@@ -69,13 +69,10 @@ interface ContractInfo {
 }
 
 const steps = [
-  'Contract Selection',
-  'Document Information',
-  'Quantity Calculation',
-  'Settlement Calculation',
-  'Payment Terms',
-  'Initial Charges',
-  'Review & Submit'
+  'Contract & Document Setup',
+  'Quantities & Pricing',
+  'Payment & Charges',
+  'Review & Finalize'
 ];
 
 export const SettlementEntry: React.FC<SettlementEntryProps> = ({
@@ -289,6 +286,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     try {
       const dto: CreateSettlementDto = {
         contractId: selectedContract.id,
+        externalContractNumber: formData.externalContractNumber?.trim() || selectedContract.externalContractNumber,
         documentNumber: formData.documentNumber?.trim(),
         documentType: formData.documentType,
         documentDate: formData.documentDate,
@@ -332,14 +330,13 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     setError(null);
 
     switch (step) {
-      case 0: // Contract Selection
+      case 0: // Contract & Document Setup (merged: Contract Selection + Document Information)
+        // Contract validation
         if (!selectedContract) {
           setError('Please select a contract');
           return false;
         }
-        return true;
-
-      case 1: // Document Information
+        // Document information validation
         if (!formData.documentNumber || !formData.documentNumber.trim()) {
           setError('Document number is required');
           return false;
@@ -350,24 +347,25 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         }
         return true;
 
-      case 2: // Quantity Calculation
+      case 1: // Quantities & Pricing (merged: Quantity Calculation + Settlement Calculation)
+        // Quantity validation
         if (formData.actualQuantityMT <= 0 || formData.actualQuantityBBL <= 0) {
           setError('Both MT and BBL quantities must be greater than zero');
           return false;
         }
-        return true;
-
-      case 3: // Settlement Calculation
-        // In create mode, we need to create the settlement first before calculating
-        // In edit mode, calculation is optional
+        // Settlement calculation validation
         if (mode === 'create' && !createdSettlement) {
-          setError('Settlement must be created before proceeding to calculation. Please review your information.');
+          setError('Settlement must be created before proceeding to pricing. Please review your information.');
+          return false;
+        }
+        if (mode === 'create' && createdSettlement && calculationData.benchmarkAmount === 0) {
+          setError('Settlement calculation is required. Please enter the benchmark amount and click "Calculate" button to persist your values.');
           return false;
         }
         return true;
 
-      case 4: // Payment Terms
-        // Validate that payment terms are provided
+      case 2: // Payment & Charges (merged: Payment Terms + Initial Charges)
+        // Payment terms validation
         if (!paymentTermsData.paymentTerms || !paymentTermsData.paymentTerms.trim()) {
           setError('Payment terms are required');
           return false;
@@ -380,10 +378,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
           setError('Prepayment percentage must be between 0 and 100');
           return false;
         }
-        return true;
-
-      case 5: // Initial Charges
-        // Charges are optional, always valid
+        // Charges are optional, no additional validation needed
         return true;
 
       default:
@@ -524,14 +519,19 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
 
   const renderStepContent = (step: number) => {
     switch (step) {
-      case 0: // Contract Selection
+      case 0: // Contract & Document Setup (merged: Contract Selection + Document Information)
         return (
           <Box>
-            <Typography paragraph>
-              Select the contract for which you want to create a settlement.
+            <Typography paragraph sx={{ mb: 3 }}>
+              Select the contract and enter the Bill of Lading or Certificate of Quantity information.
             </Typography>
 
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+            {/* Contract Selection Section */}
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+              1. Select Contract
+            </Typography>
+
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs
                 value={contractSelectionTab === 'external' ? 1 : 0}
                 onChange={(_e, newValue) => setContractSelectionTab(newValue === 1 ? 'external' : 'dropdown')}
@@ -543,7 +543,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
 
             {contractSelectionTab === 'dropdown' ? (
               <>
-                <FormControl fullWidth required>
+                <FormControl fullWidth required sx={{ mb: 2 }}>
                   <InputLabel>Select Contract</InputLabel>
                   <Select
                     value={selectedContract?.id || ''}
@@ -570,7 +570,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
                 </FormControl>
 
                 {selectedContract && (
-                  <Alert severity="info" sx={{ mt: 2 }}>
+                  <Alert severity="info" sx={{ mb: 3 }}>
                     Selected: <strong>{getContractDisplayLabel(selectedContract)}</strong> •
                     {selectedContract.type === 'purchase' ? selectedContract.supplierName : selectedContract.customerName} •
                     {selectedContract.productName}
@@ -578,146 +578,167 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
                 )}
               </>
             ) : (
-              <ContractResolver
-                onContractSelected={(contractId, contract) => {
-                  if (contract) {
-                    const contractInfo: ContractInfo = {
-                      id: contractId,
-                      contractNumber: contract.contractNumber,
-                      externalContractNumber: contract.externalContractNumber,
-                      type: contract.contractType.toLowerCase() as 'purchase' | 'sales',
-                      [contract.contractType === 'Purchase' ? 'supplierName' : 'customerName']: contract.tradingPartnerName,
-                      productName: contract.productName,
-                      quantity: contract.quantity,
-                      quantityUnit: contract.quantityUnit,
-                      tonBarrelRatio: 7.33
-                    };
-                    setSelectedContract(contractInfo);
-                    setFormData(prev => ({
-                      ...prev,
-                      contractId: contractId,
-                      externalContractNumber: contract.externalContractNumber
-                    }));
-                  }
-                }}
-                allowManualInput={true}
-              />
+              <Box sx={{ mb: 3 }}>
+                <ContractResolver
+                  onContractSelected={(contractId, contract) => {
+                    if (contract) {
+                      const contractInfo: ContractInfo = {
+                        id: contractId,
+                        contractNumber: contract.contractNumber,
+                        externalContractNumber: contract.externalContractNumber,
+                        type: contract.contractType.toLowerCase() as 'purchase' | 'sales',
+                        [contract.contractType === 'Purchase' ? 'supplierName' : 'customerName']: contract.tradingPartnerName,
+                        productName: contract.productName,
+                        quantity: contract.quantity,
+                        quantityUnit: contract.quantityUnit,
+                        tonBarrelRatio: 7.33
+                      };
+                      setSelectedContract(contractInfo);
+                      setFormData(prev => ({
+                        ...prev,
+                        contractId: contractId,
+                        externalContractNumber: contract.externalContractNumber
+                      }));
+                    }
+                  }}
+                  allowManualInput={true}
+                />
+              </Box>
             )}
-          </Box>
-        );
 
-      case 1: // Document Information
-        return (
-          <Box>
-            <Typography paragraph>
-              Enter the Bill of Lading or Certificate of Quantity information.
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Document Number"
-                  placeholder="e.g., BL-2024-001"
-                  value={formData.documentNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, documentNumber: e.target.value }))}
-                  disabled={loading}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Document Type</InputLabel>
-                  <Select
-                    value={formData.documentType}
-                    label="Document Type"
-                    onChange={(e) => setFormData(prev => ({ ...prev, documentType: e.target.value as DocumentType }))}
-                    disabled={loading}
-                  >
-                    {Object.entries(DocumentTypeLabels).map(([value, label]) => (
-                      <MenuItem key={value} value={value}>
-                        {label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <DatePicker
-                  label="Document Date"
-                  value={formData.documentDate}
-                  onChange={(date) => setFormData(prev => ({ ...prev, documentDate: date || new Date() }))}
-                  disabled={loading}
-                  slotProps={{ textField: { fullWidth: true, required: true } }}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        );
-
-      case 2: // Quantity Calculation
-        return (
-          <Box>
-            <Typography paragraph>
-              Enter the actual quantities from the document and configure calculation settings.
-            </Typography>
-            <QuantityCalculator
-              initialData={{
-                actualQuantityMT: formData.actualQuantityMT,
-                actualQuantityBBL: formData.actualQuantityBBL
-              }}
-              contractQuantity={selectedContract?.quantity}
-              contractUnit={selectedContract?.quantityUnit}
-              productDensity={850} // This would come from product data
-              onChange={(data) => {
-                setFormData(prev => ({
-                  ...prev,
-                  actualQuantityMT: data.actualQuantityMT,
-                  actualQuantityBBL: data.actualQuantityBBL,
-                  notes: data.calculationNote
-                }));
-              }}
-              readOnly={loading}
-            />
-          </Box>
-        );
-
-      case 3: // Settlement Calculation
-        return (
-          <Box>
-            {createdSettlement && (
+            {/* Document Information Section */}
+            {selectedContract && (
               <>
-                <Alert severity="info" sx={{ mb: 3 }}>
-                  Settlement has been created. Now enter the benchmark amount and adjustment amount for final settlement price calculation.
-                </Alert>
-                <SettlementCalculationForm
-                  settlement={createdSettlement}
-                  contractType={selectedContract?.type || 'purchase'}
-                  onSuccess={(updatedSettlement) => {
-                    setCreatedSettlement(updatedSettlement);
-                    setCalculationData({
-                      calculationQuantityMT: updatedSettlement.calculationQuantityMT || 0,
-                      calculationQuantityBBL: updatedSettlement.calculationQuantityBBL || 0,
-                      benchmarkAmount: updatedSettlement.benchmarkAmount || 0,
-                      adjustmentAmount: updatedSettlement.adjustmentAmount || 0,
-                      calculationNote: updatedSettlement.quantityCalculationNote || ''
-                    });
-                  }}
-                  onError={(error) => {
-                    setError(`Calculation failed: ${error.message}`);
-                  }}
-                />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, mt: 4 }}>
+                  2. Document Information
+                </Typography>
+                <Typography paragraph>
+                  Enter the Bill of Lading or Certificate of Quantity information.
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      required
+                      label="Document Number"
+                      placeholder="e.g., BL-2024-001"
+                      value={formData.documentNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, documentNumber: e.target.value }))}
+                      disabled={loading}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Document Type</InputLabel>
+                      <Select
+                        value={formData.documentType}
+                        label="Document Type"
+                        onChange={(e) => setFormData(prev => ({ ...prev, documentType: e.target.value as DocumentType }))}
+                        disabled={loading}
+                      >
+                        {Object.entries(DocumentTypeLabels).map(([value, label]) => (
+                          <MenuItem key={value} value={value}>
+                            {label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <DatePicker
+                      label="Document Date"
+                      value={formData.documentDate}
+                      onChange={(date) => setFormData(prev => ({ ...prev, documentDate: date || new Date() }))}
+                      disabled={loading}
+                      slotProps={{ textField: { fullWidth: true, required: true } }}
+                    />
+                  </Grid>
+                </Grid>
               </>
             )}
           </Box>
         );
 
-      case 4: // Payment Terms
+      case 1: // Quantities & Pricing (merged: Quantity Calculation + Settlement Calculation)
         return (
           <Box>
-            <Typography paragraph>
-              Configure payment terms for this settlement. These terms define the settlement timeline and payment method.
+            <Typography paragraph sx={{ mb: 3 }}>
+              Enter the actual quantities from the document and configure pricing calculations.
             </Typography>
-            <Grid container spacing={3}>
+
+            {/* Quantity Calculation Section */}
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+              1. Actual Quantities
+            </Typography>
+            <Box sx={{ mb: 4 }}>
+              <QuantityCalculator
+                initialData={{
+                  actualQuantityMT: formData.actualQuantityMT,
+                  actualQuantityBBL: formData.actualQuantityBBL
+                }}
+                contractQuantity={selectedContract?.quantity}
+                contractUnit={selectedContract?.quantityUnit}
+                productDensity={850}
+                onChange={(data) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    actualQuantityMT: data.actualQuantityMT,
+                    actualQuantityBBL: data.actualQuantityBBL,
+                    notes: data.calculationNote
+                  }));
+                }}
+                readOnly={loading}
+              />
+            </Box>
+
+            {/* Settlement Pricing Section */}
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+              2. Settlement Pricing
+            </Typography>
+            <Box>
+              {createdSettlement && (
+                <>
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    ℹ️ <strong>Settlement created successfully!</strong> Now enter the pricing information and click the "Calculate" button to calculate final settlement amounts.
+                  </Alert>
+                  <Alert severity="warning" sx={{ mb: 3 }}>
+                    ⚠️ <strong>Important:</strong> You must enter the Benchmark Amount and click "Calculate" below. Your pricing and quantity information will NOT be saved unless you click the Calculate button.
+                  </Alert>
+                  <SettlementCalculationForm
+                    settlement={createdSettlement}
+                    contractType={selectedContract?.type || 'purchase'}
+                    onSuccess={(updatedSettlement) => {
+                      setCreatedSettlement(updatedSettlement);
+                      setCalculationData({
+                        calculationQuantityMT: updatedSettlement.calculationQuantityMT || 0,
+                        calculationQuantityBBL: updatedSettlement.calculationQuantityBBL || 0,
+                        benchmarkAmount: updatedSettlement.benchmarkAmount || 0,
+                        adjustmentAmount: updatedSettlement.adjustmentAmount || 0,
+                        calculationNote: updatedSettlement.quantityCalculationNote || ''
+                      });
+                    }}
+                    onError={(error) => {
+                      setError(`Calculation failed: ${error.message}`);
+                    }}
+                  />
+                </>
+              )}
+            </Box>
+          </Box>
+        );
+
+      case 2: // Payment & Charges (merged: Payment Terms + Initial Charges)
+        return (
+          <Box>
+            <Typography paragraph sx={{ mb: 3 }}>
+              Configure payment terms and add any charges for this settlement.
+            </Typography>
+
+            {/* Payment Terms Section */}
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+              1. Payment Terms
+            </Typography>
+            <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -780,12 +801,11 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
                 />
               </Grid>
             </Grid>
-          </Box>
-        );
 
-      case 5: // Initial Charges
-        return (
-          <Box>
+            {/* Charges Section */}
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+              2. Initial Charges
+            </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography>
                 Add any initial charges (optional). You can add more charges later.
@@ -859,7 +879,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
           </Box>
         );
 
-      case 6: // Review & Submit
+      case 3: // Review & Finalize
         return (
           <Box>
             <Typography variant="h6" gutterBottom>Review Settlement Details</Typography>

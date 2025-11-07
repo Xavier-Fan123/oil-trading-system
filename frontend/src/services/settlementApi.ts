@@ -122,6 +122,7 @@ export const settlementApi = {
   createSettlement: async (dto: CreateSettlementDto): Promise<CreateSettlementResultDto> => {
     const response = await api.post('/settlements', {
       contractId: dto.contractId,
+      externalContractNumber: dto.externalContractNumber,
       documentNumber: dto.documentNumber,
       documentType: dto.documentType,
       documentDate: dto.documentDate,
@@ -388,6 +389,53 @@ export const settlementApiWithErrorHandling = {
 
   async searchSettlements(searchTerm: string, pageNumber: number = 1, pageSize: number = 20): Promise<PagedResult<ContractSettlementListDto>> {
     return await settlementApi.searchSettlements(searchTerm, pageNumber, pageSize);
+  }
+};
+
+// Bulk operations endpoints
+export const bulkSettlementApi = {
+  // Bulk approve settlements
+  // Backend: POST /api/settlements/bulk-approve
+  bulkApprove: async (settlementIds: string[]): Promise<{ successCount: number; failureCount: number; details: any[] }> => {
+    const response = await api.post('/settlements/bulk-approve', {
+      settlementIds,
+      approvedBy: 'System'
+    });
+    return response.data;
+  },
+
+  // Bulk finalize settlements
+  // Backend: POST /api/settlements/bulk-finalize
+  bulkFinalize: async (settlementIds: string[]): Promise<{ successCount: number; failureCount: number; details: any[] }> => {
+    const response = await api.post('/settlements/bulk-finalize', {
+      settlementIds,
+      finalizedBy: 'System'
+    });
+    return response.data;
+  },
+
+  // Bulk export settlements
+  // Backend: POST /api/settlements/bulk-export
+  bulkExport: async (settlementIds: string[], format: 'excel' | 'csv' | 'pdf'): Promise<Blob> => {
+    const response = await api.post('/settlements/bulk-export', {
+      settlementIds,
+      format
+    }, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  // Helper function to download exported file
+  downloadExport: (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 };
 

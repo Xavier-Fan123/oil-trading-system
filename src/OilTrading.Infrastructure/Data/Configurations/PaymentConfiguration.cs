@@ -142,12 +142,6 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         // Ignore complex collections that are difficult to map
         builder.Ignore(e => e.StatusHistory);
         
-        // Relationships
-        builder.HasOne(e => e.Settlement)
-            .WithMany()
-            .HasForeignKey(e => e.SettlementId)
-            .OnDelete(DeleteBehavior.Restrict);
-        
         // Indexes
         builder.HasIndex(e => e.PaymentDate)
             .HasDatabaseName("IX_Payments_PaymentDate");

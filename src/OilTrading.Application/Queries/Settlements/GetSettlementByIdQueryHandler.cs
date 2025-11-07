@@ -1,6 +1,7 @@
 using MediatR;
 using OilTrading.Application.Services;
 using OilTrading.Application.Common.Exceptions;
+using OilTrading.Core.Entities;
 
 namespace OilTrading.Application.Queries.Settlements;
 
@@ -37,10 +38,28 @@ public class GetSettlementByIdQueryHandler : IRequestHandler<GetSettlementByIdQu
 
     private static SettlementDto MapToDto(dynamic settlement)
     {
+        // CRITICAL FIX: Use explicit type checking instead of null coalescing with dynamic
+        // This prevents RuntimeBinderException when accessing non-existent properties
+        // Example: SalesSettlement doesn't have PurchaseContractId property
+
+        Guid GetContractId(dynamic s)
+        {
+            var type = s.GetType();
+
+            // Check if this is a PurchaseSettlement (has PurchaseContractId)
+            if (type.Name == nameof(PurchaseSettlement))
+            {
+                return s.PurchaseContractId;
+            }
+
+            // Otherwise, it's a SalesSettlement (has SalesContractId)
+            return s.SalesContractId;
+        }
+
         return new SettlementDto
         {
             Id = settlement.Id,
-            ContractId = settlement.PurchaseContractId ?? settlement.SalesContractId,
+            ContractId = GetContractId(settlement),
             ContractNumber = settlement.ContractNumber,
             ExternalContractNumber = settlement.ExternalContractNumber,
             DocumentNumber = settlement.DocumentNumber,
@@ -56,6 +75,7 @@ public class GetSettlementByIdQueryHandler : IRequestHandler<GetSettlementByIdQu
             CargoValue = settlement.CargoValue,
             TotalCharges = settlement.TotalCharges,
             TotalSettlementAmount = settlement.TotalSettlementAmount,
+            SettlementCurrency = settlement.SettlementCurrency ?? "USD",
             Status = settlement.Status,
             IsFinalized = settlement.IsFinalized,
             CreatedDate = settlement.CreatedDate,

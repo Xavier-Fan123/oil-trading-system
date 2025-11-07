@@ -4,7 +4,7 @@ using OilTrading.Core.Entities;
 using OilTrading.Application.DTOs;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Enums;
-using SettlementType = OilTrading.Core.Entities.SettlementType;
+using SettlementType = OilTrading.Core.Enums.SettlementType;
 
 namespace OilTrading.Application.TransactionOperations;
 

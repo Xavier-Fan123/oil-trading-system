@@ -89,6 +89,7 @@ export const SettlementForm: React.FC<SettlementFormProps> = ({
     mutationFn: async () => {
       const request: CreateSettlementDto = {
         contractId: contractId,
+        externalContractNumber: formData.externalContractNumber || undefined,
         documentNumber: formData.documentNumber,
         documentType: parseInt(formData.documentType) || 1, // BillOfLading = 1
         documentDate: new Date(`${formData.documentDate}T00:00:00Z`),

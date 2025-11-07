@@ -36,6 +36,7 @@ public class SettlementDto
     public decimal CargoValue { get; set; }
     public decimal TotalCharges { get; set; }
     public decimal TotalSettlementAmount { get; set; }
+    public string SettlementCurrency { get; set; } = "USD";
     public ContractSettlementStatus Status { get; set; }
     public bool IsFinalized { get; set; }
     public DateTime CreatedDate { get; set; }

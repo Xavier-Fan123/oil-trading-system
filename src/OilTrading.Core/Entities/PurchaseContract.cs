@@ -1,6 +1,7 @@
 using OilTrading.Core.Common;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Events;
+using OilTrading.Core.Enums;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace OilTrading.Core.Entities;

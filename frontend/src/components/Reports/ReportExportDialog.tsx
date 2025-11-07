@@ -75,35 +75,31 @@ export const ReportExportDialog: React.FC<ReportExportDialogProps> = ({
       let blob: Blob;
       let filename: string;
 
-      const pageNum = filters?.pageNumber || 1;
-      const pageSize = filters?.pageSize || 1000;
       const contractType = filters?.contractType;
       const executionStatus = filters?.executionStatus;
       const fromDate = filters?.fromDate;
       const toDate = filters?.toDate;
       const tradingPartnerId = filters?.tradingPartnerId;
       const productId = filters?.productId;
-      const sortBy = filters?.sortBy;
-      const sortDescending = filters?.sortDescending;
 
       const dateStr = new Date().toISOString().split('T')[0];
 
       if (exportOptions.format === 'csv') {
         blob = await contractExecutionReportApi.exportReportsToCsv(
-          pageNum, pageSize, contractType, executionStatus, fromDate, toDate,
-          tradingPartnerId, productId, sortBy, sortDescending
+          contractType, executionStatus, fromDate, toDate,
+          tradingPartnerId, productId
         );
         filename = `contract-execution-reports-${dateStr}.csv`;
       } else if (exportOptions.format === 'excel') {
         blob = await contractExecutionReportApi.exportReportsToExcel(
-          pageNum, pageSize, contractType, executionStatus, fromDate, toDate,
-          tradingPartnerId, productId, sortBy, sortDescending
+          contractType, executionStatus, fromDate, toDate,
+          tradingPartnerId, productId
         );
         filename = `contract-execution-reports-${dateStr}.xlsx`;
       } else {
         blob = await contractExecutionReportApi.exportReportsToPdf(
-          pageNum, pageSize, contractType, executionStatus, fromDate, toDate,
-          tradingPartnerId, productId, sortBy, sortDescending
+          contractType, executionStatus, fromDate, toDate,
+          tradingPartnerId, productId
         );
         filename = `contract-execution-reports-${dateStr}.pdf`;
       }

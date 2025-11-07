@@ -39,10 +39,7 @@ public class TransactionOperationFactory : ITransactionOperationFactory
         // 3. Check risk limits (depends on contract and inventory)
         operations.Add(CreateRiskLimitCheckOperation());
 
-        // 4. Create settlement (depends on contract and risk approval)
-        operations.Add(CreateSettlementOperation());
-
-        // 5. Log audit trail (typically last, rarely compensated)
+        // 4. Log audit trail (typically last, rarely compensated)
         operations.Add(CreateAuditLogOperation());
 
         _logger.LogInformation("Created {Count} operations for contract creation", operations.Count);
@@ -65,7 +62,6 @@ public class TransactionOperationFactory : ITransactionOperationFactory
         var operations = new List<ITransactionOperation>
         {
             CreateInventoryReservationOperation(), // Will release reservations
-            CreateSettlementOperation(),           // Will cancel/adjust settlements
             CreateAuditLogOperation()
         };
 
@@ -76,7 +72,6 @@ public class TransactionOperationFactory : ITransactionOperationFactory
     {
         var operations = new List<ITransactionOperation>
         {
-            CreateSettlementOperation(),
             CreateAuditLogOperation()
         };
 
@@ -125,16 +120,6 @@ public class TransactionOperationFactory : ITransactionOperationFactory
         };
     }
 
-    public SettlementOperation CreateSettlementOperation()
-    {
-        return new SettlementOperation(
-            _serviceProvider.GetRequiredService<ISettlementService>(),
-            _serviceProvider.GetRequiredService<ILogger<SettlementOperation>>())
-        {
-            Order = 4
-        };
-    }
-
     public AuditLogOperation CreateAuditLogOperation()
     {
         return new AuditLogOperation(
@@ -156,7 +141,6 @@ public class TransactionOperationFactory : ITransactionOperationFactory
                 "contract" or "contractcreation" => CreateContractCreationOperation(),
                 "inventory" or "inventoryreservation" => CreateInventoryReservationOperation(),
                 "risk" or "risklimitcheck" => CreateRiskLimitCheckOperation(),
-                "settlement" => CreateSettlementOperation(),
                 "audit" or "auditlog" => CreateAuditLogOperation(),
                 _ => throw new ArgumentException($"Unknown operation name: {operationName}")
             };
@@ -250,7 +234,6 @@ public interface ITransactionOperationFactory
     ContractCreationOperation CreateContractCreationOperation();
     InventoryReservationOperation CreateInventoryReservationOperation();
     RiskLimitCheckOperation CreateRiskLimitCheckOperation();
-    SettlementOperation CreateSettlementOperation();
     AuditLogOperation CreateAuditLogOperation();
 
     /// <summary>

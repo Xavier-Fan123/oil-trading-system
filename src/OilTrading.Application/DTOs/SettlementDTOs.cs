@@ -1,28 +1,11 @@
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.DTOs;
 
-// DTOs namespace versions of Core enums
-public enum SettlementType
-{
-    ContractPayment = 1,
-    PartialPayment = 2,
-    Adjustment = 3,
-    Refund = 4,
-    Prepayment = 5,
-    FinalPayment = 6
-}
-
-public enum SettlementStatus
-{
-    Pending = 1,
-    Processing = 2,
-    Completed = 3,
-    Failed = 4,
-    Cancelled = 5,
-    Overdue = 6
-}
+// Note: SettlementType enum moved to OilTrading.Core.Enums.SettlementType
+// SettlementStatus enum removed as part of settlement consolidation from 3 modules to 2
 
 public enum PaymentStatus
 {
@@ -45,46 +28,10 @@ public enum PaymentMethod
     BankGuarantee = 6
 }
 
-// Settlement DTO for API responses
-public class Settlement
-{
-    public Guid Id { get; set; }
-    public Guid ContractId { get; set; }
-    public string SettlementNumber { get; set; } = string.Empty;
-    public SettlementType Type { get; set; }
-    public Money Amount { get; set; } = null!;
-    public DateTime DueDate { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public SettlementStatus Status { get; set; }
-    public Guid PayerPartyId { get; set; }
-    public Guid PayeePartyId { get; set; }
-    public string? Description { get; set; }
-    public DateTime? ProcessedDate { get; set; }
-    public DateTime? CompletedDate { get; set; }
-}
-
-public class SettlementRequest
-{
-    public Guid ContractId { get; set; }
-    public SettlementType Type { get; set; }
-    public Money Amount { get; set; } = null!;
-    public DateTime DueDate { get; set; }
-    public Guid PayerPartyId { get; set; }
-    public Guid PayeePartyId { get; set; }
-    public SettlementTerms Terms { get; set; } = new();
-    public string? Description { get; set; }
-    public string CreatedBy { get; set; } = "System";
-    public Dictionary<string, object> MetaData { get; set; } = new();
-}
-
-public class SettlementUpdateRequest
-{
-    public Money? Amount { get; set; }
-    public DateTime? DueDate { get; set; }
-    public SettlementStatus? Status { get; set; }
-    public string? Comments { get; set; }
-    public string UpdatedBy { get; set; } = "System";
-}
+// REMOVED: Generic Settlement DTOs have been consolidated
+// - Settlement DTO class removed (part of generic settlement consolidation)
+// - SettlementRequest removed (use PurchaseSettlement/SalesSettlement specific DTOs instead)
+// - SettlementUpdateRequest removed (use specific settlement update DTOs instead)
 
 public class SettlementResult
 {
@@ -101,8 +48,9 @@ public class SettlementSummary
     public DateTime EndDate { get; set; }
     public int TotalSettlements { get; set; }
     public Money TotalAmount { get; set; } = null!;
-    public Dictionary<SettlementStatus, int> SettlementsByStatus { get; set; } = new();
-    public Dictionary<SettlementType, int> SettlementsByType { get; set; } = new();
+    // SettlementsByStatus removed - use specific settlement summaries for Purchase/SalesSettlements
+    public Dictionary<string, int> SettlementsByStatusName { get; set; } = new();
+    public Dictionary<string, int> SettlementsByType { get; set; } = new();
     public Dictionary<string, Money> AmountsByCurrency { get; set; } = new();
     public List<SettlementTrend> Trends { get; set; } = new();
 }

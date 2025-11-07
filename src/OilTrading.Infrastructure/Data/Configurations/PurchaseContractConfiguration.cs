@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OilTrading.Core.Entities;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Infrastructure.Data.Configurations;
 
@@ -227,7 +228,7 @@ public class PurchaseContractConfiguration : IEntityTypeConfiguration<PurchaseCo
         // Payment Terms
         builder.Property(e => e.PaymentTerms).HasMaxLength(500);
         builder.Property(e => e.CreditPeriodDays);
-        
+
         builder.Property(e => e.SettlementType)
                .IsRequired()
                .HasConversion<int>()
@@ -236,6 +237,9 @@ public class PurchaseContractConfiguration : IEntityTypeConfiguration<PurchaseCo
 
         builder.Property(e => e.PrepaymentPercentage)
                .HasPrecision(5, 2);
+
+        // Payment Date - Ignore for now (column doesn't exist in database yet, migration pending)
+        builder.Ignore(e => e.EstimatedPaymentDate);
 
         // Additional Fields
         builder.Property(e => e.ExternalContractNumber)

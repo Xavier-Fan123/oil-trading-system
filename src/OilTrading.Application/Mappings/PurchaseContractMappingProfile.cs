@@ -2,6 +2,7 @@ using AutoMapper;
 using OilTrading.Core.Entities;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Commands.PurchaseContracts;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.Mappings;
 

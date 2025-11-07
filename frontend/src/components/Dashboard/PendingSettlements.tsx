@@ -246,9 +246,9 @@ export const PendingSettlements: React.FC<PendingSettlementsProps> = ({ height =
                         <Typography component="span" variant="caption" color="text.secondary">
                           Amount: {new Intl.NumberFormat('en-US', {
                             style: 'currency',
-                            currency: settlement.settlementCurrency,
+                            currency: settlement.settlementCurrency || 'USD',
                             minimumFractionDigits: 0
-                          }).format(settlement.totalSettlementAmount)}
+                          }).format(settlement.totalSettlementAmount || 0)}
                         </Typography>
                         <br />
                         <Typography component="span" variant="caption" color="text.secondary">

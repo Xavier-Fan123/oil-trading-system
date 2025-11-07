@@ -42,6 +42,7 @@ public class TradingPartner : BaseEntity
     public ICollection<SalesContract> SalesContracts { get; set; } = [];
     public ICollection<PhysicalContract> PhysicalContracts { get; set; } = new List<PhysicalContract>();
     public ICollection<FinancialReport> FinancialReports { get; set; } = [];
+    public ICollection<PaymentRiskAlert> PaymentRiskAlerts { get; set; } = [];
 }
 
 public enum TradingPartnerType

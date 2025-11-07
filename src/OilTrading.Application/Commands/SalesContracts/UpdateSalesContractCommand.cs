@@ -1,6 +1,7 @@
 using MediatR;
 using FluentValidation;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.Commands.SalesContracts;
 

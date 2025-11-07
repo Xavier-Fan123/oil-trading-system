@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OilTrading.Core.Entities;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Enums;
 using OilTrading.Infrastructure.Data;
 
 namespace OilTrading.Infrastructure.Services;
@@ -60,7 +61,7 @@ public class PostgreSQLDataSeeder
                 FirstName = "John",
                 LastName = "Trader",
                 PasswordHash = "hashed_password_123",
-                Role = UserRole.Trader,
+                Role = OilTrading.Core.Entities.UserRole.Trader,
                 IsActive = true
             },
             new User
@@ -69,7 +70,7 @@ public class PostgreSQLDataSeeder
                 FirstName = "Sarah",
                 LastName = "Admin",
                 PasswordHash = "hashed_password_456",
-                Role = UserRole.Administrator,
+                Role = OilTrading.Core.Entities.UserRole.Administrator,
                 IsActive = true
             },
             new User
@@ -78,7 +79,7 @@ public class PostgreSQLDataSeeder
                 FirstName = "Mike",
                 LastName = "Risk",
                 PasswordHash = "hashed_password_789",
-                Role = UserRole.RiskManager,
+                Role = OilTrading.Core.Entities.UserRole.RiskManager,
                 IsActive = true
             }
         };
@@ -299,47 +300,95 @@ public class PostgreSQLDataSeeder
         await _context.SaveChangesAsync();
 
         var brentProduct = await _context.Products.FirstAsync(p => p.Code == "BRENT");
+        var wtiProduct = await _context.Products.FirstAsync(p => p.Code == "WTI");
         var shellPartner = await _context.TradingPartners.FirstAsync(tp => tp.Code == "SHELL");
-        var trader = await _context.Users.FirstAsync(u => u.Role == UserRole.Trader);
+        var bpPartner = await _context.TradingPartners.FirstAsync(tp => tp.Code == "BP");
+        var exxonPartner = await _context.TradingPartners.FirstAsync(tp => tp.Code == "EXXON");
+        var trader = await _context.Users.FirstAsync(u => u.Role == OilTrading.Core.Entities.UserRole.Trader);
 
-        var contractNumber = ContractNumber.Create(DateTime.UtcNow.Year, ContractType.CARGO, 1);
-        var quantity = new Quantity(100000, QuantityUnit.BBL);
-        
-        var sampleContract = new PurchaseContract(
-            contractNumber,
+        // Contract 1: Brent Crude 50000 BBL @ USD 85.50/BBL
+        var contract1Number = ContractNumber.Create(DateTime.UtcNow.Year, ContractType.CARGO, 1);
+        var contract1Quantity = new Quantity(50000, QuantityUnit.BBL);
+        var contract1 = new PurchaseContract(
+            contract1Number,
             ContractType.CARGO,
             shellPartner.Id,
             brentProduct.Id,
             trader.Id,
-            quantity,
+            contract1Quantity,
             7.6m);
-            
-        // Configure pricing
-        var priceFormula = PriceFormula.Index(
-            "ICE Brent",
-            PricingMethod.AVG,
-            new Money(2.50m, "USD"));
-        var contractValue = new Money(100000 * 75, "USD"); // Estimated value
-        sampleContract.UpdatePricing(priceFormula, contractValue);
-        
-        // Configure delivery
-        sampleContract.UpdateDeliveryTerms(DeliveryTerms.FOB);
-        sampleContract.UpdateLaycan(DateTime.UtcNow.AddDays(30), DateTime.UtcNow.AddDays(35));
-        sampleContract.UpdatePorts("Sullom Voe", "Singapore");
-        
-        // Configure settlement
-        sampleContract.UpdateSettlementType(SettlementType.ContractPayment);
-        sampleContract.UpdatePaymentTerms("30 days after B/L date", 30);
-        
-        // Configure quality
-        sampleContract.UpdateQualitySpecifications("API 38.0° min, Sulfur 0.37% max");
-        sampleContract.UpdateInspectionAgency("SGS");
-        
-        // Notes
-        sampleContract.AddNotes("Sample Brent crude contract for PostgreSQL testing");
-        await _context.PurchaseContracts.AddAsync(sampleContract);
+        contract1.SetExternalContractNumber("EXT-SINOPEC-001", "system");
 
-        _logger.LogInformation("Added sample purchase contract");
+        var contract1Price = 85.50m;
+        var contract1Value = new Money(50000 * contract1Price, "USD");
+        var contract1Formula = PriceFormula.Fixed(contract1Price);
+        contract1.UpdatePricing(contract1Formula, contract1Value);
+        contract1.UpdateDeliveryTerms(DeliveryTerms.FOB);
+        contract1.UpdateLaycan(DateTime.UtcNow.AddDays(30), DateTime.UtcNow.AddDays(45));
+        contract1.UpdatePorts("Ras Tanura, Saudi Arabia", "Singapore");
+        contract1.UpdateSettlementType(SettlementType.ContractPayment);
+        contract1.UpdatePaymentTerms("TT 30 days after B/L presentation", 30);
+        contract1.UpdateQualitySpecifications("API 38.0° min, Sulfur 0.37% max");
+        contract1.UpdateInspectionAgency("SGS");
+        contract1.AddNotes("Sample Brent crude contract - PC-2025-001");
+        await _context.PurchaseContracts.AddAsync(contract1);
+
+        // Contract 2: WTI Crude 30000 BBL @ USD 78.25/BBL
+        var contract2Number = ContractNumber.Create(DateTime.UtcNow.Year, ContractType.CARGO, 2);
+        var contract2Quantity = new Quantity(30000, QuantityUnit.BBL);
+        var contract2 = new PurchaseContract(
+            contract2Number,
+            ContractType.CARGO,
+            bpPartner.Id,
+            wtiProduct.Id,
+            trader.Id,
+            contract2Quantity,
+            7.6m);
+        contract2.SetExternalContractNumber("EXT-PETRONAS-001", "system");
+
+        var contract2Price = 78.25m;
+        var contract2Value = new Money(30000 * contract2Price, "USD");
+        var contract2Formula = PriceFormula.Fixed(contract2Price);
+        contract2.UpdatePricing(contract2Formula, contract2Value);
+        contract2.UpdateDeliveryTerms(DeliveryTerms.CIF);
+        contract2.UpdateLaycan(DateTime.UtcNow.AddDays(60), DateTime.UtcNow.AddDays(75));
+        contract2.UpdatePorts("Corpus Christi, USA", "Rotterdam, Netherlands");
+        contract2.UpdateSettlementType(SettlementType.ContractPayment);
+        contract2.UpdatePaymentTerms("10% prepayment, balance TT 45 days after B/L", 45);
+        contract2.SetPrepaymentPercentage(10);
+        contract2.UpdateQualitySpecifications("API 39.6° min, Sulfur 0.24% max");
+        contract2.UpdateInspectionAgency("SGS");
+        contract2.AddNotes("Sample WTI crude contract - PC-2025-002");
+        await _context.PurchaseContracts.AddAsync(contract2);
+
+        // Contract 3: Brent Crude 25000 BBL @ USD 84.75/BBL
+        var contract3Number = ContractNumber.Create(DateTime.UtcNow.Year, ContractType.CARGO, 3);
+        var contract3Quantity = new Quantity(25000, QuantityUnit.BBL);
+        var contract3 = new PurchaseContract(
+            contract3Number,
+            ContractType.CARGO,
+            exxonPartner.Id,
+            brentProduct.Id,
+            trader.Id,
+            contract3Quantity,
+            7.6m);
+        contract3.SetExternalContractNumber("EXT-SINOPEC-002", "system");
+
+        var contract3Price = 84.75m;
+        var contract3Value = new Money(25000 * contract3Price, "USD");
+        var contract3Formula = PriceFormula.Fixed(contract3Price);
+        contract3.UpdatePricing(contract3Formula, contract3Value);
+        contract3.UpdateDeliveryTerms(DeliveryTerms.FOB);
+        contract3.UpdateLaycan(DateTime.UtcNow.AddDays(45), DateTime.UtcNow.AddDays(60));
+        contract3.UpdatePorts("Ras Tanura, Saudi Arabia", "Singapore");
+        contract3.UpdateSettlementType(SettlementType.ContractPayment);
+        contract3.UpdatePaymentTerms("LC at sight, 60 days tenor", 60);
+        contract3.UpdateQualitySpecifications("API 38.0° min, Sulfur 0.37% max");
+        contract3.UpdateInspectionAgency("SGS");
+        contract3.AddNotes("Sample Brent crude contract - PC-2025-003");
+        await _context.PurchaseContracts.AddAsync(contract3);
+
+        _logger.LogInformation("Added 3 complete sample purchase contracts with all required fields");
     }
 
     private async Task SeedMarketDataAsync()

@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { format } from 'date-fns';
 import type { ContractExecutionReportFilter } from '@/types/reports';
-import { contractsApi } from '@/services/contractsApi';
+import { tradingPartnersApi, productsApi } from '@/services/contractsApi';
 import { TradingPartner, Product } from '@/types/contracts';
 
 interface ContractExecutionReportFilterProps {
@@ -50,8 +50,8 @@ export const ContractExecutionReportFilter: React.FC<ContractExecutionReportFilt
     try {
       setLoadingData(true);
       const [partnersRes, productsRes] = await Promise.all([
-        contractsApi.getTradingPartners(),
-        contractsApi.getProducts(),
+        tradingPartnersApi.getAll(),
+        productsApi.getAll(),
       ]);
       setTradingPartners(partnersRes || []);
       setProducts(productsRes || []);

@@ -6,15 +6,17 @@ import {
   Grid,
   Typography,
   Chip,
+  LinearProgress,
+  Alert
+} from '@mui/material';
+import {
   Timeline,
   TimelineItem,
   TimelineSeparator,
   TimelineConnector,
   TimelineContent,
   TimelineOppositeContent,
-  TimelineDot,
-  LinearProgress,
-  Alert
+  TimelineDot
 } from '@mui/lab';
 import { ContractSettlementDto } from '@/types/settlement';
 import { format } from 'date-fns';
@@ -155,16 +157,16 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({ settlement }) => {
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Payment Terms
+            Payment Due Date
           </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <Typography variant="body2" color="text.secondary">
                 Expected Payment Date
               </Typography>
-              {settlement.pricingPeriodEnd ? (
+              {settlement.actualPayableDueDate ? (
                 <Typography variant="h6">
-                  {format(new Date(settlement.pricingPeriodEnd), 'PPP')}
+                  {format(new Date(settlement.actualPayableDueDate), 'PPP')}
                 </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">
@@ -177,9 +179,9 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({ settlement }) => {
               <Typography variant="body2" color="text.secondary">
                 Days Until Due
               </Typography>
-              {settlement.pricingPeriodEnd ? (
+              {settlement.actualPayableDueDate ? (
                 <Typography variant="h6">
-                  {Math.ceil((new Date(settlement.pricingPeriodEnd).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
+                  {Math.ceil((new Date(settlement.actualPayableDueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
                 </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">

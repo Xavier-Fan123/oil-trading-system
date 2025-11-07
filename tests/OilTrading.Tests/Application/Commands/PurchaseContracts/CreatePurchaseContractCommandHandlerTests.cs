@@ -6,6 +6,7 @@ using OilTrading.Application.Services;
 using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Enums;
 using Xunit;
 
 namespace OilTrading.Tests.Application.Commands.PurchaseContracts;

@@ -5,6 +5,7 @@ using OilTrading.Application.Queries.Risk;
 using OilTrading.Application.Queries.TradeGroups;
 using OilTrading.Application.DTOs;
 using OilTrading.Core.Entities;
+using TradeGroupRiskLevel = OilTrading.Core.Entities.RiskLevel;
 
 namespace OilTrading.Api.Controllers;
 
@@ -42,9 +43,9 @@ public class TradeGroupController : ControllerBase
                 return BadRequest($"Invalid strategy type: {dto.StrategyType}");
             }
 
-            RiskLevel? riskLevel = null;
-            if (!string.IsNullOrEmpty(dto.ExpectedRiskLevel) && 
-                Enum.TryParse<RiskLevel>(dto.ExpectedRiskLevel, out var parsedRiskLevel))
+            TradeGroupRiskLevel? riskLevel = null;
+            if (!string.IsNullOrEmpty(dto.ExpectedRiskLevel) &&
+                Enum.TryParse<TradeGroupRiskLevel>(dto.ExpectedRiskLevel, out var parsedRiskLevel))
             {
                 riskLevel = parsedRiskLevel;
             }

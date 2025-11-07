@@ -1,0 +1,14 @@
+{
+  "externalContractNumber": "VERIFY-TEST-2025-001",
+  "contractNumber": "PC-2025-001",
+  "productId": "2a98ade1-f5c9-469e-9011-717a1d2e1a42",
+  "tradingPartnerId": "1a7ba006-2997-46fb-a1e3-4b6ea29bbe6a",
+  "quantity": 1000.00,
+  "quantityUnit": 0,
+  "fixedPrice": 85.50,
+  "deliveryTerms": 0,
+  "settlementType": 0,
+  "paymentTerms": "NET 30",
+  "laycanStart": "2025-11-10",
+  "laycanEnd": "2025-11-30"
+}

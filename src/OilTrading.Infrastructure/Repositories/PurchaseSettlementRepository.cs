@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Repositories;
 using OilTrading.Infrastructure.Data;
 
 namespace OilTrading.Infrastructure.Repositories;
@@ -8,8 +9,11 @@ namespace OilTrading.Infrastructure.Repositories;
 /// Repository implementation for PurchaseSettlement entity operations.
 /// Handles data access for purchase contract settlements with specialized queries
 /// for settlement lookups and financial calculations.
+///
+/// This implementation is purchase-settlement-specific, ensuring type safety and
+/// clean separation from sales settlement logic.
 /// </summary>
-public class PurchaseSettlementRepository : Repository<PurchaseSettlement>
+public class PurchaseSettlementRepository : Repository<PurchaseSettlement>, IPurchaseSettlementRepository
 {
     public PurchaseSettlementRepository(ApplicationDbContext context) : base(context) { }
 
@@ -185,5 +189,116 @@ public class PurchaseSettlementRepository : Repository<PurchaseSettlement>
             .ToListAsync(cancellationToken);
 
         return (items, total);
+    }
+
+    /// <summary>
+    /// Gets pending payments to suppliers (unpaid settlements).
+    /// Critical for Accounts Payable (AP) management.
+    /// </summary>
+    public async Task<IReadOnlyList<PurchaseSettlement>> GetPendingSupplierPaymentAsync(
+        DateTime? dueDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbSet
+            .Include(s => s.Charges)
+            .Where(s => !s.IsFinalized &&
+                       (s.Status == ContractSettlementStatus.Calculated ||
+                        s.Status == ContractSettlementStatus.Reviewed ||
+                        s.Status == ContractSettlementStatus.Approved));
+
+        if (dueDate.HasValue)
+        {
+            query = query.Where(s => s.CreatedDate <= dueDate);
+        }
+
+        return await query
+            .OrderBy(s => s.CreatedDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets overdue payments to suppliers.
+    /// Critical for compliance and supplier relationship management.
+    /// </summary>
+    public async Task<IReadOnlyList<PurchaseSettlement>> GetOverdueSupplierPaymentAsync(
+        DateTime? asOfDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var checkDate = asOfDate ?? DateTime.UtcNow;
+
+        return await _dbSet
+            .Include(s => s.Charges)
+            .Where(s => !s.IsFinalized &&
+                       s.CreatedDate < checkDate &&
+                       (s.Status == ContractSettlementStatus.Calculated ||
+                        s.Status == ContractSettlementStatus.Reviewed ||
+                        s.Status == ContractSettlementStatus.Approved))
+            .OrderBy(s => s.CreatedDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Calculates total payment exposure to a specific supplier.
+    /// Critical for supplier credit limit management and risk assessment.
+    /// </summary>
+    public async Task<decimal> CalculateSupplierPaymentExposureAsync(
+        Guid supplierId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(s => s.PurchaseContract != null &&
+                       s.PurchaseContract.TradingPartnerId == supplierId &&
+                       !s.IsFinalized)
+            .SumAsync(s => s.TotalSettlementAmount, cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets all settlements for a specific supplier.
+    /// Essential for supplier-level financial analysis.
+    /// </summary>
+    public async Task<IReadOnlyList<PurchaseSettlement>> GetBySupplierAsync(
+        Guid supplierId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(s => s.Charges)
+            .Include(s => s.PurchaseContract)
+            .Where(s => s.PurchaseContract != null &&
+                       s.PurchaseContract.TradingPartnerId == supplierId)
+            .OrderByDescending(s => s.CreatedDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets settlements in a specific currency.
+    /// Important for multi-currency accounting and FX exposure analysis.
+    /// </summary>
+    public async Task<IReadOnlyList<PurchaseSettlement>> GetByCurrencyAsync(
+        string currency,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(currency))
+            throw new ArgumentException("Currency code cannot be null or empty", nameof(currency));
+
+        return await _dbSet
+            .Include(s => s.Charges)
+            .Where(s => s.SettlementCurrency == currency)
+            .OrderByDescending(s => s.CreatedDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Gets settlement by invoice number for supplier invoice reconciliation.
+    /// </summary>
+    public async Task<PurchaseSettlement?> GetByInvoiceNumberAsync(
+        string invoiceNumber,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(invoiceNumber))
+            throw new ArgumentException("Invoice number cannot be null or empty", nameof(invoiceNumber));
+
+        return await _dbSet
+            .Include(s => s.Charges)
+            .FirstOrDefaultAsync(s => s.DocumentNumber == invoiceNumber, cancellationToken);
     }
 }

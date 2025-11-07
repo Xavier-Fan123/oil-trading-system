@@ -1,5 +1,6 @@
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.DTOs;
 
@@ -59,7 +60,7 @@ public class ContractApprovalData
     public string? Comments { get; set; }
     public string ApprovedBy { get; set; } = string.Empty;
     public DateTime ApprovalDate { get; set; } = DateTime.UtcNow;
-    public UserRole ApproverRole { get; set; }
+    public OilTrading.Core.Entities.UserRole ApproverRole { get; set; }
     public List<string> RequiredChecks { get; set; } = new();
 }
 

@@ -5,6 +5,7 @@ using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Common;
 using OilTrading.Application.Services;
 using OilTrading.Application.Common.Exceptions;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.Commands.PurchaseContracts;
 
@@ -171,16 +172,16 @@ public class CreatePurchaseContractCommandHandler : IRequestHandler<CreatePurcha
         return terms;
     }
 
-    private static OilTrading.Core.Entities.SettlementType MapSettlementType(ContractPaymentMethod type)
+    private static OilTrading.Core.Enums.SettlementType MapSettlementType(ContractPaymentMethod type)
     {
         return type switch
         {
-            ContractPaymentMethod.TT => OilTrading.Core.Entities.SettlementType.ContractPayment,
-            ContractPaymentMethod.LC => OilTrading.Core.Entities.SettlementType.ContractPayment,
-            ContractPaymentMethod.CAD => OilTrading.Core.Entities.SettlementType.ContractPayment,
-            ContractPaymentMethod.SBLC => OilTrading.Core.Entities.SettlementType.ContractPayment,
-            ContractPaymentMethod.DP => OilTrading.Core.Entities.SettlementType.ContractPayment,
-            _ => OilTrading.Core.Entities.SettlementType.ContractPayment // Default to contract payment
+            ContractPaymentMethod.TT => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            ContractPaymentMethod.LC => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            ContractPaymentMethod.CAD => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            ContractPaymentMethod.SBLC => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            ContractPaymentMethod.DP => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            _ => OilTrading.Core.Enums.SettlementType.ContractPayment // Default to contract payment
         };
     }
 }

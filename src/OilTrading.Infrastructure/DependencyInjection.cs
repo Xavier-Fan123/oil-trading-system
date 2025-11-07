@@ -11,6 +11,7 @@ using OilTrading.Core.Services;
 using OilTrading.Infrastructure.Data;
 using OilTrading.Infrastructure.Repositories;
 using OilTrading.Infrastructure.Services;
+using OilTrading.Infrastructure.BackgroundJobs;
 using System;
 using Npgsql;
 using StackExchange.Redis;
@@ -213,7 +214,6 @@ public static class DependencyInjection
         services.AddScoped<IFuturesDealRepository, FuturesDealRepository>();
         services.AddScoped<IPhysicalContractRepository, PhysicalContractRepository>();
         services.AddScoped<IPriceBenchmarkRepository, PriceBenchmarkRepository>();
-        services.AddScoped<ISettlementRepository, SettlementRepository>();
 
         // Inventory repositories
         services.AddScoped<IInventoryLocationRepository, InventoryLocationRepository>();
@@ -228,8 +228,13 @@ public static class DependencyInjection
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IContractTagRepository, ContractTagRepository>();
 
-        // Settlement repositories
+        // Settlement repositories - Separated for type-safety and clear business separation
         services.AddScoped<IContractSettlementRepository, ContractSettlementRepository>();
+        services.AddScoped<IPurchaseSettlementRepository, PurchaseSettlementRepository>();
+        services.AddScoped<ISalesSettlementRepository, SalesSettlementRepository>();
+
+        // Settlement template repositories
+        services.AddScoped<ISettlementTemplateRepository, SettlementTemplateRepository>();
 
         // Financial Reporting
         services.AddScoped<IFinancialReportRepository, FinancialReportRepository>();
@@ -259,7 +264,6 @@ public static class DependencyInjection
         services.AddScoped<IMultiLayerCacheService, MultiLayerCacheService>();
         services.AddScoped<ICacheManagementService, CacheManagementService>();
         services.AddScoped<IRealTimeInventoryService, RealTimeInventoryService>();
-        services.AddScoped<ISettlementService, SettlementService>();
         services.AddScoped<IRealTimeRiskMonitoringService, RealTimeRiskMonitoringService>();
         services.AddScoped<IComplianceReportingService, ComplianceReportingService>();
 
@@ -292,12 +296,27 @@ public static class DependencyInjection
         // services.AddScoped<IConfigurationManagementService, ConfigurationManagementService>();
 
         services.AddScoped<IDataValidationService, DataValidationService>();
-        
+
+        // Advanced Reporting System Services
+        services.AddScoped<IReportConfigurationService, ReportConfigurationService>();
+        services.AddScoped<IReportExecutionService, ReportExecutionService>();
+        services.AddScoped<IReportScheduleService, ReportScheduleService>();
+        services.AddScoped<IReportDistributionService, ReportDistributionService>();
+        services.AddScoped<IEmailDistributionService, EmailDistributionService>();
+        services.AddScoped<ISftpDistributionService, SftpDistributionService>();
+        services.AddScoped<IWebhookDistributionService, WebhookDistributionService>();
+        services.AddScoped<IReportArchiveService, ReportArchiveService>();
+
+        // Background Jobs
+        services.AddHostedService<ReportScheduleExecutionJob>();
+        services.AddHostedService<ReportDistributionJob>();
+        services.AddHostedService<ReportArchiveCleanupJob>();
+
         // Database optimization services
         services.AddScoped<DatabaseInitializer>();
         services.AddScoped<DatabaseConfigurationValidator>();
         services.AddScoped<DatabaseMaintenanceService>();
-        
+
         // Register ApplicationDbContext as DbContext for services that need generic DbContext
         services.AddScoped<DbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
     }

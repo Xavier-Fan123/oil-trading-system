@@ -174,5 +174,10 @@ public class ContractSettlementConfiguration : IEntityTypeConfiguration<Contract
 
         // Ignore domain events collection for EF
         builder.Ignore(e => e.DomainEvents);
+
+        // Ignore unmapped properties that don't have database columns yet
+        // These are business logic properties that will be added in future migrations
+        builder.Ignore(e => e.ActualPayableDueDate);
+        builder.Ignore(e => e.ActualPaymentDate);
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
+using OilTrading.Api.Services;
 using OilTrading.Application.Commands.TradingPartners;
 using OilTrading.Application.Queries.TradingPartners;
 using OilTrading.Application.Queries.FinancialReports;
@@ -12,11 +13,16 @@ namespace OilTrading.Api.Controllers;
 public class TradingPartnerController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly TradingPartnerExposureService _exposureService;
     private readonly ILogger<TradingPartnerController> _logger;
 
-    public TradingPartnerController(IMediator mediator, ILogger<TradingPartnerController> logger)
+    public TradingPartnerController(
+        IMediator mediator,
+        TradingPartnerExposureService exposureService,
+        ILogger<TradingPartnerController> logger)
     {
         _mediator = mediator;
+        _exposureService = exposureService;
         _logger = logger;
     }
 
@@ -136,5 +142,83 @@ public class TradingPartnerController : ControllerBase
 
         _logger.LogInformation("Trading partner unblocked: {Id}", id);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Get credit exposure and risk level for a specific trading partner
+    /// </summary>
+    [HttpGet("{id}/exposure")]
+    [ResponseCache(Duration = 120, Location = ResponseCacheLocation.Any)]
+    [ProducesResponseType(typeof(TradingPartnerExposureDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetExposure(Guid id)
+    {
+        _logger.LogInformation("Getting exposure for trading partner {Id}", id);
+        var result = await _exposureService.GetPartnerExposureAsync(id);
+
+        if (result == null)
+        {
+            return NotFound($"Trading partner with ID {id} not found");
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get all trading partners sorted by risk level
+    /// </summary>
+    [HttpGet("exposure/all")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
+    [ProducesResponseType(typeof(List<TradingPartnerExposureDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllExposure(
+        [FromQuery] string? sortBy = "riskLevel",
+        [FromQuery] bool sortDescending = true,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
+    {
+        _logger.LogInformation("Getting exposure for all trading partners");
+        var result = await _exposureService.GetAllPartnersExposureAsync(sortBy, sortDescending, pageNumber, pageSize);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get trading partners with high or critical risk levels
+    /// </summary>
+    [HttpGet("exposure/at-risk")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
+    [ProducesResponseType(typeof(List<TradingPartnerExposureDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAtRisk([FromQuery] int minimumRiskLevel = 3)
+    {
+        _logger.LogInformation("Getting at-risk trading partners");
+
+        // Parse the risk level from query parameter
+        if (!Enum.IsDefined(typeof(RiskLevel), minimumRiskLevel))
+        {
+            return BadRequest("Invalid risk level. Valid values: 1=Low, 2=Medium, 3=High, 4=Critical");
+        }
+
+        var riskLevel = (RiskLevel)minimumRiskLevel;
+        var result = await _exposureService.GetAtRiskPartnersAsync(riskLevel);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get detailed settlement summary for a trading partner (AP and AR breakdown)
+    /// </summary>
+    [HttpGet("{id}/settlement-details")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any)]
+    [ProducesResponseType(typeof(PartnerSettlementSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSettlementDetails(Guid id)
+    {
+        _logger.LogInformation("Getting settlement details for trading partner {Id}", id);
+        var result = await _exposureService.GetPartnerSettlementDetailsAsync(id);
+
+        if (result == null)
+        {
+            return NotFound($"Trading partner with ID {id} not found");
+        }
+
+        return Ok(result);
     }
 }

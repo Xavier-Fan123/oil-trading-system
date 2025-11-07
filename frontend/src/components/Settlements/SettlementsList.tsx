@@ -17,30 +17,36 @@ import {
   DialogContent,
   Stack,
   Divider,
+  Checkbox,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { settlementApi } from '../../services/settlementApi';
 import { ContractSettlementDto } from '../../types/settlement';
+import { useSettlementSelection } from '../../hooks/useSettlementSelection';
+import { BulkActionsToolbar } from './BulkActionsToolbar';
 
 export interface SettlementsListProps {
   contractId: string;
   contractType: 'purchase' | 'sales';
   onViewSettlement?: (settlement: ContractSettlementDto) => void;
+  enableBulkActions?: boolean;
 }
 
 /**
  * Settlements List Component
- * Displays all settlements for a contract
+ * Displays all settlements for a contract with optional bulk actions
  */
 export const SettlementsList: React.FC<SettlementsListProps> = ({
   contractId,
   contractType,
   onViewSettlement,
+  enableBulkActions = false,
 }) => {
   const [selectedSettlement, setSelectedSettlement] = React.useState<ContractSettlementDto | null>(null);
+  const { selectedIds, selectAll, deselectAll, toggleSelection, isSelected, getSelectedCount } = useSettlementSelection();
 
-  const { data: settlements, isLoading, error } = useQuery({
+  const { data: settlements, isLoading, error, refetch } = useQuery({
     queryKey: ['settlements', contractId, contractType],
     queryFn: async () => {
       // Use generic getByContractId method for both purchase and sales contracts
@@ -87,10 +93,37 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
 
   return (
     <>
+      {/* Bulk Actions Toolbar */}
+      {enableBulkActions && (
+        <BulkActionsToolbar
+          selectedCount={getSelectedCount()}
+          selectedIds={selectedIds}
+          onClearSelection={deselectAll}
+          onRefresh={() => refetch()}
+        />
+      )}
+
       <TableContainer component={Paper}>
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+              {enableBulkActions && (
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={
+                      settlements && settlements.length > 0 && getSelectedCount() > 0 && getSelectedCount() < settlements.length
+                    }
+                    checked={settlements && settlements.length > 0 && getSelectedCount() === settlements.length}
+                    onChange={(e) => {
+                      if (e.target.checked && settlements) {
+                        selectAll(settlements.map((s) => s.id));
+                      } else {
+                        deselectAll();
+                      }
+                    }}
+                  />
+                </TableCell>
+              )}
               <TableCell sx={{ fontWeight: 'bold' }}>Settlement #</TableCell>
               <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
               <TableCell align="right" sx={{ fontWeight: 'bold' }}>
@@ -107,7 +140,15 @@ export const SettlementsList: React.FC<SettlementsListProps> = ({
           </TableHead>
           <TableBody>
             {settlements.map((settlement) => (
-              <TableRow key={settlement.id} hover>
+              <TableRow key={settlement.id} hover sx={{ bgcolor: isSelected(settlement.id) ? 'action.selected' : undefined }}>
+                {enableBulkActions && (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={isSelected(settlement.id)}
+                      onChange={() => toggleSelection(settlement.id)}
+                    />
+                  </TableCell>
+                )}
                 <TableCell>{settlement.contractNumber}</TableCell>
                 <TableCell>
                   <Chip

@@ -1,0 +1,61 @@
+SETTLEMENT CREATION SYSTEM - ANALYSIS SUMMARY
+==============================================
+
+KEY FINDINGS:
+
+1. THREE SETTLEMENT SYSTEMS:
+   - PurchaseSettlement (AP) - src/OilTrading.Core/Entities/PurchaseSettlement.cs (312 lines)
+   - SalesSettlement (AR) - src/OilTrading.Core/Entities/SalesSettlement.cs (312 lines)
+   - ContractSettlement (generic) - src/OilTrading.Core/Entities/ContractSettlement.cs (341 lines)
+
+2. CONTRACT COMPLETION TRIGGERS:
+   - PurchaseContractCompletedEvent - src/OilTrading.Core/Events/PurchaseContractCompletedEvent.cs
+   - SalesContractCompletedEvent - src/OilTrading.Core/Events/SalesContractCompletedEvent.cs
+   - Contains: ContractId, ContractNumber
+
+3. SETTLEMENT CREATION PATTERN:
+   - Command: CreatePurchaseSettlementCommand / CreateSalesSettlementCommand
+   - Handler: CreatePurchaseSettlementCommandHandler / CreateSalesSettlementCommandHandler
+   - Service: PurchaseSettlementService.CreateSettlementAsync() / SalesSettlementService.CreateSettlementAsync()
+   - Repository: IPurchaseSettlementRepository / ISalesSettlementRepository
+
+4. SETTLEMENT WORKFLOW:
+   - Draft -> DataEntered -> Calculated -> Reviewed -> Approved -> Finalized
+   - Contains: Charges (Demurrage, Inspection, Port Charges, etc.)
+   - One-to-many: Contract can have multiple Settlements
+
+5. REQUIRED SETTLEMENT DATA:
+   - PurchaseContractId / SalesContractId
+   - ExternalContractNumber (from contract)
+   - DocumentNumber (B/L number)
+   - DocumentType (BillOfLading, QuantityCertificate)
+   - DocumentDate (current date)
+   - ActualQuantityMT/BBL (from contract quantity)
+   - CreatedBy ("AutoSettlementService")
+
+6. AUTO-CALCULATION OPTIONS:
+   - AutoCalculatePrices (bool)
+   - AutoTransitionStatus (bool)
+
+7. HOOK POINT:
+   Subscribe to PurchaseContractCompletedEvent and SalesContractCompletedEvent
+   Create settlement immediately after contract completion
+
+8. CONFIGURATION:
+   appsettings.json:
+   {
+     "AutoSettlement": {
+       "EnableAutoSettlementOnCompletion": true,
+       "AutoCalculatePrices": false,
+       "AutoTransitionStatus": false,
+       "DefaultDocumentType": "BillOfLading"
+     }
+   }
+
+9. KEY FILES:
+   - Entities: PurchaseSettlement.cs, SalesSettlement.cs
+   - Events: PurchaseContractCompletedEvent.cs, SalesContractCompletedEvent.cs
+   - Commands: CreatePurchaseSettlementCommand.cs, CreateSalesSettlementCommand.cs
+   - Services: PurchaseSettlementService.cs, SalesSettlementService.cs
+   - Repositories: IPurchaseSettlementRepository.cs, ISalesSettlementRepository.cs
+   - Controllers: SettlementController.cs, PurchaseSettlementController.cs, SalesSettlementController.cs

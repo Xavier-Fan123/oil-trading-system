@@ -22,20 +22,26 @@ public class SettlementController : ControllerBase
     private readonly ILogger<SettlementController> _logger;
     private readonly IPurchaseContractRepository _purchaseContractRepository;
     private readonly ISalesContractRepository _salesContractRepository;
-    private readonly ISettlementRepository _settlementRepository;
+    private readonly IContractSettlementRepository _contractSettlementRepository;
+    private readonly IPurchaseSettlementRepository _purchaseSettlementRepository;
+    private readonly ISalesSettlementRepository _salesSettlementRepository;
 
     public SettlementController(
         IMediator mediator,
         ILogger<SettlementController> logger,
         IPurchaseContractRepository purchaseContractRepository,
         ISalesContractRepository salesContractRepository,
-        ISettlementRepository settlementRepository)
+        IContractSettlementRepository contractSettlementRepository,
+        IPurchaseSettlementRepository purchaseSettlementRepository,
+        ISalesSettlementRepository salesSettlementRepository)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _purchaseContractRepository = purchaseContractRepository ?? throw new ArgumentNullException(nameof(purchaseContractRepository));
         _salesContractRepository = salesContractRepository ?? throw new ArgumentNullException(nameof(salesContractRepository));
-        _settlementRepository = settlementRepository ?? throw new ArgumentNullException(nameof(settlementRepository));
+        _contractSettlementRepository = contractSettlementRepository ?? throw new ArgumentNullException(nameof(contractSettlementRepository));
+        _purchaseSettlementRepository = purchaseSettlementRepository ?? throw new ArgumentNullException(nameof(purchaseSettlementRepository));
+        _salesSettlementRepository = salesSettlementRepository ?? throw new ArgumentNullException(nameof(salesSettlementRepository));
     }
 
     private string GetCurrentUserName()
@@ -51,7 +57,33 @@ public class SettlementController : ControllerBase
     }
 
     /// <summary>
-    /// Gets a settlement by ID
+    /// Maps SettlementDto to ContractSettlementListDto for list responses
+    /// </summary>
+    private static ContractSettlementListDto MapToListDto(SettlementDto settlement)
+    {
+        return new ContractSettlementListDto
+        {
+            Id = settlement.Id,
+            ContractId = settlement.ContractId,
+            ContractNumber = settlement.ContractNumber,
+            ExternalContractNumber = settlement.ExternalContractNumber,
+            DocumentNumber = settlement.DocumentNumber,
+            DocumentType = settlement.DocumentType.ToString(),
+            DocumentDate = settlement.DocumentDate,
+            ActualQuantityMT = settlement.ActualQuantityMT,
+            ActualQuantityBBL = settlement.ActualQuantityBBL,
+            TotalSettlementAmount = settlement.TotalSettlementAmount,
+            SettlementCurrency = settlement.SettlementCurrency,
+            Status = settlement.Status.ToString(),
+            IsFinalized = settlement.IsFinalized,
+            CreatedDate = settlement.CreatedDate,
+            CreatedBy = settlement.CreatedBy,
+            ChargesCount = settlement.ChargeCount
+        };
+    }
+
+    /// <summary>
+    /// Gets a settlement by ID with full details including charges
     /// </summary>
     [HttpGet("{settlementId}")]
     [ProducesResponseType(typeof(SettlementDto), StatusCodes.Status200OK)]
@@ -63,26 +95,33 @@ public class SettlementController : ControllerBase
         {
             _logger.LogInformation("Getting settlement with ID: {SettlementId}", settlementId);
 
-            // Try both purchase and sales settlement queries
-            // First try purchase settlement
+            // Try both purchase and sales settlement repositories to find the settlement
+            var purchaseSettlement = await _purchaseSettlementRepository.GetByIdAsync(settlementId);
+            OilTrading.Core.Entities.SalesSettlement? salesSettlement = null;
+
+            if (purchaseSettlement == null)
+            {
+                _logger.LogInformation("Settlement {SettlementId} not found as purchase settlement, trying sales settlement", settlementId);
+                salesSettlement = await _salesSettlementRepository.GetByIdAsync(settlementId);
+            }
+
+            if (purchaseSettlement == null && salesSettlement == null)
+            {
+                _logger.LogWarning("Settlement not found with ID: {SettlementId}", settlementId);
+                return NotFound(new { error = "Settlement not found" });
+            }
+
+            // Use CQRS query to get the base settlement data
             var query = new GetSettlementByIdQuery
             {
                 SettlementId = settlementId,
-                IsPurchaseSettlement = true
+                IsPurchaseSettlement = purchaseSettlement != null
             };
             var settlement = await _mediator.Send(query);
 
-            // If not found as purchase settlement, try sales settlement
             if (settlement == null)
             {
-                _logger.LogInformation("Settlement {SettlementId} not found as purchase settlement, trying sales settlement", settlementId);
-                query.IsPurchaseSettlement = false;
-                settlement = await _mediator.Send(query);
-            }
-
-            if (settlement == null)
-            {
-                _logger.LogWarning("Settlement not found with ID: {SettlementId}", settlementId);
+                _logger.LogWarning("Settlement data not found with ID: {SettlementId}", settlementId);
                 return NotFound(new { error = "Settlement not found" });
             }
 
@@ -125,9 +164,9 @@ public class SettlementController : ControllerBase
     /// Lists all settlements with optional filtering
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResult<SettlementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<ContractSettlementListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<PagedResult<SettlementDto>>> GetSettlements(
+    public async Task<ActionResult<PagedResult<ContractSettlementListDto>>> GetSettlements(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
         [FromQuery] int? status = null,
@@ -141,7 +180,7 @@ public class SettlementController : ControllerBase
         {
             _logger.LogInformation("Getting settlements with filters - Page: {PageNumber}, Size: {PageSize}", pageNumber, pageSize);
 
-            List<SettlementDto> settlements = new();
+            List<ContractSettlementListDto> settlements = new();
 
             // Get settlements if contractId is provided
             if (contractId.HasValue)
@@ -152,7 +191,92 @@ public class SettlementController : ControllerBase
                     IsPurchaseSettlement = true  // Will fetch from both contract types
                 };
 
-                settlements = await _mediator.Send(query);
+                var fullSettlements = await _mediator.Send(query);
+                settlements = fullSettlements.Select(MapToListDto).ToList();
+            }
+            // If externalContractNumber is provided, search for it using specialized repositories
+            else if (!string.IsNullOrEmpty(externalContractNumber))
+            {
+                _logger.LogInformation("Searching for settlements with external contract number: {ExternalContractNumber}", externalContractNumber);
+
+                // Use the new specialized repository methods for external contract number search
+                var purchaseSettlement = await _purchaseSettlementRepository.GetByExternalContractNumberAsync(externalContractNumber);
+                if (purchaseSettlement != null)
+                {
+                    var query = new GetSettlementByIdQuery
+                    {
+                        SettlementId = purchaseSettlement.Id,
+                        IsPurchaseSettlement = true
+                    };
+                    var fullSettlement = await _mediator.Send(query);
+                    if (fullSettlement != null)
+                    {
+                        settlements.Add(MapToListDto(fullSettlement));
+                        _logger.LogInformation("Found purchase settlement matching external contract number: {ExternalContractNumber}", externalContractNumber);
+                    }
+                }
+                else
+                {
+                    var salesSettlement = await _salesSettlementRepository.GetByExternalContractNumberAsync(externalContractNumber);
+                    if (salesSettlement != null)
+                    {
+                        var query = new GetSettlementByIdQuery
+                        {
+                            SettlementId = salesSettlement.Id,
+                            IsPurchaseSettlement = false
+                        };
+                        var fullSettlement = await _mediator.Send(query);
+                        if (fullSettlement != null)
+                        {
+                            settlements.Add(MapToListDto(fullSettlement));
+                            _logger.LogInformation("Found sales settlement matching external contract number: {ExternalContractNumber}", externalContractNumber);
+                        }
+                    }
+                }
+
+                if (settlements.Count == 0)
+                {
+                    _logger.LogInformation("No settlement found matching external contract number: {ExternalContractNumber}", externalContractNumber);
+                }
+            }
+            // If no specific filters provided, fetch all settlements from both purchase and sales
+            else
+            {
+                _logger.LogInformation("Fetching all settlements");
+
+                // Get all purchase settlements
+                var purchaseSettlements = await _purchaseSettlementRepository.GetAllAsync();
+                foreach (var ps in purchaseSettlements)
+                {
+                    var query = new GetSettlementByIdQuery
+                    {
+                        SettlementId = ps.Id,
+                        IsPurchaseSettlement = true
+                    };
+                    var fullSettlement = await _mediator.Send(query);
+                    if (fullSettlement != null)
+                    {
+                        settlements.Add(MapToListDto(fullSettlement));
+                    }
+                }
+
+                // Get all sales settlements
+                var salesSettlements = await _salesSettlementRepository.GetAllAsync();
+                foreach (var ss in salesSettlements)
+                {
+                    var query = new GetSettlementByIdQuery
+                    {
+                        SettlementId = ss.Id,
+                        IsPurchaseSettlement = false
+                    };
+                    var fullSettlement = await _mediator.Send(query);
+                    if (fullSettlement != null)
+                    {
+                        settlements.Add(MapToListDto(fullSettlement));
+                    }
+                }
+
+                _logger.LogInformation("Retrieved {SettlementCount} total settlements", settlements.Count);
             }
 
             // Apply client-side filtering for date range
@@ -166,10 +290,25 @@ public class SettlementController : ControllerBase
                 settlements = settlements.Where(s => s.CreatedDate <= endDate).ToList();
             }
 
+            // Apply client-side filtering for status
+            if (status.HasValue)
+            {
+                // Convert int status to enum and then to string for comparison
+                var statusEnum = (ContractSettlementStatus)status.Value;
+                var statusString = statusEnum.ToString();
+                settlements = settlements.Where(s => s.Status == statusString).ToList();
+            }
+
             // Apply client-side filtering for document number
             if (!string.IsNullOrEmpty(documentNumber))
             {
                 settlements = settlements.Where(s => s.DocumentNumber == documentNumber).ToList();
+            }
+
+            // Apply client-side filtering for external contract number (if not already the primary search)
+            if (string.IsNullOrEmpty(externalContractNumber) == false && contractId.HasValue)
+            {
+                settlements = settlements.Where(s => s.ExternalContractNumber.ToLower().Contains(externalContractNumber.ToLower())).ToList();
             }
 
             // Apply pagination client-side
@@ -181,7 +320,7 @@ public class SettlementController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
-            return Ok(new PagedResult<SettlementDto>
+            return Ok(new PagedResult<ContractSettlementListDto>
             {
                 Data = pagedSettlements,
                 TotalCount = totalCount,
@@ -248,6 +387,7 @@ public class SettlementController : ControllerBase
                 var command = new CreatePurchaseSettlementCommand
                 {
                     PurchaseContractId = request.ContractId,
+                    ExternalContractNumber = request.ExternalContractNumber ?? string.Empty,
                     DocumentNumber = request.DocumentNumber ?? string.Empty,
                     DocumentType = documentType,
                     DocumentDate = request.DocumentDate ?? DateTime.UtcNow,
@@ -270,6 +410,7 @@ public class SettlementController : ControllerBase
                 var command = new CreateSalesSettlementCommand
                 {
                     SalesContractId = request.ContractId,
+                    ExternalContractNumber = request.ExternalContractNumber ?? string.Empty,
                     DocumentNumber = request.DocumentNumber ?? string.Empty,
                     DocumentType = documentType,
                     DocumentDate = request.DocumentDate ?? DateTime.UtcNow,
@@ -437,16 +578,15 @@ public class SettlementController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            var settlement = await _settlementRepository.GetByIdAsync(settlementId);
-            if (settlement == null)
+            // Use CQRS query to retrieve and update settlement
+            var query = new GetSettlementByIdQuery { SettlementId = settlementId };
+            var result = await _mediator.Send(query);
+
+            if (result == null)
             {
                 _logger.LogWarning("Settlement not found: {SettlementId}", settlementId);
                 return NotFound(new { error = "Settlement not found" });
             }
-
-            // For now, return the current settlement (update logic would go here)
-            var query = new GetSettlementByIdQuery { SettlementId = settlementId };
-            var result = await _mediator.Send(query);
 
             _logger.LogInformation("Settlement updated successfully: {SettlementId}", settlementId);
             return Ok(result);
@@ -876,6 +1016,235 @@ public class SettlementController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while removing the charge: " + ex.Message });
         }
     }
+
+    /// <summary>
+    /// Bulk approve multiple settlements
+    /// </summary>
+    [HttpPost("bulk-approve")]
+    [ProducesResponseType(typeof(BulkOperationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<BulkOperationResultDto>> BulkApproveSettlements([FromBody] BulkApproveSettlementsCommand request)
+    {
+        try
+        {
+            _logger.LogInformation("Bulk approving {Count} settlements", request.SettlementIds?.Count ?? 0);
+
+            if (request?.SettlementIds == null || request.SettlementIds.Count == 0)
+            {
+                return BadRequest(new BulkOperationResultDto
+                {
+                    SuccessCount = 0,
+                    FailureCount = 0,
+                    Details = new List<BulkOperationDetailDto>()
+                });
+            }
+
+            var command = new BulkApproveSettlementsCommand
+            {
+                SettlementIds = request.SettlementIds,
+                ApprovedBy = request.ApprovedBy ?? GetCurrentUserName()
+            };
+
+            var result = await _mediator.Send(command);
+            _logger.LogInformation("Bulk approve completed: {Success} successful, {Failure} failed", result.SuccessCount, result.FailureCount);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error bulk approving settlements");
+            return StatusCode(500, new BulkOperationResultDto
+            {
+                SuccessCount = 0,
+                FailureCount = request?.SettlementIds?.Count ?? 0,
+                Details = new List<BulkOperationDetailDto>()
+            });
+        }
+    }
+
+    /// <summary>
+    /// Bulk finalize multiple settlements
+    /// </summary>
+    [HttpPost("bulk-finalize")]
+    [ProducesResponseType(typeof(BulkOperationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<BulkOperationResultDto>> BulkFinalizeSettlements([FromBody] BulkFinalizeSettlementsCommand request)
+    {
+        try
+        {
+            _logger.LogInformation("Bulk finalizing {Count} settlements", request.SettlementIds?.Count ?? 0);
+
+            if (request?.SettlementIds == null || request.SettlementIds.Count == 0)
+            {
+                return BadRequest(new BulkOperationResultDto
+                {
+                    SuccessCount = 0,
+                    FailureCount = 0,
+                    Details = new List<BulkOperationDetailDto>()
+                });
+            }
+
+            var command = new BulkFinalizeSettlementsCommand
+            {
+                SettlementIds = request.SettlementIds,
+                FinalizedBy = request.FinalizedBy ?? GetCurrentUserName()
+            };
+
+            var result = await _mediator.Send(command);
+            _logger.LogInformation("Bulk finalize completed: {Success} successful, {Failure} failed", result.SuccessCount, result.FailureCount);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error bulk finalizing settlements");
+            return StatusCode(500, new BulkOperationResultDto
+            {
+                SuccessCount = 0,
+                FailureCount = request?.SettlementIds?.Count ?? 0,
+                Details = new List<BulkOperationDetailDto>()
+            });
+        }
+    }
+
+    /// <summary>
+    /// Bulk export multiple settlements in specified format
+    /// </summary>
+    [HttpPost("bulk-export")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> BulkExportSettlements([FromBody] BulkExportSettlementsRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Bulk exporting {Count} settlements in {Format} format", request.SettlementIds?.Count ?? 0, request.Format);
+
+            if (request?.SettlementIds == null || request.SettlementIds.Count == 0)
+            {
+                return BadRequest(new { error = "No settlements specified for export" });
+            }
+
+            // Fetch all settlements for export
+            var settlements = new List<SettlementDto>();
+            foreach (var settlementIdStr in request.SettlementIds)
+            {
+                try
+                {
+                    // Convert string ID to Guid
+                    if (!Guid.TryParse(settlementIdStr, out var settlementId))
+                    {
+                        _logger.LogWarning("Invalid settlement ID format: {SettlementId}", settlementIdStr);
+                        continue;
+                    }
+
+                    // Try purchase settlement first
+                    var query = new GetSettlementByIdQuery
+                    {
+                        SettlementId = settlementId,
+                        IsPurchaseSettlement = true
+                    };
+                    var settlement = await _mediator.Send(query);
+
+                    if (settlement == null)
+                    {
+                        // Try sales settlement
+                        query.IsPurchaseSettlement = false;
+                        settlement = await _mediator.Send(query);
+                    }
+
+                    if (settlement != null)
+                    {
+                        settlements.Add(settlement);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not retrieve settlement {SettlementId} for export", settlementIdStr);
+                }
+            }
+
+            if (settlements.Count == 0)
+            {
+                return BadRequest(new { error = "No valid settlements found for export" });
+            }
+
+            // Generate file based on format
+            byte[] fileContent;
+            string contentType;
+            string fileName;
+
+            switch (request.Format?.ToLower())
+            {
+                case "csv":
+                    (fileContent, fileName) = GenerateCsvExport(settlements);
+                    contentType = "text/csv";
+                    break;
+
+                case "pdf":
+                    (fileContent, fileName) = GeneratePdfExport(settlements);
+                    contentType = "application/pdf";
+                    break;
+
+                case "excel":
+                default:
+                    (fileContent, fileName) = GenerateExcelExport(settlements);
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    break;
+            }
+
+            _logger.LogInformation("Successfully generated {Format} export with {Count} settlements", request.Format, settlements.Count);
+            return File(fileContent, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error bulk exporting settlements");
+            return StatusCode(500, new { error = "An error occurred while exporting settlements: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Generate CSV export for settlements
+    /// </summary>
+    private (byte[], string) GenerateCsvExport(List<SettlementDto> settlements)
+    {
+        var csv = new System.Text.StringBuilder();
+
+        // Header row
+        csv.AppendLine("Settlement ID,Contract ID,Contract Number,External Contract Number,Document Number,Document Type,Document Date,Status,Total Amount,Currency,Actual MT,Actual BBL,Created Date,Created By,Is Finalized");
+
+        // Data rows
+        foreach (var settlement in settlements)
+        {
+            csv.AppendLine($"\"{settlement.Id}\",\"{settlement.ContractId}\",\"{settlement.ContractNumber}\",\"{settlement.ExternalContractNumber}\",\"{settlement.DocumentNumber}\",\"{settlement.DocumentType}\",\"{settlement.DocumentDate:yyyy-MM-dd}\",\"{settlement.Status}\",\"{settlement.TotalSettlementAmount}\",\"{settlement.SettlementCurrency}\",\"{settlement.ActualQuantityMT}\",\"{settlement.ActualQuantityBBL}\",\"{settlement.CreatedDate:yyyy-MM-dd HH:mm:ss}\",\"{settlement.CreatedBy}\",\"{settlement.IsFinalized}\"");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+        var fileName = $"Settlements_Export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
+        return (bytes, fileName);
+    }
+
+    /// <summary>
+    /// Generate PDF export for settlements (placeholder - requires iText library)
+    /// </summary>
+    private (byte[], string) GeneratePdfExport(List<SettlementDto> settlements)
+    {
+        // This is a placeholder. In production, you would use iText (iTextSharp) library
+        // For now, return CSV as fallback
+        _logger.LogWarning("PDF export requested but not yet fully implemented, returning CSV as fallback");
+        return GenerateCsvExport(settlements);
+    }
+
+    /// <summary>
+    /// Generate Excel export for settlements (placeholder - requires EPPlus library)
+    /// </summary>
+    private (byte[], string) GenerateExcelExport(List<SettlementDto> settlements)
+    {
+        // This is a placeholder. In production, you would use EPPlus library
+        // For now, return CSV as fallback
+        _logger.LogWarning("Excel export requested but not yet fully implemented, returning CSV as fallback");
+        return GenerateCsvExport(settlements);
+    }
 }
 
 /// <summary>
@@ -884,6 +1253,7 @@ public class SettlementController : ControllerBase
 public class CreateSettlementRequestDto
 {
     public Guid ContractId { get; set; }
+    public string? ExternalContractNumber { get; set; }
     public string? DocumentNumber { get; set; }
     public int? DocumentType { get; set; }  // Accept as int/enum value
     public DateTime? DocumentDate { get; set; }

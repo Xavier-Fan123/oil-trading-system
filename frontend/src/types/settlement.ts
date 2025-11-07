@@ -116,7 +116,10 @@ export interface ContractSettlementDto {
   // Exchange rate handling
   exchangeRate?: number;
   exchangeRateNote?: string;
-  
+
+  // Payment Due Date (from contract payment terms)
+  actualPayableDueDate?: Date;
+
   // Status management
   status: string;
   isFinalized: boolean;
@@ -245,6 +248,7 @@ export interface SettlementChargeStatisticsDto {
 // Creation and Update DTOs
 export interface CreateSettlementDto {
   contractId: string;
+  externalContractNumber?: string;
   documentNumber?: string;
   documentType: DocumentType;
   documentDate: Date;
@@ -263,7 +267,6 @@ export interface CreateSettlementDto {
 }
 
 export interface CreateSettlementWithContextDto extends CreateSettlementDto {
-  externalContractNumber?: string;
   contractNumber?: string;
   expectedContractType?: string;
   tradingPartnerId?: string;

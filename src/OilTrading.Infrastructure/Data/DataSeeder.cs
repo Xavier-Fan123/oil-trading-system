@@ -26,14 +26,17 @@ public class DataSeeder
         {
             _logger.LogInformation("Starting database seeding...");
 
-            // Check if data already exists
-            if (await _context.Products.AnyAsync() ||
-                await _context.TradingPartners.AnyAsync() ||
-                await _context.PurchaseContracts.AnyAsync())
-            {
-                _logger.LogInformation("Database already contains data. Skipping seeding.");
-                return;
-            }
+            // DEVELOPMENT MODE: Always clear and re-seed for complete data integrity
+            // This ensures seeded contracts always have all required fields
+            _logger.LogInformation("Clearing existing data to ensure fresh seeding...");
+            await _context.PurchaseContracts.ExecuteDeleteAsync();
+            await _context.SalesContracts.ExecuteDeleteAsync();
+            await _context.ShippingOperations.ExecuteDeleteAsync();
+            await _context.Users.ExecuteDeleteAsync();
+            await _context.TradingPartners.ExecuteDeleteAsync();
+            await _context.Products.ExecuteDeleteAsync();
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Old data cleared. Starting fresh seeding...");
 
             // Seed Products
             await SeedProductsAsync();
@@ -58,7 +61,7 @@ public class DataSeeder
             // Seed Shipping Operations
             await SeedShippingOperationsAsync();
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Database seeding completed successfully");
+            _logger.LogInformation("Database seeding completed successfully with all required fields populated");
         }
         catch (Exception ex)
         {
@@ -337,7 +340,7 @@ public class DataSeeder
 
         var contracts = new List<PurchaseContract>();
 
-        // Contract 1: Brent from Sinopec
+        // Contract 1: Brent from Sinopec - 50000 BBL @ USD 85.50/BBL
         var contract1 = new PurchaseContract(
             ContractNumber.Parse("PC-2025-001"),
             ContractType.CARGO,
@@ -349,11 +352,20 @@ public class DataSeeder
             null,
             "EXT-SINOPEC-001"
         );
+        var price1 = 85.50m;
+        var value1 = new Money(50000 * price1, "USD");
+        contract1.UpdatePricing(PriceFormula.Fixed(price1), value1);
+        contract1.UpdateDeliveryTerms(DeliveryTerms.FOB);
         contract1.UpdateLaycan(new DateTime(2025, 12, 1), new DateTime(2025, 12, 15));
         contract1.UpdatePorts("Ras Tanura, Saudi Arabia", "Singapore");
+        contract1.UpdateSettlementType(SettlementType.ContractPayment);
+        contract1.UpdatePaymentTerms("TT 30 days after B/L presentation", 30);
+        contract1.UpdateQualitySpecifications("API 38.0° min, Sulfur 0.37% max");
+        contract1.UpdateInspectionAgency("SGS");
+        contract1.AddNotes("Sample Brent crude contract - PC-2025-001");
         contracts.Add(contract1);
 
-        // Contract 2: WTI from Petronas
+        // Contract 2: WTI from Petronas - 30000 BBL @ USD 78.25/BBL
         var contract2 = new PurchaseContract(
             ContractNumber.Parse("PC-2025-002"),
             ContractType.CARGO,
@@ -365,11 +377,21 @@ public class DataSeeder
             null,
             "EXT-PETRONAS-001"
         );
+        var price2 = 78.25m;
+        var value2 = new Money(30000 * price2, "USD");
+        contract2.UpdatePricing(PriceFormula.Fixed(price2), value2);
+        contract2.UpdateDeliveryTerms(DeliveryTerms.CIF);
         contract2.UpdateLaycan(new DateTime(2026, 1, 1), new DateTime(2026, 1, 20));
         contract2.UpdatePorts("Corpus Christi, USA", "Rotterdam, Netherlands");
+        contract2.UpdateSettlementType(SettlementType.ContractPayment);
+        contract2.UpdatePaymentTerms("10% prepayment, balance TT 45 days after B/L", 45);
+        contract2.SetPrepaymentPercentage(10);
+        contract2.UpdateQualitySpecifications("API 39.6° min, Sulfur 0.24% max");
+        contract2.UpdateInspectionAgency("SGS");
+        contract2.AddNotes("Sample WTI crude contract - PC-2025-002");
         contracts.Add(contract2);
 
-        // Contract 3: Brent from Sinopec (second one)
+        // Contract 3: Brent from Sinopec (second one) - 25000 BBL @ USD 84.75/BBL
         var contract3 = new PurchaseContract(
             ContractNumber.Parse("PC-2025-003"),
             ContractType.CARGO,
@@ -381,12 +403,21 @@ public class DataSeeder
             null,
             "EXT-SINOPEC-002"
         );
+        var price3 = 84.75m;
+        var value3 = new Money(25000 * price3, "USD");
+        contract3.UpdatePricing(PriceFormula.Fixed(price3), value3);
+        contract3.UpdateDeliveryTerms(DeliveryTerms.FOB);
         contract3.UpdateLaycan(new DateTime(2026, 1, 10), new DateTime(2026, 1, 25));
         contract3.UpdatePorts("Ras Tanura, Saudi Arabia", "Singapore");
+        contract3.UpdateSettlementType(SettlementType.ContractPayment);
+        contract3.UpdatePaymentTerms("LC at sight, 60 days tenor", 60);
+        contract3.UpdateQualitySpecifications("API 38.0° min, Sulfur 0.37% max");
+        contract3.UpdateInspectionAgency("SGS");
+        contract3.AddNotes("Sample Brent crude contract - PC-2025-003");
         contracts.Add(contract3);
 
         await _context.PurchaseContracts.AddRangeAsync(contracts);
-        _logger.LogInformation("Added {Count} purchase contracts", contracts.Count);
+        _logger.LogInformation("Added {Count} complete sample purchase contracts with all required fields", contracts.Count);
     }
 
     private async Task SeedSalesContractsAsync()

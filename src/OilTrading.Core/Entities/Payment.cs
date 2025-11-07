@@ -62,7 +62,6 @@ public class Payment : BaseEntity
     public string? FailureReason { get; private set; }
 
     // Navigation Properties
-    public Settlement Settlement { get; private set; } = null!;
     public ICollection<PaymentStatusChange> StatusHistory { get; private set; } = new List<PaymentStatusChange>();
 
     // Business Methods

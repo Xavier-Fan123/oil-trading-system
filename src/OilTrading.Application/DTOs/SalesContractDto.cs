@@ -1,5 +1,6 @@
 using OilTrading.Core.Entities;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.DTOs;
 

@@ -1,5 +1,6 @@
 using MediatR;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Application.Commands.SalesContracts;
 
