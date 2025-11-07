@@ -258,7 +258,19 @@ public static class DependencyInjection
 
         // Audit and security services
         services.AddScoped<IAuditLogService, AuditLogService>();
-        
+
+        // Rate limiting services
+        var rateLimitConfig = configuration.GetSection("RateLimit");
+        var rateLimitConfiguration = new RateLimitConfiguration
+        {
+            Enabled = rateLimitConfig.GetValue<bool>("Enabled", true),
+            GlobalLimit = rateLimitConfig.GetValue<int>("GlobalLimit", 10000),
+            PerUserLimit = rateLimitConfig.GetValue<int>("PerUserLimit", 1000),
+            EndpointLimits = rateLimitConfig.GetSection("EndpointLimits").Get<Dictionary<string, int>>() ?? new Dictionary<string, int>()
+        };
+        services.AddSingleton(rateLimitConfiguration);
+        services.AddScoped<IRateLimitService, RateLimitService>();
+
         // Production enhancement services
         services.AddScoped<IBasisCalculationService, BasisCalculationService>();
         services.AddScoped<IPriceValidationService, PriceValidationService>();

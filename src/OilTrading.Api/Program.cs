@@ -511,6 +511,9 @@ app.UseJwtAuthentication();
 // Role-based authorization middleware (logs authorization attempts and failures)
 app.UseRoleAuthorization();
 
+// Rate limiting middleware (enforces request rate limits and adds X-RateLimit-* headers)
+app.UseRateLimiting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
