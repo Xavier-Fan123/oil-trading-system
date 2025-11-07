@@ -6,6 +6,7 @@ using OilTrading.Api.Middleware;
 using OilTrading.Api.Filters;
 using OilTrading.Api.Services;
 using OilTrading.Api.Converters;
+using OilTrading.Api.Authorization;
 using OilTrading.Infrastructure.Data;
 using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
@@ -18,6 +19,7 @@ using OfficeOpenXml;
 using System.IO.Compression;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
@@ -351,15 +353,27 @@ builder.Services.Configure<OilTrading.Application.EventHandlers.AutoSettlementOp
 
 // GraphQL services removed for production stability
 
+// Configure Authorization with custom policy provider
+builder.Services.AddAuthorization(options =>
+{
+    // Register custom authorization policy provider
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+// Register custom authorization policy provider for dynamic policy creation
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, AuthorizationPolicyProvider>();
+
 // Configure CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:4000")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:4000")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials(); // Required for httpOnly cookies (refresh tokens)
     });
     
     // Add policy for file:// protocol and general development
@@ -490,6 +504,12 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// JWT authentication middleware (validates tokens from Authorization header)
+app.UseJwtAuthentication();
+
+// Role-based authorization middleware (logs authorization attempts and failures)
+app.UseRoleAuthorization();
 
 app.UseAuthentication();
 app.UseAuthorization();

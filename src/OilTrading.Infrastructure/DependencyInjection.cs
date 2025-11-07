@@ -245,6 +245,9 @@ public static class DependencyInjection
         // Data seeding service
         services.AddScoped<DataSeeder>();
 
+        // Authentication and JWT services
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+
         // Database services
         services.AddScoped<ITimescaleDbService, TimescaleDbService>();
         services.AddScoped<IPositionCacheService, PositionCacheService>();
@@ -252,7 +255,7 @@ public static class DependencyInjection
         // Cache services
         services.AddScoped<ICacheService, CacheService>();
         services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
-        
+
         // Audit and security services
         services.AddScoped<IAuditLogService, AuditLogService>();
         
