@@ -499,6 +499,9 @@ app.UseRateLimiter();
 
 app.UseSerilogRequestLogging();
 
+// Add comprehensive security headers to all responses (OWASP best practices)
+app.UseSecurityHeaders();
+
 // Disable HTTPS redirection in development for easier testing
 if (!app.Environment.IsDevelopment())
 {
