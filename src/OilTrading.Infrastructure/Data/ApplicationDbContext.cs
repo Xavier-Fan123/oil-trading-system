@@ -96,6 +96,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<ReportExecution> ReportExecutions { get; set; }
     public DbSet<ReportArchive> ReportArchives { get; set; }
 
+    // Settlement Automation Rules (Phase 4 Task 2)
+    public DbSet<SettlementAutomationRule> SettlementAutomationRules { get; set; }
+    public DbSet<SettlementRuleCondition> SettlementRuleConditions { get; set; }
+    public DbSet<SettlementRuleAction> SettlementRuleActions { get; set; }
+    public DbSet<RuleExecutionRecord> RuleExecutionRecords { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
@@ -184,6 +190,12 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new ReportDistributionConfiguration());
         modelBuilder.ApplyConfiguration(new ReportExecutionConfiguration());
         modelBuilder.ApplyConfiguration(new ReportArchiveConfiguration());
+
+        // Apply settlement automation rule configurations (Phase 4 Task 2)
+        modelBuilder.ApplyConfiguration(new SettlementAutomationRuleConfiguration());
+        modelBuilder.ApplyConfiguration(new SettlementRuleConditionConfiguration());
+        modelBuilder.ApplyConfiguration(new SettlementRuleActionConfiguration());
+        modelBuilder.ApplyConfiguration(new RuleExecutionRecordConfiguration());
 
         // Mark shared owned types globally
         modelBuilder.Owned<Money>();
