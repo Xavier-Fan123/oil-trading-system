@@ -29,6 +29,13 @@ public class CreatePurchaseSettlementCommandHandler : IRequestHandler<CreatePurc
         if (contract == null)
             throw new NotFoundException($"Purchase contract with ID {request.PurchaseContractId} not found");
 
+        // CRITICAL FIX (v2.16.1): Validate quantities - accept either MT or BBL > 0
+        // This matches the frontend validation logic
+        if (request.ActualQuantityMT <= 0 && request.ActualQuantityBBL <= 0)
+        {
+            throw new ValidationException("At least one quantity (MT or BBL) must be greater than zero");
+        }
+
         // Create settlement through service
         var settlement = await _settlementService.CreateSettlementAsync(
             request.PurchaseContractId,
@@ -38,6 +45,19 @@ public class CreatePurchaseSettlementCommandHandler : IRequestHandler<CreatePurc
             request.DocumentDate,
             request.CreatedBy,
             cancellationToken);
+
+        // CRITICAL FIX (v2.16.1): Update quantities after creation
+        // The frontend sends actual quantities that were entered by the user
+        // We need to persist these to the settlement before calculation
+        if (request.ActualQuantityMT > 0 || request.ActualQuantityBBL > 0)
+        {
+            settlement = await _settlementService.UpdateQuantitiesAsync(
+                settlement.Id,
+                request.ActualQuantityMT,
+                request.ActualQuantityBBL,
+                request.CreatedBy,
+                cancellationToken);
+        }
 
         return settlement.Id;
     }

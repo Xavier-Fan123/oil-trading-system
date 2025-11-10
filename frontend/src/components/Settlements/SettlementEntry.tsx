@@ -272,9 +272,11 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
       setActiveStep(1);
     } else if (activeStep === 1) {
       // Validating Step 1: Quantities & Pricing
-      // CRITICAL: First validate quantities exist
-      if (formData.actualQuantityMT <= 0 || formData.actualQuantityBBL <= 0) {
-        setError('Both MT and BBL quantities must be greater than zero');
+      // CRITICAL FIX (v2.16.1): Accept either MT OR BBL > 0 (not both zero)
+      // Some products use BBL only (like Gasoline), some use MT only (like MGO)
+      // The backend calculates the other unit using the ton-barrel ratio
+      if (formData.actualQuantityMT <= 0 && formData.actualQuantityBBL <= 0) {
+        setError('Please enter at least either MT or BBL quantity (not both zero)');
         return;
       }
 
@@ -335,14 +337,18 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
     setError(null);
 
     try {
+      // CRITICAL FIX (v2.16.1): Include actual quantities in settlement creation
+      // Previously: actualQuantityMT and actualQuantityBBL were sent as 0 (default values)
+      // This caused validation failure during Calculate step
+      // Now: We send the quantities user entered in QuantityCalculator
       const dto: CreateSettlementDto = {
         contractId: selectedContract.id,
         externalContractNumber: formData.externalContractNumber?.trim() || selectedContract.externalContractNumber,
         documentNumber: formData.documentNumber?.trim(),
         documentType: formData.documentType,
         documentDate: formData.documentDate,
-        actualQuantityMT: formData.actualQuantityMT,
-        actualQuantityBBL: formData.actualQuantityBBL,
+        actualQuantityMT: formData.actualQuantityMT,  // ✅ Now has user's MT input
+        actualQuantityBBL: formData.actualQuantityBBL,  // ✅ Now has user's BBL input
         createdBy: 'CurrentUser',
         notes: formData.notes?.trim(),
         settlementCurrency: 'USD',

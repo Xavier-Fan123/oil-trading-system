@@ -37,6 +37,45 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ============================================================================
+// OIL TRADING SYSTEM - STARTUP CONFIGURATION
+// ============================================================================
+//
+// ARCHITECTURE OVERVIEW:
+// This application implements Clean Architecture with Domain-Driven Design (DDD)
+// and CQRS (Command Query Responsibility Segregation) pattern.
+//
+// LAYERED ARCHITECTURE:
+//   Presentation Layer      → ASP.NET Core Controllers (59+ endpoints)
+//   Application Layer       → CQRS Commands (80+) and Queries (70+)
+//   Domain Layer            → 47 Business Entities, 12 Value Objects
+//   Infrastructure Layer    → Entity Framework Core, Repositories, Cache
+//
+// API ROUTING:
+// All endpoints use simple /api/{resource} format without version prefix.
+// Why no API versioning? The system is designed for continuous evolution:
+// - Major breaking changes are rare (only 1-2 per year)
+// - Backward compatibility maintained via flexible DTO deserialization
+// - Version info available via /health endpoint and API metadata
+// - Enables rapid development without URI versioning complexity
+//
+// ENVIRONMENT-SPECIFIC BEHAVIOR:
+// - Development:  In-memory SQLite, verbose logging, Swagger UI, CORS allow-all
+// - Staging:      PostgreSQL, structured logging, health checks
+// - Production:   PostgreSQL clusters, centralized logging, minimal endpoints
+//
+// KEY FEATURES:
+// ✅ CQRS Pattern: Separated read (queries) and write (commands) operations
+// ✅ Repository Pattern: Data access abstraction with specialized repositories
+// ✅ Dependency Injection: Full DI container for loose coupling
+// ✅ Rate Limiting: Multi-level (global, per-user, per-endpoint)
+// ✅ Security: JWT authentication, RBAC (18 roles), encryption at rest
+// ✅ Monitoring: OpenTelemetry, Prometheus, Application Insights
+// ✅ Health Checks: Database, cache, risk engine, system resources
+// ✅ Audit Logging: All security-sensitive operations tracked
+//
+// ============================================================================
+
 // EPPlus License is configured in ExcelImportService constructor
 
 // Configure Serilog
@@ -71,15 +110,50 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
-// API Versioning - Disabled for simple /api/ routing
-// All endpoints use /api/{resource} format without version prefix
+// ============================================================================
+// API VERSIONING CONFIGURATION
+// ============================================================================
+//
+// ROUTING STRATEGY: Simple /api/{resource} without version prefix
+//
+// RATIONALE FOR NO API VERSIONING:
+// 1. BACKWARD COMPATIBILITY DESIGN
+//    - DTOs support flexible deserialization (unknown properties ignored)
+//    - New fields added as optional with default values
+//    - Old fields never removed, only deprecated
+//    - Result: Clients using old API versions continue to work
+//
+// 2. RAPID DEVELOPMENT
+//    - No need to maintain multiple versions simultaneously
+//    - All clients automatically updated with latest improvements
+//    - Reduces infrastructure complexity and cognitive load
+//
+// 3. VERSIONING METADATA AVAILABLE
+//    - /health endpoint includes API version
+//    - API version in Swagger/OpenAPI documentation
+//    - Version info in response headers if needed
+//
+// EXAMPLE ENDPOINTS (all at /api/ without version):
+// - GET  /api/purchase-contracts
+// - POST /api/purchase-contracts
+// - GET  /api/settlements/{id}
+// - POST /api/settlements/{id}/approve
+// - GET  /api/dashboard/summary
+//
+// IF VERSIONING BECOMES NECESSARY:
+// Step 1: Add [ApiVersion("1.0")] to controllers
+// Step 2: Enable URL versioning with options.ApiVersionReader = new UrlSegmentApiVersionReader()
+// Step 3: Update routes to [Route("api/v{version:apiVersion}/[controller]")]
+// Step 4: Deploy new controllers alongside old ones
+//
+// ============================================================================
+
 builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1, 0);
     options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = false;
-    // Use URL segment reader but don't enforce it (simple /api/ paths)
-    options.ApiVersionReader = new QueryStringApiVersionReader();
+    options.ReportApiVersions = false;  // Don't require API-Version header
+    options.ApiVersionReader = new QueryStringApiVersionReader();  // Support optional ?api-version=1.0
 });
 
 builder.Services.AddVersionedApiExplorer(options =>
@@ -289,8 +363,69 @@ builder.Services.AddApplicationInsightsTelemetry(options =>
 // Add Prometheus metrics
 builder.Services.AddSingleton(Metrics.DefaultRegistry);
 
-// Add application services
+// ============================================================================
+// APPLICATION SERVICES REGISTRATION
+// ============================================================================
+//
+// DEPENDENCY INJECTION PATTERN:
+// This application uses Microsoft.Extensions.DependencyInjection with extension
+// methods for clean, modular service registration. See DependencyInjection.cs
+// for full configuration.
+//
+// SERVICE LAYERS REGISTERED:
+//
+// 1. APPLICATION LAYER (DependencyInjection.cs)
+//    - CQRS Handlers: 80+ MediatR command handlers, 70+ query handlers
+//    - AutoMapper: Entity-to-DTO transformations
+//    - FluentValidation: Input validation rules
+//    - Application Services: Business logic orchestration
+//    - Example: CreatePurchaseContractCommand → CreatePurchaseContractHandler
+//
+// 2. INFRASTRUCTURE LAYER (InfrastructureServiceExtensions.cs)
+//    - Entity Framework Core: Database access (DbContext)
+//    - Repository Pattern: Specialized repositories for each aggregate root
+//      * IPurchaseContractRepository
+//      * ISalesContractRepository
+//      * IPurchaseSettlementRepository (AP-specialized, v2.10.0)
+//      * ISalesSettlementRepository (AR-specialized, v2.10.0)
+//      * And 15+ more repositories for other domains
+//    - Unit of Work: IUnitOfWork for transaction management
+//    - Caching: Redis integration
+//    - External APIs: Market data, trade repository integration
+//
+// 3. CORE DOMAIN LAYER
+//    - 47 Entity models (PurchaseContract, SalesContract, Settlement, etc.)
+//    - 12 Value Objects (Money, Quantity, PriceFormula, etc.)
+//    - Business Rules: Validation and calculation logic
+//
+// SERVICE REGISTRATION LIFECYCLE:
+// - Singleton: Services cached for application lifetime (logging, config)
+// - Scoped: New instance per HTTP request (DbContext, repositories)
+// - Transient: New instance every time (small stateless services)
+//
+// CQRS PIPELINE:
+// HTTP Request
+//   ↓
+// Controller receives DTO
+//   ↓
+// Maps DTO to Command/Query
+//   ↓
+// MediatR dispatches to handler (injected)
+//   ↓
+// Handler uses repositories (injected) and services (injected)
+//   ↓
+// Returns result DTO
+//   ↓
+// AutoMapper transforms to response DTO
+//   ↓
+// JSON serialized and returned to client
+//
+// ============================================================================
+
+// Add application services (CQRS, validation, mapping)
 builder.Services.AddApplicationServices();
+
+// Add infrastructure services (repositories, caching, database)
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Configure options for application services

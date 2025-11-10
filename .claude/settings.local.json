@@ -93,7 +93,9 @@
       "Bash(\"D:\\npm.cmd\" list @mui/lab)",
       "Bash(D:npm.cmd run build)",
       "Bash(if exist \"dist\" echo \"BUILD SUCCESSFUL: dist folder created\")",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": [],

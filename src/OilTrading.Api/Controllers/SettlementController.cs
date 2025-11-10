@@ -10,8 +10,160 @@ using System.Globalization;
 namespace OilTrading.Api.Controllers;
 
 /// <summary>
-/// Generic API controller for settlement operations.
-/// Routes requests to appropriate purchase or sales settlement services based on contract type.
+/// SETTLEMENT CONTROLLER - THREE-SYSTEM ARCHITECTURE (v2.10.0)
+///
+/// This controller implements the Oil Trading System's settlement architecture, which includes
+/// three coexisting specialized settlement systems:
+///
+/// ============================================================================
+/// SETTLEMENT SYSTEMS OVERVIEW
+/// ============================================================================
+///
+/// SYSTEM 1: LEGACY GENERIC SETTLEMENT (v2.9.0 - Deprecated)
+/// ├─ Entity: ContractSettlement
+/// ├─ Repository: IContractSettlementRepository
+/// ├─ Purpose: Backward compatibility, mixed settlement handling
+/// ├─ Status: Deprecated in favor of specialized systems
+/// └─ Migration: Gradual transition to v2.10.0 over 12 months
+///
+/// SYSTEM 2: PURCHASE SETTLEMENT (v2.10.0 - AP SPECIALIZED)
+/// ├─ Entity: PurchaseSettlement
+/// ├─ Repository: IPurchaseSettlementRepository
+/// ├─ Purpose: Accounts Payable (supplier payments)
+/// ├─ Key Methods:
+/// │  ├─ GetByExternalContractNumberAsync() - Find via external contract ID
+/// │  ├─ GetPendingSupplierPaymentAsync() - AP aging list
+/// │  ├─ GetOverdueSupplierPaymentAsync() - Collections focus
+/// │  └─ CalculateSupplierPaymentExposureAsync() - Credit limit tracking
+/// ├─ Foreign Key: SupplierContractId (references PurchaseContract)
+/// ├─ Types: Always PurchaseContract contracts only
+/// └─ Status: PRODUCTION (v2.10.0)
+///
+/// SYSTEM 3: SALES SETTLEMENT (v2.10.0 - AR SPECIALIZED)
+/// ├─ Entity: SalesSettlement
+/// ├─ Repository: ISalesSettlementRepository
+/// ├─ Purpose: Accounts Receivable (buyer collections)
+/// ├─ Key Methods:
+/// │  ├─ GetByExternalContractNumberAsync() - Find via external contract ID
+/// │  ├─ GetOutstandingReceivablesAsync() - AR aging list
+/// │  ├─ GetOverdueBuyerPaymentAsync() - Collection management
+/// │  └─ CalculateBuyerCreditExposureAsync() - Credit risk tracking
+/// ├─ Foreign Key: CustomerContractId (references SalesContract)
+/// ├─ Types: Always SalesContract contracts only
+/// └─ Status: PRODUCTION (v2.10.0)
+///
+/// ============================================================================
+/// TECHNICAL ARCHITECTURE
+/// ============================================================================
+///
+/// DESIGN PATTERN: CQRS (Command Query Responsibility Segregation)
+///
+/// CREATE SETTLEMENT WORKFLOW:
+///   1. Client calls POST /api/settlements with settlement request
+///   2. Controller maps request to CreatePurchaseSettlementCommand or CreateSalesSettlementCommand
+///   3. MediatR dispatches command to appropriate handler:
+///      - CreatePurchaseSettlementCommandHandler (uses IPurchaseSettlementRepository)
+///      - CreateSalesSettlementCommandHandler (uses ISalesSettlementRepository)
+///   4. Handler validates contract exists via GetContractInfoAsync()
+///   5. Handler creates entity and persists to database
+///   6. Event published (domain event pattern) for audit trail
+///   7. Response returned to client with settlement ID
+///
+/// RETRIEVE SETTLEMENT WORKFLOW:
+///   1. Client calls GET /api/settlements/{settlementId}
+///   2. Controller uses fallback logic to find settlement:
+///      - First try: IPurchaseSettlementRepository.GetByIdAsync()
+///      - If null, try: ISalesSettlementRepository.GetByIdAsync()
+///      - If null, try: IContractSettlementRepository.GetByIdAsync() (legacy)
+///   3. Entity mapped to SettlementDto via AutoMapper
+///   4. Response returned with complete settlement data + charges
+///
+/// ============================================================================
+/// EXTERNAL CONTRACT NUMBER RESOLUTION
+/// ============================================================================
+///
+/// PROBLEM: Clients may not know the internal Guid for a contract
+/// SOLUTION: GetByExternalContractNumberAsync() methods on both repositories
+///
+/// USAGE EXAMPLE:
+///   Input:  ExternalContractNumber = "IGR-2025-CAG-S0253" (from external system)
+///   Query:  await _purchaseSettlementRepository.GetByExternalContractNumberAsync("IGR-2025-CAG-S0253")
+///   Result: Settlement entity with contract details populated
+///
+/// This enables cross-system integration without manual UUID lookup.
+///
+/// ============================================================================
+/// BUSINESS RULES & CONSTRAINTS
+/// ============================================================================
+///
+/// SETTLEMENT LIFECYCLE:
+///   Draft → DataEntered → Calculated → Reviewed → Approved → Finalized
+///
+/// VALIDATION RULES:
+///   ✓ Settlement must reference valid contract (purchase or sales)
+///   ✓ Quantities cannot exceed contract quantities
+///   ✓ Settlement amount must be positive
+///   ✓ Charges must have valid charge type
+///   ✓ Currency consistency between contract and settlement
+///
+/// IMMUTABILITY RULES:
+///   ✗ Cannot modify finalized settlements (marked IsFinalized = true)
+///   ✗ Cannot delete finalized settlements (soft-delete only)
+///   ✗ Cannot revert finalization status
+///
+/// ============================================================================
+/// GENERIC API ENDPOINT DESIGN
+/// ============================================================================
+///
+/// All settlement endpoints at /api/settlements use generic logic:
+///
+/// GET /api/settlements/{settlementId}
+///   ├─ Returns: SettlementDto (complete details with charges)
+///   ├─ Falls back across all three systems
+///   └─ Single unified response format
+///
+/// POST /api/settlements (Create)
+///   ├─ Accepts: CreateSettlementRequest
+///   ├─ Routes to: CreatePurchaseSettlementCommand OR CreateSalesSettlementCommand
+///   ├─ Detection: Based on contractType in request
+///   └─ Returns: SettlementDto with new settlement ID
+///
+/// POST /api/settlements/{settlementId}/calculate
+///   ├─ Invokes: CalculateSettlementCommand (generic)
+///   ├─ Handler: Routes to appropriate system
+///   └─ Returns: Updated SettlementDto with calculated amounts
+///
+/// POST /api/settlements/{settlementId}/approve
+///   ├─ Invokes: ApproveSettlementCommand (generic)
+///   ├─ Handler: Routes to appropriate system
+///   └─ Returns: Updated SettlementDto with Approved status
+///
+/// POST /api/settlements/{settlementId}/finalize
+///   ├─ Invokes: FinalizeSettlementCommand (generic)
+///   ├─ Handler: Routes to appropriate system
+///   └─ Returns: Updated SettlementDto with Finalized status
+///
+/// ============================================================================
+/// SECURITY & AUDIT
+/// ============================================================================
+///
+/// AUTHENTICATION: All endpoints require valid JWT token
+/// AUTHORIZATION: [Authorize] attribute enforces authentication
+/// AUDIT TRAIL: All operations logged with:
+///   - User ID and email (from JWT token)
+///   - Operation timestamp (UTC)
+///   - Settlement ID and contract ID
+///   - Before/after values for updates
+///
+/// ============================================================================
+/// FOR MORE INFORMATION
+/// ============================================================================
+///
+/// See documentation in:
+/// - SETTLEMENT_ARCHITECTURE.md - Deep dive into three systems
+/// - API_REFERENCE_COMPLETE.md - All endpoints with examples
+/// - COMPLETE_ENTITY_REFERENCE.md - Entity properties and relationships
+///
 /// </summary>
 [ApiController]
 [Route("api/settlements")]
