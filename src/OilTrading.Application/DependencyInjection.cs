@@ -42,6 +42,10 @@ public static class DependencyInjection
         services.AddScoped<IPaymentStatusCalculationService, PaymentStatusCalculationService>();
         services.AddScoped<OilTrading.Application.EventHandlers.ContractSettlementFinalizedEventHandler>();
 
+        // Register Settlement Automation Services
+        services.AddScoped<ISettlementRuleEvaluator, SettlementRuleEvaluator>();
+        services.AddScoped<ISmartSettlementOrchestrator, SmartSettlementOrchestrator>();
+
         return services;
     }
 }

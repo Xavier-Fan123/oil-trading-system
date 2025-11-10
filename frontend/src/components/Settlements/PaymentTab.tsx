@@ -16,7 +16,8 @@ import {
   TimelineConnector,
   TimelineContent,
   TimelineOppositeContent,
-  TimelineDot
+  TimelineDot,
+  TimelineProps
 } from '@mui/lab';
 import { ContractSettlementDto } from '@/types/settlement';
 import { format } from 'date-fns';
@@ -43,9 +44,9 @@ const PaymentStatusDescriptions: Record<string, string> = {
 
 export const PaymentTab: React.FC<PaymentTabProps> = ({ settlement }) => {
   // Calculate payment progress
-  const totalSettledAmount = settlement.totalSettledAmount || settlement.totalSettlementAmount;
-  const paidAmount = settlement.paidSettledAmount || 0;
-  const unpaidAmount = settlement.unpaidSettledAmount || (totalSettledAmount - paidAmount);
+  const totalSettledAmount = settlement.totalSettlementAmount;
+  const paidAmount = 0; // TODO: Add paidAmount field to ContractSettlementDto
+  const unpaidAmount = totalSettledAmount - paidAmount;
   const paymentPercentage = totalSettledAmount > 0 ? (paidAmount / totalSettledAmount) * 100 : 0;
 
   const getPaymentStatus = (): keyof typeof PaymentStatusColors => {
@@ -199,7 +200,16 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({ settlement }) => {
           <Typography variant="h6" gutterBottom>
             Settlement Timeline
           </Typography>
-          <Timeline position="alternate">
+          <Timeline
+            position="alternate"
+            sx={{
+              [`& .MuiTimelineItem-root:before`]: {
+                flex: 0,
+                padding: 0,
+              },
+            }}
+            slotProps={{}}
+          >
             <TimelineItem>
               <TimelineOppositeContent color="textSecondary">
                 {format(new Date(settlement.createdDate), 'MMM dd, yyyy')}

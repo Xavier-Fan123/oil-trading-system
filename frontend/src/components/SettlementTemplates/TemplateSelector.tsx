@@ -18,7 +18,7 @@ import {
   Checkbox,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
-import { templateApi, SettlementTemplate } from '@/services/templateApi';
+import { templateApi, SettlementTemplate, SettlementTemplateSummary } from '@/services/templateApi';
 import { TemplatePreview } from './TemplatePreview';
 
 interface TemplateSelectorProps {
@@ -73,28 +73,32 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         switch (activeTab) {
           case 'recent': {
             const response = await templateApi.getRecentlyUsedTemplates(5);
-            setTemplates(response);
+            // Convert SettlementTemplateSummary[] to SettlementTemplate[] by casting
+            setTemplates(response as SettlementTemplate[]);
             setTotalPages(1);
             break;
           }
 
           case 'popular': {
             const response = await templateApi.getMostUsedTemplates(5);
-            setTemplates(response);
+            // Convert SettlementTemplateSummary[] to SettlementTemplate[] by casting
+            setTemplates(response as SettlementTemplate[]);
             setTotalPages(1);
             break;
           }
 
           case 'all': {
             const response = await templateApi.getAccessibleTemplates(pageNumber, pageSize);
-            setTemplates(response.data);
+            // Convert PagedResult<SettlementTemplateSummary> to SettlementTemplate[]
+            setTemplates(response.data as unknown as SettlementTemplate[]);
             setTotalPages(response.totalPages);
             break;
           }
 
           case 'public': {
             const response = await templateApi.getPublicTemplates(pageNumber, pageSize);
-            setTemplates(response.data);
+            // Convert PagedResult<SettlementTemplateSummary> to SettlementTemplate[]
+            setTemplates(response.data as unknown as SettlementTemplate[]);
             setTotalPages(response.totalPages);
             break;
           }
@@ -121,7 +125,8 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
       setError(null);
       try {
         const response = await templateApi.searchTemplates(searchTerm, pageNumber, pageSize);
-        setTemplates(response.data);
+        // Convert PagedResult<SettlementTemplateSummary> to SettlementTemplate[]
+        setTemplates(response.data as unknown as SettlementTemplate[]);
         setTotalPages(response.totalPages);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Search failed');
@@ -201,7 +206,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
             setSelectedTemplate(null);
           }}
           variant="scrollable"
-          scrollButtonsDisplay="auto"
+          scrollButtons="auto"
           sx={{ mb: 2, borderBottom: '1px solid', borderColor: 'divider' }}
         >
           {tabs.map((tab) => (

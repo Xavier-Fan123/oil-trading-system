@@ -9,11 +9,9 @@ import {
   Paper,
   Typography,
   Alert,
-  TabContext,
-  TabList,
-  TabPanel,
+  Tab,
+  Tabs,
 } from '@mui/material';
-import { Tab } from '@mui/material';
 import {
   LineChart,
   Line,
@@ -96,17 +94,19 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
       </Box>
 
       {/* Tabs */}
-      <TabContext value={tabValue}>
-        <TabList onChange={(e, value) => setTabValue(value)} sx={{ mb: 2 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={tabValue} onChange={(e, value) => setTabValue(value)}>
           <Tab label="Overview" value="overview" />
           <Tab label="Daily Trends" value="trends" />
           <Tab label="Currency Analysis" value="currency" />
           <Tab label="Status Distribution" value="status" />
           <Tab label="Top Partners" value="partners" />
-        </TabList>
+        </Tabs>
+      </Box>
 
-        {/* Overview Tab */}
-        <TabPanel value="overview">
+      {/* Overview Tab */}
+      {tabValue === 'overview' && (
+        <Box>
           <Grid container spacing={3}>
             {/* Key Metrics */}
             <Grid item xs={12} sm={6} md={3}>
@@ -244,7 +244,7 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
                   {Object.entries(analytics.settlementsByType).map(([type, count]) => (
                     <Box key={type} display="flex" justifyContent="space-between" mb={1}>
                       <Typography>{type}</Typography>
-                      <Typography font Weight="bold">{count}</Typography>
+                      <Typography sx={{ fontWeight: 'bold' }}>{count}</Typography>
                     </Box>
                   ))}
                   <Box mt={2}>
@@ -259,10 +259,12 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
               </Card>
             </Grid>
           </Grid>
-        </TabPanel>
+        </Box>
+      )}
 
-        {/* Daily Trends Tab */}
-        <TabPanel value="trends">
+      {/* Daily Trends Tab */}
+      {tabValue === 'trends' && (
+        <Box>
           <Paper>
             <Box p={2}>
               <Typography variant="h6" gutterBottom>
@@ -281,10 +283,12 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
               </ResponsiveContainer>
             </Box>
           </Paper>
-        </TabPanel>
+        </Box>
+      )}
 
-        {/* Currency Analysis Tab */}
-        <TabPanel value="currency">
+      {/* Currency Analysis Tab */}
+      {tabValue === 'currency' && (
+        <Box>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Paper>
@@ -350,10 +354,12 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
               </Paper>
             </Grid>
           </Grid>
-        </TabPanel>
+        </Box>
+      )}
 
-        {/* Status Distribution Tab */}
-        <TabPanel value="status">
+      {/* Status Distribution Tab */}
+      {tabValue === 'status' && (
+        <Box>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Paper>
@@ -402,10 +408,12 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
               </Paper>
             </Grid>
           </Grid>
-        </TabPanel>
+        </Box>
+      )}
 
-        {/* Top Partners Tab */}
-        <TabPanel value="partners">
+      {/* Top Partners Tab */}
+      {tabValue === 'partners' && (
+        <Box>
           <Paper>
             <Box p={2}>
               <Typography variant="h6" gutterBottom>
@@ -475,8 +483,8 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
               </Box>
             </Box>
           </Paper>
-        </TabPanel>
-      </TabContext>
+        </Box>
+      )}
     </Box>
   );
 };

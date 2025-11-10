@@ -263,21 +263,72 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
   };
 
   const handleNext = async () => {
-    if (validateStep(activeStep)) {
-      // If we're about to move to settlement calculation step in create mode, create the settlement first
-      if (activeStep === 2 && mode === 'create' && !createdSettlement) {
-        await handleCreateSettlement();
+    // IMPORTANT: Check what step we're LEAVING, not entering
+    // If leaving step 1 (quantities), we need to create settlement BEFORE moving to step 2 (pricing)
+    if (activeStep === 0) {
+      // Validating Step 0: Contract & Document Setup
+      if (!validateStep(0)) return;
+      // Step 0 is valid, move to Step 1
+      setActiveStep(1);
+    } else if (activeStep === 1) {
+      // Validating Step 1: Quantities & Pricing
+      // CRITICAL: First validate quantities exist
+      if (formData.actualQuantityMT <= 0 || formData.actualQuantityBBL <= 0) {
+        setError('Both MT and BBL quantities must be greater than zero');
+        return;
       }
-      if (!loading) {
-        setActiveStep((prev) => prev + 1);
+
+      // CRITICAL: If in create mode and settlement doesn't exist, CREATE IT NOW
+      if (mode === 'create' && !createdSettlement) {
+        try {
+          setError(null);
+          setLoading(true);
+
+          // CRITICAL FIX: Use the returned settlement data, not the state!
+          // State updates are asynchronous and won't take effect immediately
+          const settlement = await handleCreateSettlement();
+
+          // Check if settlement was actually created
+          if (!settlement) {
+            setError('Settlement creation failed. Please check the error message above.');
+            setLoading(false);
+            return;
+          }
+
+          // CRITICAL: Settlement created successfully!
+          // DO NOT move to next step yet - user needs to see and fill pricing form on this step
+          // The component will re-render with createdSettlement now truthy
+          // The pricing form {createdSettlement && (...)} will now display on Step 1
+          // User can fill benchmark amount, adjustment amount, and click Calculate
+          // When user clicks Next button again, THEN we move to Step 2
+          setLoading(false);
+          return; // Stay on Step 1, let component re-render with pricing form visible
+        } catch (err: any) {
+          // handleCreateSettlement already set error message
+          console.error('Settlement creation error in handleNext:', err);
+          setLoading(false);
+        }
+        return; // Don't proceed to next step on error
       }
+
+      // If we reach here, settlement exists or we're in edit mode
+      // User has already filled in pricing, now moving to Step 2 (Payment & Charges)
+      setActiveStep(2);
+    } else if (activeStep === 2) {
+      // Validating Step 2: Payment & Charges
+      if (!validateStep(2)) return;
+      // Step 2 is valid, move to Step 3
+      setActiveStep(3);
+    } else if (activeStep === 3) {
+      // Final step - will trigger handleSubmit instead
+      handleSubmit();
     }
   };
 
-  const handleCreateSettlement = async () => {
+  const handleCreateSettlement = async (): Promise<ContractSettlementDto | null> => {
     if (!selectedContract) {
       setError('No contract selected');
-      return;
+      return null;
     }
 
     setLoading(true);
@@ -304,6 +355,9 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         // Reload the created settlement to get its full data
         const createdData = await getSettlementWithFallback(result.settlementId);
         setCreatedSettlement(createdData);
+        // CRITICAL: Return the settlement data immediately so caller can use it
+        // Don't rely on state update which is asynchronous!
+        return createdData;
       } else {
         setError(result.errorMessage || 'Failed to create settlement');
         throw new Error(result.errorMessage || 'Failed to create settlement');
@@ -348,16 +402,9 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
         return true;
 
       case 1: // Quantities & Pricing (merged: Quantity Calculation + Settlement Calculation)
-        // Quantity validation
-        if (formData.actualQuantityMT <= 0 || formData.actualQuantityBBL <= 0) {
-          setError('Both MT and BBL quantities must be greater than zero');
-          return false;
-        }
-        // Settlement calculation validation
-        if (mode === 'create' && !createdSettlement) {
-          setError('Settlement must be created before proceeding to pricing. Please review your information.');
-          return false;
-        }
+        // NOTE: Quantity validation is done in handleNext() before creating settlement
+        // This validateStep is called from Step 2 validation only
+        // So if we reach here, settlement should already exist in create mode
         if (mode === 'create' && createdSettlement && calculationData.benchmarkAmount === 0) {
           setError('Settlement calculation is required. Please enter the benchmark amount and click "Calculate" button to persist your values.');
           return false;
@@ -993,7 +1040,7 @@ export const SettlementEntry: React.FC<SettlementEntryProps> = ({
                     <Box sx={{ mt: 2 }}>
                       <Button
                         disabled={loading}
-                        onClick={index === steps.length - 1 ? handleSubmit : handleNext}
+                        onClick={handleNext}
                         variant="contained"
                         startIcon={index === steps.length - 1 ? (loading ? <CircularProgress size={20} /> : <SaveIcon />) : <NextIcon />}
                       >

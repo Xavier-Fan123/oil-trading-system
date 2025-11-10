@@ -8,9 +8,9 @@ interface AlertBannerProps {
   maxDisplay?: number
 }
 
-export const AlertBanner: React.FC<AlertBannerProps> = ({ 
-  alerts, 
-  maxDisplay = 3 
+export const AlertBanner: React.FC<AlertBannerProps> = ({
+  alerts,
+  maxDisplay = 3
 }) => {
   if (!alerts.length) return null
 
@@ -64,7 +64,7 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
           {alert.message}
         </Alert>
       ))}
-      
+
       {alerts.length > maxDisplay && (
         <Alert severity="info" sx={{ mt: 1 }}>
           +{alerts.length - maxDisplay} more alerts. View all in Risk Management.
@@ -73,3 +73,5 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
     </Box>
   )
 }
+
+export default AlertBanner

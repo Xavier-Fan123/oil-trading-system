@@ -46,7 +46,7 @@ import {
   Cancel as FailIcon,
 } from '@mui/icons-material';
 import { advancedReportingApi } from '@/services/advancedReportingApi';
-import { ReportDistribution, DistributionChannel } from '@/types/advancedReporting';
+import type { ReportDistribution as ReportDistributionType } from '@/types/advancedReporting';
 
 interface ReportDistributionProps {
   reportConfigId: string;
@@ -90,7 +90,7 @@ export const ReportDistribution: React.FC<ReportDistributionProps> = ({
   reportConfigId,
   onCancel,
 }) => {
-  const [distributions, setDistributions] = useState<ReportDistribution[]>([]);
+  const [distributions, setDistributions] = useState<ReportDistributionType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -126,7 +126,7 @@ export const ReportDistribution: React.FC<ReportDistributionProps> = ({
     }
   };
 
-  const handleOpenDialog = (distribution?: ReportDistribution) => {
+  const handleOpenDialog = (distribution?: ReportDistributionType) => {
     if (distribution) {
       setEditingId(distribution.id);
       setChannelForm({

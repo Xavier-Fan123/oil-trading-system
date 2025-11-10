@@ -6,23 +6,9 @@ import {
   Grid,
   Typography,
   Chip,
-  Timeline,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineConnector,
-  TimelineContent,
-  TimelineOppositeContent,
-  TimelineDot,
   Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper
-} from '@mui/lab';
-import { Divider } from '@mui/material';
+  Divider,
+} from '@mui/material';
 import { ContractSettlementDto, ContractSettlementStatus, ContractSettlementStatusLabels } from '@/types/settlement';
 import { format } from 'date-fns';
 
@@ -63,9 +49,9 @@ const getStatusDescription = (status: ContractSettlementStatus): string => {
 
 export const ExecutionTab: React.FC<ExecutionTabProps> = ({ settlement }) => {
   // Parse current status
-  const currentStatus = Object.values(ContractSettlementStatus).find(
-    s => ContractSettlementStatusLabels[s] === settlement.displayStatus
-  ) as ContractSettlementStatus || ContractSettlementStatus.Draft;
+  const currentStatus = (Object.values(ContractSettlementStatus).find(
+    s => ContractSettlementStatusLabels[s as ContractSettlementStatus] === settlement.displayStatus
+  ) as ContractSettlementStatus) || ContractSettlementStatus.Draft;
 
   const statusSequence: ContractSettlementStatus[] = [
     ContractSettlementStatus.Draft,

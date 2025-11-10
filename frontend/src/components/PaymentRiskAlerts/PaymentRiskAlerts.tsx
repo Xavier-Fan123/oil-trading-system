@@ -22,8 +22,8 @@ import {
   Paper,
   Typography,
 } from '@mui/material';
-import { AlertSeverity, AlertType, PaymentRiskAlertDto, paymentRiskAlertApi } from '@/services/paymentRiskAlertApi';
-import { formatDate, formatCurrency } from '@/utils/formatters';
+import paymentRiskAlertApi, { AlertSeverity, AlertType, PaymentRiskAlertDto } from '@/services/paymentRiskAlertApi';
+import { formatDate, formatCurrency } from '@/utils/formatting';
 
 export const PaymentRiskAlerts: React.FC = () => {
   const [alerts, setAlerts] = useState<PaymentRiskAlertDto[]>([]);

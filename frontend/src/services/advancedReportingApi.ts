@@ -160,7 +160,7 @@ export const advancedReportingApi = {
   /**
    * Create distribution configuration
    */
-  createDistribution: async (
+  createDistributionConfig: async (
     distribution: ReportDistribution
   ): Promise<ReportDistribution> => {
     const response = await api.post('/advanced-reports/distributions', distribution);
@@ -170,7 +170,7 @@ export const advancedReportingApi = {
   /**
    * Get distribution configuration
    */
-  getDistribution: async (distributionId: string): Promise<ReportDistribution> => {
+  getDistributionConfig: async (distributionId: string): Promise<ReportDistribution> => {
     const response = await api.get(`/advanced-reports/distributions/${distributionId}`);
     return response.data;
   },
@@ -178,7 +178,7 @@ export const advancedReportingApi = {
   /**
    * Update distribution configuration
    */
-  updateDistribution: async (
+  updateDistributionConfig: async (
     distributionId: string,
     distribution: ReportDistribution
   ): Promise<ReportDistribution> => {
@@ -189,7 +189,7 @@ export const advancedReportingApi = {
   /**
    * Delete distribution configuration
    */
-  deleteDistribution: async (distributionId: string): Promise<boolean> => {
+  deleteDistributionConfig: async (distributionId: string): Promise<boolean> => {
     const response = await api.delete(`/advanced-reports/distributions/${distributionId}`);
     return response.status === 200 || response.status === 204;
   },

@@ -179,6 +179,13 @@ public class SettlementCalculationEngine
     /// <summary>
     /// Validates settlement calculation completeness
     /// Returns validation errors if any required fields are missing
+    ///
+    /// IMPORTANT: This validates ACTUAL quantities from Step 1 (Quantities & Pricing)
+    /// The QuantityCalculator automatically handles "Use BBL for all calculations" mode
+    /// by deriving MT from BBL using the ton-barrel ratio. Therefore:
+    /// - If user fills only BBL on Step 1, actualQuantityMT might be 0
+    /// - If user selects "Use BBL for all calculations", calculationQuantityMT is derived
+    /// - This validation should accept either MT or BBL being > 0 (not require both)
     /// </summary>
     public List<string> ValidateCalculationCompletion(
         decimal actualQuantityMT,
@@ -189,10 +196,14 @@ public class SettlementCalculationEngine
     {
         var errors = new List<string>();
 
-        // Check quantities
+        // Check quantities - Accept either MT or BBL (not both zero)
+        // This supports the "Use BBL for all calculations" workflow where:
+        // - User enters only BBL quantity on Step 1
+        // - QuantityCalculator derives MT from BBL using ton-barrel ratio
+        // - Calculation quantities are properly set by the calculator
         if (actualQuantityMT == 0 && actualQuantityBBL == 0)
         {
-            errors.Add("Actual quantities must be provided (either MT or BBL)");
+            errors.Add("Actual quantities must be provided (either MT or BBL, not both zero)");
         }
 
         // Check benchmark price

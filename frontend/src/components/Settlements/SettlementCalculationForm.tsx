@@ -61,8 +61,10 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
 
   // Auto-calculate settlement if data is already populated on component mount
   // This handles the case where user filled in the form and expects data to be persisted
+  // Supports "Use BBL for all calculations" mode where MT might be derived
   React.useEffect(() => {
-    if (!autoCalculationAttempted && settlement && formData.benchmarkAmount > 0 && formData.calculationQuantityMT > 0) {
+    const hasQuantity = formData.calculationQuantityMT > 0 || formData.calculationQuantityBBL > 0;
+    if (!autoCalculationAttempted && settlement && formData.benchmarkAmount > 0 && hasQuantity) {
       setAutoCalculationAttempted(true);
       // Auto-trigger calculation with a small delay for UX feedback
       const timer = setTimeout(() => {
@@ -239,7 +241,7 @@ export const SettlementCalculationForm: React.FC<SettlementCalculationFormProps>
               onClick={() => calculateMutation.mutate()}
               disabled={
                 calculateMutation.isPending ||
-                !formData.calculationQuantityMT ||
+                (!formData.calculationQuantityMT && !formData.calculationQuantityBBL) ||
                 !formData.benchmarkAmount
               }
             >

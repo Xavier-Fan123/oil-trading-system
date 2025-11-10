@@ -17,12 +17,12 @@ import {
   Stack,
 } from '@mui/material';
 import { format } from 'date-fns';
-import type { ContractExecutionReportFilter } from '@/types/reports';
+import type { ContractExecutionReportFilter as ContractExecutionReportFilterType } from '@/types/reports';
 import { tradingPartnersApi, productsApi } from '@/services/contractsApi';
 import { TradingPartner, Product } from '@/types/contracts';
 
 interface ContractExecutionReportFilterProps {
-  onFilterChange: (filters: ContractExecutionReportFilter) => void;
+  onFilterChange: (filters: ContractExecutionReportFilterType) => void;
   isLoading?: boolean;
 }
 
@@ -30,7 +30,7 @@ export const ContractExecutionReportFilter: React.FC<ContractExecutionReportFilt
   onFilterChange,
   isLoading = false,
 }) => {
-  const [filters, setFilters] = useState<ContractExecutionReportFilter>({
+  const [filters, setFilters] = useState<ContractExecutionReportFilterType>({
     pageNumber: 1,
     pageSize: 10,
     sortBy: 'ReportGeneratedDate',
@@ -145,7 +145,7 @@ export const ContractExecutionReportFilter: React.FC<ContractExecutionReportFilt
   };
 
   const handleClearFilters = () => {
-    const clearedFilters: ContractExecutionReportFilter = {
+    const clearedFilters: ContractExecutionReportFilterType = {
       pageNumber: 1,
       pageSize: 10,
       sortBy: 'ReportGeneratedDate',

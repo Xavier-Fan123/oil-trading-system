@@ -55,15 +55,17 @@ export const RiskLevelBadge: React.FC<RiskLevelBadgeProps> = ({
       case 4:
         return <ErrorIcon sx={{ fontSize: 16 }} />;
       default:
-        return null;
+        return undefined;
     }
   };
+
+  const riskIcon = getRiskIcon(riskLevel);
 
   return (
     <Tooltip title={riskLevelDescription}>
       <Chip
         label={getRiskLabel(riskLevel)}
-        icon={getRiskIcon(riskLevel)}
+        icon={riskIcon}
         size="small"
         sx={{
           backgroundColor: getRiskColor(riskLevel),

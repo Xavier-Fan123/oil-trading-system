@@ -19,12 +19,15 @@ export type {
   BulkTemplateOperationResult,
 } from '@/services/templateApi';
 
-export {
+export type {
   SettlementTemplateConfig,
   DefaultChargeItem,
   TemplatePreviewData,
   TemplateQuickCreateOptions,
   TemplateManagementViewState,
+} from '@/types/templates';
+
+export {
   defaultTemplateConfig,
   permissionLevels,
 } from '@/types/templates';

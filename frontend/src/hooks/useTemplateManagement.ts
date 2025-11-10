@@ -57,7 +57,8 @@ export const useTemplateManagement = (options: UseTemplateManagementOptions = {}
           params.sortDescending
         );
 
-        setTemplates(result.data);
+        // Convert SettlementTemplateSummary[] to SettlementTemplate[] for display
+        setTemplates(result.data as unknown as SettlementTemplate[]);
         setTotalCount(result.totalCount);
         setCurrentPage(result.page);
         setFilters(params);
@@ -210,7 +211,8 @@ export const useTemplateManagement = (options: UseTemplateManagementOptions = {}
 
     try {
       const result = await templateApi.getAccessibleTemplates(1, pageSize);
-      setTemplates(result.data);
+      // Convert SettlementTemplateSummary[] to SettlementTemplate[]
+      setTemplates(result.data as unknown as SettlementTemplate[]);
       setTotalCount(result.totalCount);
       return result;
     } catch (err) {
@@ -229,7 +231,8 @@ export const useTemplateManagement = (options: UseTemplateManagementOptions = {}
 
     try {
       const result = await templateApi.getPublicTemplates(1, pageSize);
-      setTemplates(result.data);
+      // Convert SettlementTemplateSummary[] to SettlementTemplate[]
+      setTemplates(result.data as unknown as SettlementTemplate[]);
       setTotalCount(result.totalCount);
       return result;
     } catch (err) {
