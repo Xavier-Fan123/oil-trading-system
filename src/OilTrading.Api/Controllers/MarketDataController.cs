@@ -240,7 +240,12 @@ public class MarketDataController : ControllerBase
 
 public class MarketDataUploadRequest
 {
+    [FromForm(Name = "file")]
     public IFormFile File { get; set; }
+
+    [FromForm(Name = "fileType")]
     public string FileType { get; set; }
+
+    [FromForm(Name = "overwriteExisting")]
     public bool OverwriteExisting { get; set; } = false;
 }

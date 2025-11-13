@@ -14,9 +14,9 @@ export const marketDataApi = {
   // Upload market data file
   uploadFile: async (file: File, fileType: FileType, overwriteExisting = false): Promise<MarketDataUploadResultDto> => {
     const formData = new FormData();
-    formData.append('File', file);
-    formData.append('FileType', fileType);
-    formData.append('OverwriteExisting', overwriteExisting.toString());
+    formData.append('file', file);
+    formData.append('fileType', fileType);
+    formData.append('overwriteExisting', overwriteExisting.toString());
 
     const response = await api.post('/market-data/upload', formData, {
       headers: {
