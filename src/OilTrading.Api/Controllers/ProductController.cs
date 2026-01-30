@@ -75,6 +75,9 @@ public class ProductController : ControllerBase
             IsActive = true
         };
 
+        // Initialize RowVersion for concurrency control (required for InMemory database)
+        product.SetRowVersion(new byte[] { 0 });
+
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
 

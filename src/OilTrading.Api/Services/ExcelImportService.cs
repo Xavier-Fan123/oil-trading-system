@@ -62,20 +62,26 @@ public class ExcelImportService
 
                     if (existingPrice == null)
                     {
-                        var marketPrice = new MarketPrice
-                        {
-                            PriceDate = priceDate,
-                            ProductCode = productCode,
-                            ProductName = productName ?? productCode,
-                            PriceType = MarketPriceType.FuturesSettlement,
-                            Price = price,
-                            Currency = currency,
-                            Source = "ICE",
-                            DataSource = "Excel Import",
-                            IsSettlement = true,
-                            ImportedAt = DateTime.UtcNow,
-                            ImportedBy = "System"
-                        };
+                        // Extract contract month from product code if present (e.g., "BRT_FUT_202511" -> "NOV25")
+                        var contractMonth = ExtractContractMonth(productCode);
+
+                        // Normalize product code to base form (remove futures suffixes, month indicators)
+                        // Ensures spot and futures of same product share ProductCode
+                        var normalizedProductCode = NormalizeProductCode(productCode);
+
+                        var marketPrice = MarketPrice.Create(
+                            priceDate,
+                            normalizedProductCode,  // Base product code without month suffix
+                            productName ?? normalizedProductCode,
+                            MarketPriceType.FuturesSettlement,
+                            price,
+                            currency,
+                            "ICE",
+                            "Excel Import",
+                            true,
+                            DateTime.UtcNow,
+                            "System",
+                            contractMonth);  // Month stored separately in ContractMonth field
 
                         _context.MarketPrices.Add(marketPrice);
                         result.ImportedRecords++;
@@ -224,6 +230,51 @@ public class ExcelImportService
             "CANCELLED" => PaperContractStatus.Cancelled,
             _ => PaperContractStatus.Open
         };
+    }
+
+    /// <summary>
+    /// Normalizes product codes for consistent storage (Spot and Futures share the same ProductCode)
+    /// Removes common futures suffixes to create base product code that matches spot products
+    /// </summary>
+    private static string NormalizeProductCode(string productCode)
+    {
+        if (string.IsNullOrEmpty(productCode))
+            return productCode;
+
+        // Remove common futures suffixes to ensure Spot and Futures share the same ProductCode
+        return productCode
+            .Replace("_FUTURES", "")  // Remove _FUTURES suffix
+            .Replace("_FUT", "")      // Remove _FUT suffix
+            .Replace("_SWP", "")      // Remove _SWP suffix
+            .ToUpper()
+            .Trim();
+    }
+
+    /// <summary>
+    /// Extracts contract month from product code (e.g., "BRT_FUT_202511" -> "NOV25")
+    /// </summary>
+    private static string? ExtractContractMonth(string productCode)
+    {
+        if (string.IsNullOrEmpty(productCode))
+            return null;
+
+        // Try to extract YYYYMM format from product code using regex
+        var match = System.Text.RegularExpressions.Regex.Match(productCode, @"(\d{6})$");
+        if (!match.Success)
+            return null;
+
+        var yyyymm = match.Groups[1].Value;
+
+        // Parse YYYYMM format
+        if (!int.TryParse(yyyymm.Substring(0, 4), out var year) ||
+            !int.TryParse(yyyymm.Substring(4, 2), out var month) ||
+            month < 1 || month > 12)
+            return null;
+
+        // Format to MMM-YY (e.g., "NOV25")
+        var monthNames = new[] { "", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+        var yy = year % 100;
+        return $"{monthNames[month]}{yy:D2}";
     }
 }
 

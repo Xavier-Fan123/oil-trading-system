@@ -4,9 +4,7 @@ using System.Threading.Tasks;
 using Xunit;
 using System.Text;
 using System.Text.Json;
-using OilTrading.Application.DTOs;
-using OilTrading.Core.ValueObjects;
-using OilTrading.Core.Enums;
+using OilTrading.IntegrationTests.Infrastructure;
 
 namespace OilTrading.IntegrationTests.Endpoints;
 
@@ -14,22 +12,15 @@ namespace OilTrading.IntegrationTests.Endpoints;
 /// Integration tests for external contract resolution endpoints
 /// Tests the complete workflow of resolving external contract numbers to internal GUIDs
 /// </summary>
-public class ExternalContractResolutionTests : IAsyncLifetime
+public class ExternalContractResolutionTests : IClassFixture<InMemoryWebApplicationFactory>
 {
-    private HttpClient _client = null!;
-    private string _baseUrl = "http://localhost:5000/api";
+    private readonly HttpClient _client;
+    private readonly InMemoryWebApplicationFactory _factory;
 
-    public async Task InitializeAsync()
+    public ExternalContractResolutionTests(InMemoryWebApplicationFactory factory)
     {
-        _client = new HttpClient();
-        // Give the server time to start if needed
-        await Task.Delay(500);
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await Task.CompletedTask;
+        _factory = factory;
+        _client = factory.CreateClient();
     }
 
     /// <summary>
@@ -42,7 +33,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
         var externalNumber = "EXT-2024-001";
 
         // Act
-        var response = await _client.GetAsync($"{_baseUrl}/contracts/resolve?externalContractNumber={Uri.EscapeDataString(externalNumber)}");
+        var response = await _client.GetAsync($"/api/contracts/resolve?externalContractNumber={Uri.EscapeDataString(externalNumber)}");
 
         // Assert
         Assert.NotNull(response);
@@ -67,7 +58,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.GetAsync(
-            $"{_baseUrl}/contracts/resolve?externalContractNumber={Uri.EscapeDataString(externalNumber)}&contractType={contractType}"
+            $"/api/contracts/resolve?externalContractNumber={Uri.EscapeDataString(externalNumber)}&contractType={contractType}"
         );
 
         // Assert
@@ -90,7 +81,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.GetAsync(
-            $"{_baseUrl}/contracts/search-by-external?externalContractNumber={Uri.EscapeDataString(externalNumber)}&pageNumber=1&pageSize=20"
+            $"/api/contracts/search-by-external?externalContractNumber={Uri.EscapeDataString(externalNumber)}&pageNumber=1&pageSize=20"
         );
 
         // Assert
@@ -129,7 +120,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.PostAsync(
-            $"{_baseUrl}/settlements/create-by-external-contract",
+            $"/api/settlements/create-by-external-contract",
             jsonContent
         );
 
@@ -188,7 +179,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.PostAsync(
-            $"{_baseUrl}/settlements/create-by-external-contract",
+            $"/api/settlements/create-by-external-contract",
             jsonContent
         );
 
@@ -229,7 +220,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.PostAsync(
-            $"{_baseUrl}/shipping-operations/create-by-external-contract",
+            $"/api/shipping-operations/create-by-external-contract",
             jsonContent
         );
 
@@ -274,7 +265,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.PostAsync(
-            $"{_baseUrl}/shipping-operations/create-by-external-contract",
+            $"/api/shipping-operations/create-by-external-contract",
             jsonContent
         );
 
@@ -317,7 +308,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.PostAsync(
-            $"{_baseUrl}/settlements",
+            $"/api/settlements",
             jsonContent
         );
 
@@ -359,7 +350,7 @@ public class ExternalContractResolutionTests : IAsyncLifetime
 
         // Act
         var response = await _client.PostAsync(
-            $"{_baseUrl}/shipping-operations",
+            $"/api/shipping-operations",
             jsonContent
         );
 

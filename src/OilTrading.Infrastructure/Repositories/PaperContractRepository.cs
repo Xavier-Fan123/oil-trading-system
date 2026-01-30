@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 using OilTrading.Core.Repositories;
 using OilTrading.Infrastructure.Data;
 
@@ -95,5 +96,65 @@ public class PaperContractRepository : Repository<PaperContract>, IPaperContract
         var entity = await GetByIdAsync(id, cancellationToken);
         if (entity != null)
             _dbSet.Remove(entity);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE ENHANCEMENT - Hedge Mapping Methods (v2.18.0)
+    // Purpose: Query paper contracts based on hedge designation status
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PaperContract>> GetDesignatedHedgesAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(p => p.IsDesignatedHedge)
+            .OrderBy(p => p.HedgeDesignationDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PaperContract>> GetByHedgedContractIdAsync(
+        Guid hedgedContractId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(p => p.HedgedContractId == hedgedContractId && p.IsDesignatedHedge)
+            .OrderBy(p => p.HedgeDesignationDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PaperContract>> GetByHedgedContractTypeAsync(
+        HedgedContractType hedgedContractType,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(p => p.HedgedContractType == hedgedContractType && p.IsDesignatedHedge)
+            .OrderBy(p => p.HedgeDesignationDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PaperContract>> GetAvailableForHedgeDesignationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(p => p.Status == PaperContractStatus.Open && !p.IsDesignatedHedge)
+            .OrderBy(p => p.ContractMonth)
+            .ThenBy(p => p.ProductType)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PaperContract>> GetLowEffectivenessHedgesAsync(
+        decimal threshold = 80m,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(p => p.IsDesignatedHedge &&
+                        p.HedgeEffectiveness.HasValue &&
+                        p.HedgeEffectiveness.Value < threshold)
+            .OrderBy(p => p.HedgeEffectiveness)
+            .ToListAsync(cancellationToken);
     }
 }

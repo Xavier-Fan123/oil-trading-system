@@ -58,6 +58,16 @@ public class ContractSettlementDto
     public string? LastModifiedBy { get; set; }
     public DateTime? FinalizedDate { get; set; }
     public string? FinalizedBy { get; set; }
+
+    // Data Lineage - Deal Reference ID & Amendment Chain
+    public string? DealReferenceId { get; set; }
+    public Guid? PreviousSettlementId { get; set; }
+    public Guid? OriginalSettlementId { get; set; }
+    public int SettlementSequence { get; set; } = 1;
+    public string AmendmentType { get; set; } = "Initial";
+    public string? AmendmentReason { get; set; }
+    public bool IsLatestVersion { get; set; } = true;
+    public DateTime? SupersededDate { get; set; }
     
     // Navigation properties
     public PurchaseContractSummaryDto? PurchaseContract { get; set; }

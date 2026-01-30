@@ -396,56 +396,167 @@ public class PostgreSQLDataSeeder
         var currentDate = DateTime.UtcNow.Date;
         var marketPrices = new List<MarketPrice>();
 
-        // Generate sample price data for the last 30 days
+        // Generate professional spot prices for last 30 days - using API product codes
+        // Following international oil trading standards (Vitol, Trafigura, Glencore)
         for (int i = 30; i >= 0; i--)
         {
             var date = currentDate.AddDays(-i);
-            
+
             marketPrices.AddRange(new[]
             {
-                new MarketPrice
-                {
-                    PriceDate = date,
-                    ProductCode = "BRENT",
-                    ProductName = "Brent Crude Oil",
-                    PriceType = MarketPriceType.Spot,
-                    Price = 75.50m + (decimal)(new Random().NextDouble() * 10 - 5), // 70.50 - 80.50 range
-                    Currency = "USD",
-                    Source = "ICE",
-                    DataSource = "ICE",
-                    ImportedAt = DateTime.UtcNow,
-                    ImportedBy = "system"
-                },
-                new MarketPrice
-                {
-                    PriceDate = date,
-                    ProductCode = "WTI",
-                    ProductName = "West Texas Intermediate",
-                    PriceType = MarketPriceType.Spot,
-                    Price = 72.25m + (decimal)(new Random().NextDouble() * 8 - 4), // 68.25 - 76.25 range
-                    Currency = "USD",
-                    Source = "NYMEX",
-                    DataSource = "NYMEX",
-                    ImportedAt = DateTime.UtcNow,
-                    ImportedBy = "system"
-                },
-                new MarketPrice
-                {
-                    PriceDate = date,
-                    ProductCode = "GASOIL",
-                    ProductName = "Gas Oil",
-                    PriceType = MarketPriceType.Spot,
-                    Price = 650.00m + (decimal)(new Random().NextDouble() * 100 - 50), // 600 - 700 range
-                    Currency = "USD",
-                    Source = "ICE",
-                    DataSource = "ICE",
-                    ImportedAt = DateTime.UtcNow,
-                    ImportedBy = "system"
-                }
+                // Crude Oil - Brent (Spot)
+                MarketPrice.Create(
+                    date,
+                    "BRENT_CRUDE",
+                    "Brent Crude",
+                    MarketPriceType.Spot,
+                    82.50m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "Platts",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "North Sea"),
+
+                // Middle Distillates - Gasoil (Spot)
+                MarketPrice.Create(
+                    date,
+                    "MOPS_GASOIL",
+                    "Gasoil 0.1% S",
+                    MarketPriceType.Spot,
+                    95.50m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore"),
+
+                // Middle Distillates - MGO (Spot)
+                MarketPrice.Create(
+                    date,
+                    "MGO",
+                    "Marine Gas Oil",
+                    MarketPriceType.Spot,
+                    650.00m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore"),
+
+                // Middle Distillates - Jet Fuel (Spot)
+                MarketPrice.Create(
+                    date,
+                    "JET_FUEL",
+                    "Jet Fuel (Kerosene)",
+                    MarketPriceType.Spot,
+                    98.75m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore"),
+
+                // Heavy Residuals - HSFO 380 CST Singapore (Spot)
+                MarketPrice.Create(
+                    date,
+                    "BUNKER_SPORE",
+                    "HSFO 380 CST",
+                    MarketPriceType.Spot,
+                    520.00m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore"),
+
+                // Heavy Residuals - HSFO 380 CST Hong Kong (Spot)
+                MarketPrice.Create(
+                    date,
+                    "BUNKER_HK",
+                    "HSFO 380 CST",
+                    MarketPriceType.Spot,
+                    525.00m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Hong Kong"),
+
+                // Heavy Residuals - HSFO 380 CST Rotterdam (Spot)
+                MarketPrice.Create(
+                    date,
+                    "FUEL_OIL_35_RTDM",
+                    "HSFO 380 CST",
+                    MarketPriceType.Spot,
+                    515.00m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "Platts",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Rotterdam"),
+
+                // Light Products - Gasoline 92 RON (Spot)
+                MarketPrice.Create(
+                    date,
+                    "GASOLINE_92",
+                    "Gasoline 92 RON",
+                    MarketPriceType.Spot,
+                    92.00m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore"),
+
+                // Light Products - Gasoline 95 RON (Spot)
+                MarketPrice.Create(
+                    date,
+                    "GASOLINE_95",
+                    "Gasoline 95 RON",
+                    MarketPriceType.Spot,
+                    95.50m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore"),
+
+                // Light Products - Gasoline 97 RON (Spot)
+                MarketPrice.Create(
+                    date,
+                    "GASOLINE_97",
+                    "Gasoline 97 RON",
+                    MarketPriceType.Spot,
+                    98.00m + (decimal)(new Random().NextDouble() * 4 - 2),
+                    "USD",
+                    "MOPS",
+                    "PostgreSQLSeeder",
+                    false,
+                    DateTime.UtcNow,
+                    "system",
+                    region: "Singapore")
             });
         }
 
         await _context.MarketPrices.AddRangeAsync(marketPrices);
-        _logger.LogInformation("Added {Count} market price records", marketPrices.Count);
+        _logger.LogInformation("Added {Count} professional market price records (10 products × 31 days)", marketPrices.Count);
     }
 }

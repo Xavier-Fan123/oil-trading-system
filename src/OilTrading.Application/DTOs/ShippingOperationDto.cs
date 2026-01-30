@@ -54,6 +54,12 @@ public class ShippingOperationSummaryDto
     public DateTime? LoadPortETA { get; set; }
     public DateTime? DischargePortETA { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Split Tracking Fields (Data Lineage Enhancement v2.18.0)
+    public bool IsSplit { get; set; }
+    public int SplitSequence { get; set; }
+    public Guid? ParentShippingOperationId { get; set; }
+    public string? DealReferenceId { get; set; }
 }
 
 public class CreateShippingOperationDto

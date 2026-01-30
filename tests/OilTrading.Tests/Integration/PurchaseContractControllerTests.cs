@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
@@ -28,6 +30,13 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
     private readonly HttpClient _client;
     private readonly ITestOutputHelper _output;
 
+    // JSON serializer options matching the backend configuration (enums as strings)
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     public PurchaseContractControllerTests(WebApplicationFactory<Program> factory, ITestOutputHelper output)
     {
         _factory = factory.WithWebHostBuilder(builder =>
@@ -45,6 +54,12 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
                 {
                     { "ConnectionStrings:DefaultConnection", "InMemory" }
                 });
+            });
+
+            // Configure Kestrel to allow synchronous IO (needed for some test scenarios)
+            builder.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.AllowSynchronousIO = true;
             });
 
             builder.ConfigureServices(services =>
@@ -143,8 +158,14 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             PrepaymentPercentage = 0
         };
 
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command);
+        // Act - Use explicit HttpRequestMessage with StringContent to ensure body is sent
+        var json = JsonSerializer.Serialize(command, JsonOptions);
+        _output.WriteLine($"Request JSON: {json}");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/purchase-contracts");
+        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _client.SendAsync(request);
 
         // Debug output
         if (response.StatusCode != HttpStatusCode.Created)
@@ -183,8 +204,8 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             PrepaymentPercentage = 0
         };
 
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command);
+        // Act - Use PostAsJsonAsync
+        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command, JsonOptions);
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
@@ -246,8 +267,16 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             PrepaymentPercentage = 10
         };
 
-        // Act
-        var response = await _client.PutAsJsonAsync($"/api/purchase-contracts/{contractId}", updateDto);
+        // Act - Use PutAsJsonAsync
+        var response = await _client.PutAsJsonAsync($"/api/purchase-contracts/{contractId}", updateDto, JsonOptions);
+
+        // Debug output
+        if (response.StatusCode != HttpStatusCode.NoContent)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _output.WriteLine($"Update Status: {response.StatusCode}");
+            _output.WriteLine($"Update Response: {errorContent}");
+        }
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -348,8 +377,14 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             PaymentTerms = "TT 30 days after B/L date" // Required for activation
         };
 
-        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command);
-        response.EnsureSuccessStatusCode();
+        // Use PostAsJsonAsync for reliable body transmission
+        var response = await _client.PostAsJsonAsync("/api/purchase-contracts", command, JsonOptions);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Failed to create test contract: {response.StatusCode} - {errorContent}");
+        }
 
         var content = await response.Content.ReadAsStringAsync();
         return Guid.Parse(content.Trim('"'));
@@ -357,6 +392,12 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
 
     private static void SeedTestData(ApplicationDbContext context)
     {
+        // Check if data already seeded (for parallel test execution safety)
+        if (context.TradingPartners.Any(tp => tp.Code == "TEST_SUPPLIER"))
+        {
+            return;
+        }
+
         // Seed test users
         var testUser = new OilTrading.Core.Entities.User
         {
@@ -367,6 +408,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             Role = OilTrading.Core.Entities.UserRole.Trader,
             IsActive = true
         };
+        testUser.SetRowVersion(new byte[] { 0 });
         context.Users.Add(testUser);
 
         // Seed test trading partner
@@ -386,6 +428,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             CreditLimit = 1000000m,
             CreditRating = "A"
         };
+        testPartner.SetRowVersion(new byte[] { 0 });
         context.TradingPartners.Add(testPartner);
 
         // Seed test product
@@ -403,6 +446,7 @@ public class PurchaseContractControllerTests : IClassFixture<WebApplicationFacto
             Origin = "Test Origin",
             IsActive = true
         };
+        testProduct.SetRowVersion(new byte[] { 0 });
         context.Products.Add(testProduct);
 
         context.SaveChanges();

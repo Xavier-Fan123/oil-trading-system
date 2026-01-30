@@ -241,6 +241,46 @@ public class PurchaseContractConfiguration : IEntityTypeConfiguration<PurchaseCo
         // Payment Date - Ignore for now (column doesn't exist in database yet, migration pending)
         builder.Ignore(e => e.EstimatedPaymentDate);
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // DATA LINEAGE ENHANCEMENT - Deal Reference ID & Pricing Status
+        // Purpose: Enable full lifecycle traceability and explicit pricing state tracking
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Deal Reference ID - Business-meaningful identifier that flows through entire transaction lifecycle
+        builder.Property(e => e.DealReferenceId)
+               .HasMaxLength(50)
+               .IsRequired(false); // Nullable for backward compatibility with existing data
+
+        // Pricing Status - Explicit state tracking (Unpriced, PartiallyPriced, FullyPriced)
+        builder.Property(e => e.PricingStatus)
+               .IsRequired()
+               .HasConversion<int>()
+               .HasDefaultValue(ContractPricingStatus.Unpriced);
+
+        // Fixed Quantity - Amount of contract quantity that has been price-fixed
+        builder.Property(e => e.FixedQuantity)
+               .HasPrecision(18, 6)
+               .HasDefaultValue(0m);
+
+        // Unfixed Quantity - Amount of contract quantity pending pricing
+        builder.Property(e => e.UnfixedQuantity)
+               .HasPrecision(18, 6)
+               .HasDefaultValue(0m);
+
+        // Fixed Percentage - Calculated percentage of total quantity that is priced (0-100)
+        builder.Property(e => e.FixedPercentage)
+               .HasPrecision(5, 2)
+               .HasDefaultValue(0m);
+
+        // Last Pricing Date - When pricing was last updated
+        builder.Property(e => e.LastPricingDate)
+               .IsRequired(false);
+
+        // Price Source - How the price was determined (Manual, MarketData, Formula, etc.)
+        builder.Property(e => e.PriceSource)
+               .HasConversion<int>()
+               .IsRequired(false);
+
         // Additional Fields
         builder.Property(e => e.ExternalContractNumber)
                .HasMaxLength(100)
@@ -311,6 +351,18 @@ public class PurchaseContractConfiguration : IEntityTypeConfiguration<PurchaseCo
 
         builder.HasIndex(e => e.CreatedAt)
                .HasDatabaseName("IX_PurchaseContracts_CreatedAt");
+
+        // Data Lineage Enhancement - Deal Reference ID Index
+        builder.HasIndex(e => e.DealReferenceId)
+               .HasDatabaseName("IX_PurchaseContracts_DealReferenceId");
+
+        // Data Lineage Enhancement - Pricing Status Index for filtering
+        builder.HasIndex(e => e.PricingStatus)
+               .HasDatabaseName("IX_PurchaseContracts_PricingStatus");
+
+        // Composite index for Deal Reference ID + Status (common query pattern)
+        builder.HasIndex(e => new { e.DealReferenceId, e.Status })
+               .HasDatabaseName("IX_PurchaseContracts_DealReferenceId_Status");
 
         // Contract Tags Relationship
         builder.HasMany(e => e.ContractTags)

@@ -18,6 +18,11 @@ public class Product : BaseEntity
     
     public ICollection<PurchaseContract> PurchaseContracts { get; set; } = [];
     public ICollection<SalesContract> SalesContracts { get; set; } = [];
+
+    // NOTE: MarketPrice.MarketPrices navigation removed
+    // MarketPrice uses ProductCode (string) as natural key, not ProductId foreign key
+    // To query market prices for a product, use: marketDataRepository.GetByProductAsync(product.ProductCode, ...)
+    // ❌ public ICollection<MarketPrice> MarketPrices { get; set; } = [];
 }
 
 public enum ProductType

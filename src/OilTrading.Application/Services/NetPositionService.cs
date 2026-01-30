@@ -14,6 +14,27 @@ public interface INetPositionService
     Task<IEnumerable<ExposureDto>> CalculateExposureByProductAsync(CancellationToken cancellationToken = default);
     Task<IEnumerable<ExposureDto>> CalculateExposureByCounterpartyAsync(CancellationToken cancellationToken = default);
     Task<bool> CheckPositionLimitsAsync(CancellationToken cancellationToken = default);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HEDGE LINKING METHODS (Data Lineage Enhancement)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Calculate positions with explicit hedge linkage information.
+    /// Returns positions showing which paper contracts hedge which physical contracts.
+    /// </summary>
+    Task<IEnumerable<HedgedPositionDto>> CalculateHedgedPositionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get hedge effectiveness metrics for a specific physical contract.
+    /// Shows all paper hedges linked to the physical contract and their effectiveness.
+    /// </summary>
+    Task<HedgeEffectivenessDto?> GetHedgeEffectivenessAsync(Guid physicalContractId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get all unhedged physical positions (positions without linked paper hedges).
+    /// </summary>
+    Task<IEnumerable<UnhedgedPositionDto>> GetUnhedgedPositionsAsync(CancellationToken cancellationToken = default);
 }
 
 public class NetPositionService : INetPositionService
@@ -189,7 +210,7 @@ public class NetPositionService : INetPositionService
 
             groupedData[key].PurchaseContractQuantity += contract.ContractQuantity.Value;
         }
-        
+
         // Process sales contracts
         // Include both Draft and Active contracts for real-time position calculation
         // Draft contracts represent ongoing negotiations and are critical for traders to see
@@ -542,4 +563,301 @@ public class NetPositionService : INetPositionService
         // Fallback to estimated prices
         return GetEstimatedPrice(productType);
     }
+
+    #region Hedge Linking Methods (Data Lineage Enhancement)
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<HedgedPositionDto>> CalculateHedgedPositionsAsync(CancellationToken cancellationToken = default)
+    {
+        var hedgedPositions = new List<HedgedPositionDto>();
+
+        // Get all active purchase and sales contracts
+        var purchaseContracts = await _purchaseContractRepository.GetActiveContractsAsync(cancellationToken);
+        var salesContracts = await _salesContractRepository.GetActiveContractsAsync(cancellationToken);
+
+        // Get all paper contracts with hedge designations
+        var paperContracts = await _paperContractRepository.GetActiveContractsAsync(cancellationToken);
+        var hedgingPaperContracts = paperContracts.Where(p => p.HedgedContractId.HasValue).ToList();
+
+        // Build a lookup of paper hedges by physical contract ID
+        var hedgesByPhysical = hedgingPaperContracts
+            .GroupBy(p => p.HedgedContractId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Process purchase contracts
+        foreach (var contract in purchaseContracts.Where(c =>
+            c.Status == Core.Entities.ContractStatus.Active ||
+            c.Status == Core.Entities.ContractStatus.Draft))
+        {
+            var productType = contract.Product?.Type.ToString() ?? "Unknown";
+            var monthDate = contract.LaycanStart ?? DateTime.UtcNow;
+            var month = monthDate.ToString("MMMyy").ToUpper();
+            var quantity = contract.ContractQuantity.Value;
+            var marketPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
+
+            var hedgedPosition = new HedgedPositionDto
+            {
+                ProductType = productType,
+                Month = month,
+                PhysicalQuantity = quantity,
+                PhysicalPositionType = "Long", // Purchase = Long physical position
+                MarketPrice = marketPrice,
+                GrossExposure = quantity * marketPrice
+            };
+
+            // Find linked hedges
+            if (hedgesByPhysical.TryGetValue(contract.Id, out var linkedPaperContracts))
+            {
+                foreach (var paper in linkedPaperContracts)
+                {
+                    hedgedPosition.LinkedHedges.Add(new LinkedHedgeDto
+                    {
+                        PaperContractId = paper.Id,
+                        ContractNumber = paper.ContractNumber,
+                        Quantity = paper.Quantity,
+                        Position = paper.Position.ToString(),
+                        HedgeRatio = paper.HedgeRatio,
+                        HedgeEffectiveness = paper.HedgeEffectiveness ?? 0,
+                        DealReferenceId = paper.TradeReference, // Paper contracts use TradeReference instead of DealReferenceId
+                        DesignationDate = paper.HedgeDesignationDate ?? DateTime.UtcNow
+                    });
+
+                    hedgedPosition.HedgedQuantity += paper.Quantity * paper.HedgeRatio;
+                }
+            }
+
+            hedgedPosition.UnhedgedQuantity = Math.Max(0, quantity - hedgedPosition.HedgedQuantity);
+            hedgedPosition.HedgeRatio = quantity > 0 ? hedgedPosition.HedgedQuantity / quantity : 0;
+            hedgedPosition.NetExposure = hedgedPosition.UnhedgedQuantity * marketPrice;
+
+            hedgedPositions.Add(hedgedPosition);
+        }
+
+        // Process sales contracts
+        foreach (var contract in salesContracts.Where(c =>
+            c.Status == Core.Entities.ContractStatus.Active ||
+            c.Status == Core.Entities.ContractStatus.Draft))
+        {
+            var productType = contract.Product?.Type.ToString() ?? "Unknown";
+            var monthDate = contract.LaycanStart ?? DateTime.UtcNow;
+            var month = monthDate.ToString("MMMyy").ToUpper();
+            var quantity = contract.ContractQuantity.Value;
+            var marketPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
+
+            var hedgedPosition = new HedgedPositionDto
+            {
+                ProductType = productType,
+                Month = month,
+                PhysicalQuantity = quantity,
+                PhysicalPositionType = "Short", // Sales = Short physical position
+                MarketPrice = marketPrice,
+                GrossExposure = quantity * marketPrice
+            };
+
+            // Find linked hedges
+            if (hedgesByPhysical.TryGetValue(contract.Id, out var linkedPaperContracts))
+            {
+                foreach (var paper in linkedPaperContracts)
+                {
+                    hedgedPosition.LinkedHedges.Add(new LinkedHedgeDto
+                    {
+                        PaperContractId = paper.Id,
+                        ContractNumber = paper.ContractNumber,
+                        Quantity = paper.Quantity,
+                        Position = paper.Position.ToString(),
+                        HedgeRatio = paper.HedgeRatio,
+                        HedgeEffectiveness = paper.HedgeEffectiveness ?? 0,
+                        DealReferenceId = paper.TradeReference, // Paper contracts use TradeReference instead of DealReferenceId
+                        DesignationDate = paper.HedgeDesignationDate ?? DateTime.UtcNow
+                    });
+
+                    hedgedPosition.HedgedQuantity += paper.Quantity * paper.HedgeRatio;
+                }
+            }
+
+            hedgedPosition.UnhedgedQuantity = Math.Max(0, quantity - hedgedPosition.HedgedQuantity);
+            hedgedPosition.HedgeRatio = quantity > 0 ? hedgedPosition.HedgedQuantity / quantity : 0;
+            hedgedPosition.NetExposure = hedgedPosition.UnhedgedQuantity * marketPrice;
+
+            hedgedPositions.Add(hedgedPosition);
+        }
+
+        return hedgedPositions.OrderBy(p => p.ProductType).ThenBy(p => p.Month);
+    }
+
+    /// <inheritdoc />
+    public async Task<HedgeEffectivenessDto?> GetHedgeEffectivenessAsync(Guid physicalContractId, CancellationToken cancellationToken = default)
+    {
+        // Try to find the contract in purchase contracts first
+        var purchaseContract = await _purchaseContractRepository.GetByIdAsync(physicalContractId, cancellationToken);
+        var salesContract = purchaseContract == null
+            ? await _salesContractRepository.GetByIdAsync(physicalContractId, cancellationToken)
+            : null;
+
+        if (purchaseContract == null && salesContract == null)
+        {
+            return null;
+        }
+
+        // Get paper contracts linked to this physical contract
+        var paperContracts = await _paperContractRepository.GetActiveContractsAsync(cancellationToken);
+        var linkedHedges = paperContracts
+            .Where(p => p.HedgedContractId == physicalContractId)
+            .ToList();
+
+        string contractNumber;
+        string productType;
+        decimal physicalQuantity;
+        string physicalPosition;
+
+        if (purchaseContract != null)
+        {
+            contractNumber = purchaseContract.ContractNumber.Value;
+            productType = purchaseContract.Product?.Type.ToString() ?? "Unknown";
+            physicalQuantity = purchaseContract.ContractQuantity.Value;
+            physicalPosition = "Long";
+        }
+        else
+        {
+            contractNumber = salesContract!.ContractNumber.Value;
+            productType = salesContract.Product?.Type.ToString() ?? "Unknown";
+            physicalQuantity = salesContract.ContractQuantity.Value;
+            physicalPosition = "Short";
+        }
+
+        var effectiveness = new HedgeEffectivenessDto
+        {
+            PhysicalContractId = physicalContractId,
+            ContractNumber = contractNumber,
+            ProductType = productType,
+            PhysicalQuantity = physicalQuantity,
+            PhysicalPosition = physicalPosition,
+            CalculatedAt = DateTime.UtcNow
+        };
+
+        decimal totalWeightedEffectiveness = 0;
+
+        foreach (var paper in linkedHedges)
+        {
+            var linkedHedge = new LinkedHedgeDto
+            {
+                PaperContractId = paper.Id,
+                ContractNumber = paper.ContractNumber,
+                Quantity = paper.Quantity,
+                Position = paper.Position.ToString(),
+                HedgeRatio = paper.HedgeRatio,
+                HedgeEffectiveness = paper.HedgeEffectiveness ?? 0,
+                DealReferenceId = paper.TradeReference, // Paper contracts use TradeReference instead of DealReferenceId
+                DesignationDate = paper.HedgeDesignationDate ?? DateTime.UtcNow
+            };
+
+            effectiveness.Hedges.Add(linkedHedge);
+            effectiveness.TotalHedgedQuantity += paper.Quantity * paper.HedgeRatio;
+            totalWeightedEffectiveness += paper.Quantity * (paper.HedgeEffectiveness ?? 0);
+        }
+
+        if (physicalQuantity > 0)
+        {
+            effectiveness.OverallHedgeRatio = effectiveness.TotalHedgedQuantity / physicalQuantity;
+        }
+
+        if (effectiveness.TotalHedgedQuantity > 0)
+        {
+            effectiveness.WeightedAverageEffectiveness = totalWeightedEffectiveness / effectiveness.TotalHedgedQuantity;
+        }
+
+        // Assess effectiveness per IFRS 9 / ASC 815 guidelines (80-125% effectiveness)
+        if (effectiveness.WeightedAverageEffectiveness >= 0.8m && effectiveness.WeightedAverageEffectiveness <= 1.25m)
+        {
+            effectiveness.EffectivenessStatus = "Highly Effective";
+            effectiveness.MeetsAccountingThreshold = true;
+        }
+        else if (effectiveness.WeightedAverageEffectiveness >= 0.7m)
+        {
+            effectiveness.EffectivenessStatus = "Effective";
+            effectiveness.MeetsAccountingThreshold = false;
+        }
+        else
+        {
+            effectiveness.EffectivenessStatus = "Ineffective";
+            effectiveness.MeetsAccountingThreshold = false;
+        }
+
+        return effectiveness;
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<UnhedgedPositionDto>> GetUnhedgedPositionsAsync(CancellationToken cancellationToken = default)
+    {
+        var unhedgedPositions = new List<UnhedgedPositionDto>();
+
+        // Get all paper contracts with hedge designations
+        var paperContracts = await _paperContractRepository.GetActiveContractsAsync(cancellationToken);
+        var hedgedPhysicalIds = paperContracts
+            .Where(p => p.HedgedContractId.HasValue)
+            .Select(p => p.HedgedContractId!.Value)
+            .ToHashSet();
+
+        // Get active purchase contracts
+        var purchaseContracts = await _purchaseContractRepository.GetActiveContractsAsync(cancellationToken);
+
+        foreach (var contract in purchaseContracts.Where(c =>
+            (c.Status == Core.Entities.ContractStatus.Active || c.Status == Core.Entities.ContractStatus.Draft) &&
+            !hedgedPhysicalIds.Contains(c.Id)))
+        {
+            var productType = contract.Product?.Type.ToString() ?? "Unknown";
+            var monthDate = contract.LaycanStart ?? DateTime.UtcNow;
+            var marketPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
+            var exposure = contract.ContractQuantity.Value * marketPrice;
+
+            unhedgedPositions.Add(new UnhedgedPositionDto
+            {
+                ContractId = contract.Id,
+                ContractNumber = contract.ContractNumber.Value,
+                ContractType = "Purchase",
+                ProductType = productType,
+                Month = monthDate.ToString("MMMyy").ToUpper(),
+                Quantity = contract.ContractQuantity.Value,
+                MarketPrice = marketPrice,
+                Exposure = exposure,
+                DealReferenceId = contract.DealReferenceId,
+                ContractDate = contract.CreatedAt, // Use CreatedAt from BaseEntity
+                PotentialLoss = exposure * 0.05m, // Simplified 5% VaR assumption
+                RiskLevel = exposure > 5_000_000 ? "High" : exposure > 1_000_000 ? "Medium" : "Low"
+            });
+        }
+
+        // Get active sales contracts
+        var salesContracts = await _salesContractRepository.GetActiveContractsAsync(cancellationToken);
+
+        foreach (var contract in salesContracts.Where(c =>
+            (c.Status == Core.Entities.ContractStatus.Active || c.Status == Core.Entities.ContractStatus.Draft) &&
+            !hedgedPhysicalIds.Contains(c.Id)))
+        {
+            var productType = contract.Product?.Type.ToString() ?? "Unknown";
+            var monthDate = contract.LaycanStart ?? DateTime.UtcNow;
+            var marketPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
+            var exposure = contract.ContractQuantity.Value * marketPrice;
+
+            unhedgedPositions.Add(new UnhedgedPositionDto
+            {
+                ContractId = contract.Id,
+                ContractNumber = contract.ContractNumber.Value,
+                ContractType = "Sales",
+                ProductType = productType,
+                Month = monthDate.ToString("MMMyy").ToUpper(),
+                Quantity = contract.ContractQuantity.Value,
+                MarketPrice = marketPrice,
+                Exposure = exposure,
+                DealReferenceId = contract.DealReferenceId,
+                ContractDate = contract.CreatedAt, // Use CreatedAt from BaseEntity
+                PotentialLoss = exposure * 0.05m, // Simplified 5% VaR assumption
+                RiskLevel = exposure > 5_000_000 ? "High" : exposure > 1_000_000 ? "Medium" : "Low"
+            });
+        }
+
+        return unhedgedPositions.OrderByDescending(p => p.Exposure);
+    }
+
+    #endregion
 }

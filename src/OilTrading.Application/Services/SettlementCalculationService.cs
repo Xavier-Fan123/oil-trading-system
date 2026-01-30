@@ -1,7 +1,9 @@
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 using OilTrading.Core.Repositories;
 using OilTrading.Core.Common;
 using OilTrading.Core.ValueObjects;
+using OilTrading.Core.Services;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Common.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -19,6 +21,7 @@ public class SettlementCalculationService : ISettlementCalculationService
     private readonly IPurchaseContractRepository _purchaseContractRepository;
     private readonly ISalesContractRepository _salesContractRepository;
     private readonly IMarketDataRepository _marketDataRepository;
+    private readonly IPricingService _pricingService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SettlementCalculationService> _logger;
 
@@ -27,6 +30,7 @@ public class SettlementCalculationService : ISettlementCalculationService
         IPurchaseContractRepository purchaseContractRepository,
         ISalesContractRepository salesContractRepository,
         IMarketDataRepository marketDataRepository,
+        IPricingService pricingService,
         IUnitOfWork unitOfWork,
         ILogger<SettlementCalculationService> logger)
     {
@@ -34,6 +38,7 @@ public class SettlementCalculationService : ISettlementCalculationService
         _purchaseContractRepository = purchaseContractRepository;
         _salesContractRepository = salesContractRepository;
         _marketDataRepository = marketDataRepository;
+        _pricingService = pricingService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -686,6 +691,15 @@ public class SettlementCalculationService : ISettlementCalculationService
             LastModifiedBy = settlement.LastModifiedBy,
             FinalizedDate = settlement.FinalizedDate,
             FinalizedBy = settlement.FinalizedBy,
+            // Data Lineage - Deal Reference ID & Amendment Chain
+            DealReferenceId = settlement.DealReferenceId,
+            PreviousSettlementId = settlement.PreviousSettlementId,
+            OriginalSettlementId = settlement.OriginalSettlementId,
+            SettlementSequence = settlement.SettlementSequence,
+            AmendmentType = settlement.AmendmentType.ToString(),
+            AmendmentReason = settlement.AmendmentReason,
+            IsLatestVersion = settlement.IsLatestVersion,
+            SupersededDate = settlement.SupersededDate,
             Charges = settlement.Charges.Select(MapChargeToDto).ToList(),
             // Contract navigation properties would be populated based on contractEntity type
             PurchaseContract = contractEntity is PurchaseContract ? MapPurchaseContractSummary(contractEntity as PurchaseContract) : null,
@@ -792,6 +806,247 @@ public class SettlementCalculationService : ISettlementCalculationService
             .OrderByDescending(g => g.Count())
             .First()
             .Key;
+    }
+
+    /// <summary>
+    /// NEW: Get settlement price using unified IPricingService for ProductId-based lookups.
+    /// This method demonstrates the new pricing service integration supporting ContractMonth filtering.
+    ///
+    /// Migration Path:
+    /// - Legacy pricing: Direct IMarketDataRepository.GetByProductAsync(productCode, startDate, endDate)
+    /// - New pricing: IPricingService.GetSettlementPriceAsync(productId, contractMonth, priceDate, priceType)
+    ///
+    /// Benefits:
+    /// - Type-safe ProductId instead of string productCode
+    /// - ContractMonth support for futures/derivatives pricing
+    /// - Unified entry point for all pricing queries across Settlement, Risk, Position modules
+    /// - Comprehensive logging and error handling
+    /// </summary>
+    public async Task<decimal> GetSettlementPriceAsync(
+        Guid productId,
+        string contractMonth,
+        DateTime priceDate,
+        MarketPriceType priceType = MarketPriceType.Spot,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Getting settlement price via IPricingService: ProductId={ProductId}, ContractMonth={ContractMonth}, Date={Date}, Type={Type}",
+                productId, contractMonth, priceDate.Date, priceType);
+
+            var price = await _pricingService.GetSettlementPriceAsync(
+                productId,
+                contractMonth,
+                priceDate,
+                priceType,
+                cancellationToken);
+
+            if (price == null)
+            {
+                _logger.LogWarning(
+                    "No settlement price found: ProductId={ProductId}, ContractMonth={ContractMonth}, Date={Date}",
+                    productId, contractMonth, priceDate.Date);
+                throw new InvalidOperationException(
+                    $"No price data found for ProductId {productId}, ContractMonth {contractMonth} on {priceDate:yyyy-MM-dd}");
+            }
+
+            _logger.LogInformation(
+                "Settlement price retrieved: {PriceValue} {Currency}",
+                price.Price, price.Currency);
+
+            return price.Price;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error retrieving settlement price: ProductId={ProductId}, ContractMonth={ContractMonth}, Date={Date}",
+                productId, contractMonth, priceDate.Date);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Amendment Chain Methods (Data Lineage Enhancement)
+
+    /// <inheritdoc />
+    public async Task<ContractSettlementDto> CreateAmendmentAsync(
+        Guid originalSettlementId,
+        SettlementAmendmentType amendmentType,
+        string amendmentReason,
+        string createdBy = "System",
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Creating amendment for settlement {SettlementId} with type {AmendmentType}",
+                originalSettlementId, amendmentType);
+
+            // Get the settlement to amend (must be the latest version)
+            var previousSettlement = await _settlementRepository.GetByIdAsync(originalSettlementId, cancellationToken);
+            if (previousSettlement == null)
+                throw new NotFoundException($"Settlement {originalSettlementId} not found");
+
+            if (!previousSettlement.IsLatestVersion)
+                throw new DomainException("Cannot amend a superseded settlement. Please use the latest version.");
+
+            // Create a new settlement as an amendment
+            var newSettlement = new ContractSettlement(
+                previousSettlement.ContractId,
+                previousSettlement.ContractNumber,
+                previousSettlement.ExternalContractNumber,
+                previousSettlement.DocumentNumber,
+                previousSettlement.DocumentType,
+                previousSettlement.DocumentDate,
+                createdBy);
+
+            // Copy over quantities from previous settlement
+            newSettlement.UpdateActualQuantities(
+                previousSettlement.ActualQuantityMT,
+                previousSettlement.ActualQuantityBBL,
+                createdBy);
+
+            newSettlement.SetCalculationQuantities(
+                previousSettlement.CalculationQuantityMT,
+                previousSettlement.CalculationQuantityBBL,
+                previousSettlement.QuantityCalculationNote ?? "",
+                createdBy);
+
+            // Initialize amendment chain
+            var originalId = previousSettlement.OriginalSettlementId ?? previousSettlement.Id;
+            newSettlement.InitializeAsAmendment(
+                previousSettlement.Id,
+                originalId,
+                previousSettlement.SettlementSequence,
+                amendmentType,
+                amendmentReason,
+                createdBy);
+
+            // Propagate Deal Reference ID
+            if (!string.IsNullOrEmpty(previousSettlement.DealReferenceId))
+            {
+                newSettlement.SetDealReferenceId(previousSettlement.DealReferenceId, createdBy);
+            }
+
+            // Mark the previous settlement as superseded
+            previousSettlement.MarkAsSuperseded(createdBy);
+
+            // Save the new settlement
+            var savedSettlement = await _settlementRepository.AddAsync(newSettlement, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Created amendment settlement {NewSettlementId} (sequence {Sequence}) for original {OriginalId}",
+                savedSettlement.Id, savedSettlement.SettlementSequence, originalId);
+
+            return await MapToDto(savedSettlement, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating amendment for settlement {SettlementId}", originalSettlementId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<ContractSettlementDto>> GetAmendmentChainAsync(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting amendment chain for settlement {SettlementId}", settlementId);
+
+            // First, get the settlement to find the original
+            var settlement = await _settlementRepository.GetByIdAsync(settlementId, cancellationToken);
+            if (settlement == null)
+                throw new NotFoundException($"Settlement {settlementId} not found");
+
+            var originalId = settlement.OriginalSettlementId ?? settlement.Id;
+
+            // Get all settlements for the same contract
+            var allSettlements = await _settlementRepository.GetByContractIdAsync(
+                settlement.ContractId, cancellationToken);
+
+            // Filter to only those in the same chain (sharing the same original ID)
+            var chainSettlements = allSettlements
+                .Where(s => (s.OriginalSettlementId ?? s.Id) == originalId)
+                .OrderBy(s => s.SettlementSequence)
+                .ToList();
+
+            var dtos = new List<ContractSettlementDto>();
+            foreach (var s in chainSettlements)
+            {
+                dtos.Add(await MapToDto(s, cancellationToken));
+            }
+
+            _logger.LogInformation(
+                "Found {Count} settlements in amendment chain for original {OriginalId}",
+                dtos.Count, originalId);
+
+            return dtos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting amendment chain for settlement {SettlementId}", settlementId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ContractSettlementDto?> GetLatestVersionAsync(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting latest version for settlement {SettlementId}", settlementId);
+
+            var chain = await GetAmendmentChainAsync(settlementId, cancellationToken);
+            var latest = chain.FirstOrDefault(s => s.IsLatestVersion);
+
+            if (latest != null)
+            {
+                _logger.LogInformation(
+                    "Latest version is {LatestId} (sequence {Sequence})",
+                    latest.Id, latest.SettlementSequence);
+            }
+
+            return latest;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting latest version for settlement {SettlementId}", settlementId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ContractSettlementDto?> GetOriginalSettlementAsync(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting original settlement for {SettlementId}", settlementId);
+
+            var chain = await GetAmendmentChainAsync(settlementId, cancellationToken);
+            var original = chain.FirstOrDefault(s => s.SettlementSequence == 1);
+
+            if (original != null)
+            {
+                _logger.LogInformation("Original settlement is {OriginalId}", original.Id);
+            }
+
+            return original;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting original settlement for {SettlementId}", settlementId);
+            throw;
+        }
     }
 
     #endregion

@@ -16,7 +16,7 @@ import {
   Divider
 } from '@mui/material';
 import { format } from 'date-fns';
-import { ContractSettlementDto, QuantityUnit, ChargeTypeLabels, ChargeType } from '@/types/settlement';
+import { ContractSettlementDto,    } from '@/types/settlement';
 
 interface SettlementTabProps {
   settlement: ContractSettlementDto;

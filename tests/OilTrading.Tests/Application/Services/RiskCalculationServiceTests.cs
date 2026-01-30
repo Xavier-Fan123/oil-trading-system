@@ -56,34 +56,34 @@ public class RiskCalculationServiceTests
             .ReturnsAsync(marketData);
 
         // Jane Street best practice: Mock ALL data dependencies
-        // Setup historical prices for each product
-        var brentPrices = GenerateHistoricalPrices("BRENT", 75m, 252);
-        var wtiPrices = GenerateHistoricalPrices("WTI", 72m, 252);
-        var dubaiPrices = GenerateHistoricalPrices("DUBAI", 70m, 252);
+        // Setup historical prices for each product-month combination (format: ProductType|ContractMonth)
+        var brentPrices = GenerateHistoricalPrices("BRENT|JAN24", 75m, 252);
+        var wtiPrices = GenerateHistoricalPrices("WTI|JAN24", 72m, 252);
+        var dubaiPrices = GenerateHistoricalPrices("DUBAI|JAN24", 70m, 252);
 
         _mockMarketDataRepository
-            .Setup(x => x.GetHistoricalPricesAsync("BRENT", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetHistoricalPricesAsync("BRENT|JAN24", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(brentPrices);
 
         _mockMarketDataRepository
-            .Setup(x => x.GetHistoricalPricesAsync("WTI", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetHistoricalPricesAsync("WTI|JAN24", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(wtiPrices);
 
         _mockMarketDataRepository
-            .Setup(x => x.GetHistoricalPricesAsync("DUBAI", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetHistoricalPricesAsync("DUBAI|JAN24", It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(dubaiPrices);
 
-        // Setup current prices for stress testing
+        // Setup current prices for stress testing (using product-month keys)
         _mockMarketDataRepository
-            .Setup(x => x.GetLatestPriceAsync("BRENT", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetLatestPriceAsync("BRENT|JAN24", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(marketData[0]);
 
         _mockMarketDataRepository
-            .Setup(x => x.GetLatestPriceAsync("WTI", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetLatestPriceAsync("WTI|JAN24", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(marketData[1]);
 
         _mockMarketDataRepository
-            .Setup(x => x.GetLatestPriceAsync("DUBAI", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetLatestPriceAsync("DUBAI|JAN24", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(marketData[2]);
 
         // Act
@@ -217,11 +217,12 @@ public class RiskCalculationServiceTests
         // Net exposure: $75,500 - $36,000 + $52,687.50 = $92,187.50
 
         // Historical returns with realistic oil market correlation (~0.85-0.95)
+        // Keys must match format "ProductType|ContractMonth" as used in RiskCalculationService
         var productReturns = new Dictionary<string, List<decimal>>
         {
-            { "BRENT", new List<decimal> { -0.02m, -0.01m, 0m, 0.01m, 0.02m, 0.015m, -0.015m, 0.01m, -0.01m, 0.005m } },
-            { "WTI", new List<decimal> { -0.018m, -0.012m, 0.002m, 0.012m, 0.018m, 0.013m, -0.014m, 0.008m, -0.009m, 0.004m } },
-            { "DUBAI", new List<decimal> { -0.019m, -0.011m, 0.001m, 0.011m, 0.019m, 0.014m, -0.013m, 0.009m, -0.011m, 0.006m } }
+            { "BRENT|JAN24", new List<decimal> { -0.02m, -0.01m, 0m, 0.01m, 0.02m, 0.015m, -0.015m, 0.01m, -0.01m, 0.005m } },
+            { "WTI|JAN24", new List<decimal> { -0.018m, -0.012m, 0.002m, 0.012m, 0.018m, 0.013m, -0.014m, 0.008m, -0.009m, 0.004m } },
+            { "DUBAI|JAN24", new List<decimal> { -0.019m, -0.011m, 0.001m, 0.011m, 0.019m, 0.014m, -0.013m, 0.009m, -0.011m, 0.006m } }
         };
 
         // Act
@@ -333,10 +334,11 @@ public class RiskCalculationServiceTests
         };
 
         // Identical returns (perfect correlation)
+        // Keys must match format "ProductType|ContractMonth" as used in RiskCalculationService
         var returns = new List<decimal> { -0.02m, 0.01m, 0.015m, -0.01m, 0.005m };
         var productReturns = new Dictionary<string, List<decimal>>
         {
-            { "BRENT", returns }
+            { "BRENT|JAN24", returns }
         };
 
         // Act
@@ -360,10 +362,11 @@ public class RiskCalculationServiceTests
         };
 
         // Positively correlated returns (ρ ≈ 0.8)
+        // Keys must match format "ProductType|ContractMonth" as used in RiskCalculationService
         var productReturns = new Dictionary<string, List<decimal>>
         {
-            { "BRENT", new List<decimal> { -0.02m, 0.01m, 0.015m, -0.01m, 0.005m, 0.02m, -0.015m } },
-            { "WTI", new List<decimal> { -0.018m, 0.012m, 0.013m, -0.009m, 0.004m, 0.018m, -0.014m } }
+            { "BRENT|JAN24", new List<decimal> { -0.02m, 0.01m, 0.015m, -0.01m, 0.005m, 0.02m, -0.015m } },
+            { "WTI|JAN24", new List<decimal> { -0.018m, 0.012m, 0.013m, -0.009m, 0.004m, 0.018m, -0.014m } }
         };
 
         // Act
@@ -373,8 +376,8 @@ public class RiskCalculationServiceTests
         var brentOnly = new List<PaperContract> { positions[0] };
         var wtiOnly = new List<PaperContract> { positions[1] };
 
-        var brentReturns = new Dictionary<string, List<decimal>> { { "BRENT", productReturns["BRENT"] } };
-        var wtiReturns = new Dictionary<string, List<decimal>> { { "WTI", productReturns["WTI"] } };
+        var brentReturns = new Dictionary<string, List<decimal>> { { "BRENT|JAN24", productReturns["BRENT|JAN24"] } };
+        var wtiReturns = new Dictionary<string, List<decimal>> { { "WTI|JAN24", productReturns["WTI|JAN24"] } };
 
         var (brentVar95, _) = await _riskCalculationService.CalculateDeltaNormalVaRAsync(brentOnly, brentReturns);
         var (wtiVar95, _) = await _riskCalculationService.CalculateDeltaNormalVaRAsync(wtiOnly, wtiReturns);
@@ -417,19 +420,18 @@ public class RiskCalculationServiceTests
 
     private static MarketPrice CreateMarketPrice(string productType, decimal price)
     {
-        return new MarketPrice
-        {
-            PriceDate = DateTime.UtcNow,
-            ProductCode = productType,
-            ProductName = productType,
-            PriceType = MarketPriceType.Spot,
-            Price = price,
-            Currency = "USD",
-            Source = "TEST",
-            DataSource = "TEST",
-            ImportedAt = DateTime.UtcNow,
-            ImportedBy = "test"
-        };
+        return MarketPrice.Create(
+            DateTime.UtcNow,
+            productType,
+            productType,
+            MarketPriceType.Spot,
+            price,
+            "USD",
+            "TEST",
+            "TEST",
+            false,
+            DateTime.UtcNow,
+            "test");
     }
 
     private static List<MarketPrice> GenerateHistoricalPrices(string productType, decimal basePrice, int count)
@@ -441,20 +443,19 @@ public class RiskCalculationServiceTests
         {
             var variation = (decimal)(random.NextDouble() - 0.5) * 0.1m; // ±5% variation
             var price = basePrice * (1 + variation);
-            
-            prices.Add(new MarketPrice
-            {
-                PriceDate = DateTime.UtcNow.AddDays(-i),
-                ProductCode = productType,
-                ProductName = productType,
-                PriceType = MarketPriceType.Spot,
-                Price = price,
-                Currency = "USD",
-                Source = "TEST",
-                DataSource = "TEST",
-                ImportedAt = DateTime.UtcNow,
-                ImportedBy = "test"
-            });
+
+            prices.Add(MarketPrice.Create(
+                DateTime.UtcNow.AddDays(-i),
+                productType,
+                productType,
+                MarketPriceType.Spot,
+                price,
+                "USD",
+                "TEST",
+                "TEST",
+                false,
+                DateTime.UtcNow,
+                "test"));
         }
         
         return prices;

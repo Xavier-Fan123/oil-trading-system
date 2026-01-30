@@ -4,6 +4,7 @@ using MediatR;
 using System.Reflection;
 using OilTrading.Application.Services;
 using OilTrading.Application.Common.Behaviours;
+using OilTrading.Core.Services;
 
 namespace OilTrading.Application;
 
@@ -276,6 +277,7 @@ public static class DependencyInjection
 
         services.AddScoped<IPriceCalculationService, PriceCalculationService>();
         services.AddScoped<IPriceInterpolationService, PriceInterpolationService>();
+        services.AddScoped<IPricingService, PricingService>();  // NEW: Unified market price query service
         services.AddScoped<IRiskCalculationService, RiskCalculationService>();
         services.AddScoped<IBasisCalculationService, BasisCalculationService>();
         services.AddScoped<IPriceValidationService, PriceValidationService>();
@@ -367,7 +369,32 @@ public static class DependencyInjection
         services.AddScoped<ISmartSettlementOrchestrator, SmartSettlementOrchestrator>();
 
         // ====================================================================
-        // 9. EVENT HANDLERS (Domain Event Processing)
+        // 9. DATA LINEAGE SERVICES (Deal ID, Amendment Chain, Split Tracking)
+        // ====================================================================
+        // Services for maintaining data lineage and traceability:
+        // - DealReferenceIdService: Generate and propagate business-meaningful Deal IDs
+        // - ShippingOperationSplitService: Track cargo splits across shipments
+        //
+        // Features:
+        // - Unified Deal Reference ID flowing through entire transaction lifecycle
+        // - Amendment chain tracking for settlement version history
+        // - Split tracking for partial deliveries and cargo splits
+        // - Parent-child relationships for shipping operations
+        //
+        // Use Cases:
+        // - Trace settlement back to original contract
+        // - Track all amendments to a settlement
+        // - Reconcile split shipments to original quantity
+        // - Audit trail for regulatory compliance
+        //
+        // Scope: Scoped (one per HTTP request)
+        // Dependencies: Repositories, logging
+
+        services.AddScoped<IDealReferenceIdService, DealReferenceIdService>();
+        services.AddScoped<IShippingOperationSplitService, ShippingOperationSplitService>();
+
+        // ====================================================================
+        // 10. EVENT HANDLERS (Domain Event Processing)
         // ====================================================================
         // Event handlers for domain events published during command execution:
         // - ContractSettlementFinalizedEventHandler: Handles ContractSettlementFinalized event

@@ -43,6 +43,10 @@ public class PositionController : ControllerBase
                 id = $"{p.ProductType}-{p.Month}",
                 productType = GetProductTypeEnum(p.ProductType),
                 deliveryMonth = p.Month,
+                // ✅ NEW FIELD: ContractMonth in YYMM format for risk aggregation and sorting
+                // Used to distinguish between different futures months (e.g., AUG25 vs SEP25)
+                // Critical for proper VaR calculation and hedging analysis
+                contractMonth = p.ContractMonth,
                 netQuantity = p.ContractNetPosition != 0 ? p.ContractNetPosition : p.TotalNetPosition,
                 longQuantity = p.PurchaseContractQuantity > 0 ? p.PurchaseContractQuantity : p.PhysicalPurchases,
                 shortQuantity = p.SalesContractQuantity > 0 ? p.SalesContractQuantity : p.PhysicalSales,

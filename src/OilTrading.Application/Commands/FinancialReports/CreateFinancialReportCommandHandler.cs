@@ -96,6 +96,9 @@ public class CreateFinancialReportCommandHandler : IRequestHandler<CreateFinanci
             // Set audit fields
             financialReport.SetCreated(request.CreatedBy ?? "System");
 
+            // Initialize RowVersion for InMemory database compatibility
+            financialReport.SetRowVersion(new byte[] { 0 });
+
             // Add to repository
             await _financialReportRepository.AddAsync(financialReport, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

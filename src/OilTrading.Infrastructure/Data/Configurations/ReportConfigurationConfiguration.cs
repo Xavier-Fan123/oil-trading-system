@@ -24,10 +24,10 @@ public class ReportConfigurationConfiguration : IEntityTypeConfiguration<ReportC
             .HasMaxLength(50);
 
         builder.Property(e => e.FilterJson)
-            .HasColumnType("nvarchar(max)");
+            .HasColumnType("TEXT");
 
         builder.Property(e => e.ColumnsJson)
-            .HasColumnType("nvarchar(max)");
+            .HasColumnType("TEXT");
 
         builder.Property(e => e.ExportFormat)
             .IsRequired()

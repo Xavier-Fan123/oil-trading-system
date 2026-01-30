@@ -159,17 +159,18 @@ public class RiskCalculationServiceTests
     public async Task CalculateDeltaNormalVaRAsync_WithLongAndShortPositions_AccountsForHedging()
     {
         // Arrange - Create hedged portfolio (long Brent, short WTI)
+        // Use same contract month for proper composite key matching
         var hedgedPositions = new List<PaperContract>
         {
-            CreatePaperContract("Brent", PositionType.Long, quantity: 100, price: 80m),
-            CreatePaperContract("WTI", PositionType.Short, quantity: 100, price: 75m)
+            CreatePaperContract("Brent", PositionType.Long, quantity: 100, price: 80m, "DEC25"),
+            CreatePaperContract("WTI", PositionType.Short, quantity: 100, price: 75m, "DEC25")
         };
 
         var productReturns = CreateProductReturns(new Dictionary<string, decimal>
         {
             ["Brent"] = 0.02m,
             ["WTI"] = 0.02m  // Highly correlated
-        });
+        }, "DEC25");
 
         // Act
         var (var95Hedged, var99Hedged) = await _service.CalculateDeltaNormalVaRAsync(hedgedPositions, productReturns);
@@ -177,9 +178,13 @@ public class RiskCalculationServiceTests
         // Compare to unhedged long-only portfolio
         var unhedgedPositions = new List<PaperContract>
         {
-            CreatePaperContract("Brent", PositionType.Long, quantity: 100, price: 80m)
+            CreatePaperContract("Brent", PositionType.Long, quantity: 100, price: 80m, "DEC25")
         };
-        var (var95Unhedged, var99Unhedged) = await _service.CalculateDeltaNormalVaRAsync(unhedgedPositions, productReturns);
+        var unhedgedReturns = CreateProductReturns(new Dictionary<string, decimal>
+        {
+            ["Brent"] = 0.02m
+        }, "DEC25");
+        var (var95Unhedged, var99Unhedged) = await _service.CalculateDeltaNormalVaRAsync(unhedgedPositions, unhedgedReturns);
 
         // Assert - Hedged portfolio should have lower VaR
         var95Hedged.Should().BeLessThan(var95Unhedged, "Hedged portfolio should have lower VaR95");
@@ -193,17 +198,18 @@ public class RiskCalculationServiceTests
         var positions = CreateMultiProductPositions();
 
         // Create perfectly correlated returns (correlation = 1.0)
+        // Use composite keys: ProductType|ContractMonth
         var perfectlyCorrelatedReturns = new Dictionary<string, List<decimal>>
         {
-            ["Brent"] = new List<decimal> { 0.01m, 0.02m, -0.01m, 0.015m, -0.005m },
-            ["WTI"] = new List<decimal> { 0.01m, 0.02m, -0.01m, 0.015m, -0.005m }  // Identical returns
+            ["Brent|DEC25"] = new List<decimal> { 0.01m, 0.02m, -0.01m, 0.015m, -0.005m },
+            ["WTI|DEC25"] = new List<decimal> { 0.01m, 0.02m, -0.01m, 0.015m, -0.005m }  // Identical returns
         };
 
         // Create uncorrelated returns (correlation closer to 0)
         var uncorrelatedReturns = new Dictionary<string, List<decimal>>
         {
-            ["Brent"] = new List<decimal> { 0.01m, 0.02m, -0.01m, 0.015m, -0.005m },
-            ["WTI"] = new List<decimal> { -0.01m, 0.005m, 0.02m, -0.015m, 0.01m }
+            ["Brent|DEC25"] = new List<decimal> { 0.01m, 0.02m, -0.01m, 0.015m, -0.005m },
+            ["WTI|DEC25"] = new List<decimal> { -0.01m, 0.005m, 0.02m, -0.015m, 0.01m }
         };
 
         // Act
@@ -521,8 +527,10 @@ public class RiskCalculationServiceTests
     public async Task CalculatePortfolioRiskAsync_WithValidPositions_ReturnsCompleteRiskMetrics()
     {
         // Arrange
+        // Positions use composite key format: ProductType|ContractMonth
         var positions = CreateSamplePositions(portfolioValue: 1000000m);
-        var marketPrices = CreateMarketPrices("Brent", 80m, count: 260);
+        // Market prices need to be returned for the composite key query
+        var marketPrices = CreateMarketPrices("Brent|DEC25", 80m, count: 260);
 
         _mockPaperContractRepository
             .Setup(r => r.GetOpenPositionsAsync(It.IsAny<CancellationToken>()))
@@ -575,11 +583,12 @@ public class RiskCalculationServiceTests
         };
     }
 
-    private PaperContract CreatePaperContract(string productType, PositionType position, decimal quantity, decimal price)
+    private PaperContract CreatePaperContract(string productType, PositionType position, decimal quantity, decimal price, string contractMonth = "DEC25")
     {
         var contract = new PaperContract
         {
             ProductType = productType,
+            ContractMonth = contractMonth, // Set contract month for composite key matching
             Position = position,
             Quantity = (int)quantity,
             LotSize = 1000m, // Standard: 1000 barrels per lot
@@ -611,12 +620,14 @@ public class RiskCalculationServiceTests
         return returns;
     }
 
-    private Dictionary<string, List<decimal>> CreateProductReturns(Dictionary<string, decimal> volatilities)
+    private Dictionary<string, List<decimal>> CreateProductReturns(Dictionary<string, decimal> volatilities, string contractMonth = "DEC25")
     {
         var result = new Dictionary<string, List<decimal>>();
         foreach (var kvp in volatilities)
         {
-            result[kvp.Key] = CreateNormalDistributionReturns(mean: 0m, stdDev: kvp.Value, count: 252);
+            // Use composite key format: ProductType|ContractMonth to match service expectations
+            var compositeKey = $"{kvp.Key}|{contractMonth}";
+            result[compositeKey] = CreateNormalDistributionReturns(mean: 0m, stdDev: kvp.Value, count: 252);
         }
         return result;
     }
@@ -632,17 +643,18 @@ public class RiskCalculationServiceTests
             var dailyReturn = (decimal)(random.NextDouble() - 0.5) * 0.04m; // +/- 2% daily
             currentPrice *= (1 + dailyReturn);
 
-            var marketPrice = new MarketPrice
-            {
-                ProductCode = productCode,
-                ProductName = productCode,
-                Price = currentPrice,
-                PriceDate = DateTime.UtcNow.AddDays(-count + i),
-                PriceType = MarketPriceType.Spot,
-                DataSource = "Test",
-                ImportedAt = DateTime.UtcNow
-            };
-            marketPrice.SetId(Guid.NewGuid());
+            var marketPrice = MarketPrice.Create(
+                DateTime.UtcNow.AddDays(-count + i),
+                productCode,
+                productCode,
+                MarketPriceType.Spot,
+                currentPrice,
+                "USD",
+                null,
+                "Test",
+                false,
+                DateTime.UtcNow,
+                "test");
             prices.Add(marketPrice);
         }
 

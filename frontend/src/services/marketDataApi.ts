@@ -14,13 +14,16 @@ export const marketDataApi = {
   // Upload market data file
   uploadFile: async (file: File, fileType: FileType, overwriteExisting = false): Promise<MarketDataUploadResultDto> => {
     const formData = new FormData();
+    // Match the [FromForm(Name = "...")] parameters in the backend
     formData.append('file', file);
     formData.append('fileType', fileType);
     formData.append('overwriteExisting', overwriteExisting.toString());
 
     const response = await api.post('/market-data/upload', formData, {
+      // Critical: Remove default 'Content-Type: application/json' header
+      // Let browser set 'Content-Type: multipart/form-data' with correct boundary
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
       timeout: 300000, // 5 minutes for large files
     });
@@ -38,7 +41,10 @@ export const marketDataApi = {
   getPriceHistory: async (
     productCode: string,
     startDate?: string | Date,
-    endDate?: string | Date
+    endDate?: string | Date,
+    priceType?: string,
+    contractMonth?: string,
+    region?: string  // NEW: Region filter for spot prices
   ): Promise<MarketPriceDto[]> => {
     const params = new URLSearchParams();
     if (startDate) {
@@ -49,16 +55,25 @@ export const marketDataApi = {
       const formattedDate = typeof endDate === 'string' ? endDate : formatApiDate(endDate);
       if (formattedDate) params.append('endDate', formattedDate);
     }
-    
+    if (priceType) {
+      params.append('priceType', priceType);
+    }
+    if (contractMonth) {
+      params.append('contractMonth', contractMonth);
+    }
+    if (region) {
+      params.append('region', region);  // NEW: Include region parameter
+    }
+
     const query = params.toString() ? `?${params.toString()}` : '';
     const response = await api.get(`/market-data/history/${productCode}${query}`);
-    
+
     // Parse date fields in the response
     const result = response.data;
     if (Array.isArray(result)) {
       return result.map(item => parseApiDateFields(item, ['date', 'timestamp', 'updatedAt']));
     }
-    
+
     return result;
   },
 
@@ -70,7 +85,7 @@ export const marketDataApi = {
 
     const response = await api.post('/CsvImport/spot-prices', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
       timeout: 300000,
     });
@@ -85,7 +100,7 @@ export const marketDataApi = {
 
     const response = await api.post('/CsvImport/futures-prices', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
       timeout: 300000,
     });
@@ -220,6 +235,19 @@ export const marketDataApi = {
   // Get count of all market data records
   getMarketDataCount: async (): Promise<{ count: number }> => {
     const response = await api.get('/market-data/count');
+    return response.data;
+  },
+
+  // Get available contract months for a product
+  getAvailableContractMonths: async (productCode: string, priceType?: string): Promise<string[]> => {
+    const params = new URLSearchParams();
+    if (priceType) {
+      params.append('priceType', priceType);
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const response = await api.get(`/market-data/contract-months/${productCode}${query}`);
+
     return response.data;
   }
 };

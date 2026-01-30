@@ -84,24 +84,35 @@ public class CsvImportService
                         if (!decimal.TryParse(priceString, NumberStyles.Float, CultureInfo.InvariantCulture, out var price))
                             continue;
 
-                        // 直接添加记录，不检查重复（简化首次导入）
-                        var marketPrice = new MarketPrice
-                        {
-                            PriceDate = priceDate,
-                            ProductCode = productCode,
-                            ProductName = productName,
-                            PriceType = MarketPriceType.Spot,
-                            Price = price,
-                            Currency = GetCurrencyFromProductCode(productCode),
-                            Source = "CSV Import",
-                            DataSource = "Spot Prices CSV",
-                            IsSettlement = false,
-                            ImportedAt = DateTime.UtcNow,
-                            ImportedBy = "System"
-                        };
+                        // 检查是否已存在相同的记录（防止重复导入）
+                        var existingPrice = await _context.MarketPrices
+                            .FirstOrDefaultAsync(mp => mp.ProductCode == productCode &&
+                                                      mp.PriceDate.Date == priceDate.Date &&
+                                                      mp.PriceType == MarketPriceType.Spot);
 
-                        _context.MarketPrices.Add(marketPrice);
-                        importedCount++;
+                        if (existingPrice == null)
+                        {
+                            var marketPrice = MarketPrice.Create(
+                                priceDate,
+                                productCode,
+                                productName,
+                                MarketPriceType.Spot,
+                                price,
+                                GetCurrencyFromProductCode(productCode),
+                                "CSV Import",
+                                "Spot Prices CSV",
+                                false,
+                                DateTime.UtcNow,
+                                "System",
+                                null); // Spot prices don't have contract months
+
+                            _context.MarketPrices.Add(marketPrice);
+                            importedCount++;
+                        }
+                        else
+                        {
+                            skippedCount++;
+                        }
                     }
 
                     // 每100行保存一次，提高性能
@@ -212,24 +223,23 @@ public class CsvImportService
                                 continue;
 
                             var contractMonth = section.ContractMonths[j];
-                            // 为期货合约创建唯一的产品代码（包含合约月份）
-                            var uniqueProductCode = $"{section.ProductCode}_{contractMonth}";
 
-                            var marketPrice = new MarketPrice
-                            {
-                                PriceDate = priceDate,
-                                ProductCode = uniqueProductCode,
-                                ProductName = $"{section.ProductName} {contractMonth}",
-                                PriceType = MarketPriceType.FuturesClose,
-                                Price = price,
-                                Currency = "USD",
-                                ContractMonth = contractMonth,
-                                Source = "CSV Import",
-                                DataSource = "Futures Prices CSV",
-                                IsSettlement = false,
-                                ImportedAt = DateTime.UtcNow,
-                                ImportedBy = "System"
-                            };
+                            // FIX: Do NOT append contract month to ProductCode
+                            // Spot and Futures of the same product share the same ProductCode
+                            // ContractMonth is stored separately in the ContractMonth field
+                            var marketPrice = MarketPrice.Create(
+                                priceDate,
+                                section.ProductCode,  // Base product code without month suffix
+                                section.ProductName,  // Product name without month suffix
+                                MarketPriceType.FuturesClose,
+                                price,
+                                "USD",
+                                "CSV Import",
+                                $"Futures {contractMonth}",  // Data source includes month for audit trail
+                                false,
+                                DateTime.UtcNow,
+                                "System",
+                                contractMonth); // Contract month stored in ContractMonth field
 
                             _context.MarketPrices.Add(marketPrice);
                             importedCount++;
@@ -333,12 +343,67 @@ public class CsvImportService
 
     private static string GetFuturesProductCode(string productName)
     {
-        return productName.ToUpper() switch
+        var productCode = productName.ToUpper() switch
         {
             var name when name.Contains("FUEL OIL") && name.Contains("380CST") => "FUEL_OIL_380",
             var name when name.Contains("FUEL OIL") && name.Contains("MARINE") && name.Contains("0.5%") => "MARINE_FUEL_05",
-            var name when name.Contains("BRENT") && name.Contains("CRUDE") => "BRENT_FUTURES",
+            var name when name.Contains("BRENT") && name.Contains("CRUDE") => "BRENT_CRUDE",  // Changed from BRENT_FUTURES to BRENT_CRUDE
             _ => productName.Replace(" ", "_").Replace("-", "_").ToUpper()
+        };
+
+        return NormalizeProductCode(productCode);
+    }
+
+    /// <summary>
+    /// Normalizes product codes for consistent storage (Spot and Futures share the same ProductCode)
+    /// Removes common futures suffixes to create base product code that matches spot products
+    /// </summary>
+    private static string NormalizeProductCode(string productCode)
+    {
+        if (string.IsNullOrEmpty(productCode))
+            return productCode;
+
+        // Remove common futures suffixes to ensure Spot and Futures share the same ProductCode
+        return productCode
+            .Replace("_FUTURES", "")  // Remove _FUTURES suffix
+            .Replace("_FUT", "")      // Remove _FUT suffix
+            .Replace("_SWP", "")      // Remove _SWP suffix
+            .ToUpper()
+            .Trim();
+    }
+
+    /// <summary>
+    /// Maps raw spot product codes to standardized codes matching futures
+    /// Ensures consistency between imported spot and futures data
+    /// </summary>
+    private static string NormalizeSpotProductCode(string rawCode)
+    {
+        if (string.IsNullOrEmpty(rawCode))
+            return rawCode;
+
+        return rawCode.ToUpper().Trim() switch
+        {
+            // Fuel Oil products - map to standard codes
+            "GO/_180" => "FUEL_OIL_180",
+            "GO/_380" => "FUEL_OIL_380",
+            "SG180" => "MOPS_180",
+            "SG380" => "MOPS_380",
+
+            // Marine Fuel products
+            "MF_0.5" => "MARINE_FUEL_05",
+
+            // Crude Oil products - ensure spot and futures use same code
+            "BRENT_CRUDE" => "BRENT_CRUDE",
+            "WTI" => "WTI",
+            "BRT_FUT" => "BRENT_CRUDE",  // Map futures code to base product
+            "BRT_SWP" => "BRENT_CRUDE",  // Map swaps code to base product
+
+            // Gasoline products
+            "92R_BRT" => "GASOLINE_92",
+            "GO_10PPM" => "GASOIL_10PPM",
+
+            // Default: return normalized version
+            _ => NormalizeProductCode(rawCode)
         };
     }
 }

@@ -31,7 +31,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import reportingApi, { ReportDistribution } from '@/services/reportingApi';
 import ReportDistributionForm from './ReportDistributionForm';
-import AlertBanner from '@/components/Common/AlertBanner';
+import { Alert } from '@mui/material';
 
 const ReportDistributionsList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -106,29 +106,23 @@ const ReportDistributionsList: React.FC = () => {
 
   if (isError) {
     return (
-      <AlertBanner
-        message="Error loading distributions"
-        severity="error"
-        onClose={() => {}}
-      />
+      <Alert severity="error">
+        Error loading distributions
+      </Alert>
     );
   }
 
   return (
     <Box sx={{ width: '100%' }}>
       {error && (
-        <AlertBanner
-          message={error}
-          severity="error"
-          onClose={() => setError(null)}
-        />
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
       {success && (
-        <AlertBanner
-          message={success}
-          severity="success"
-          onClose={() => setSuccess(null)}
-        />
+        <Alert severity="success" onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
       )}
 
       <Card sx={{ mb: 2 }}>

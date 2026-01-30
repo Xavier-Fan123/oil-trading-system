@@ -5,6 +5,7 @@ using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace OilTrading.Application.Commands.MarketData;
 
@@ -301,11 +302,12 @@ public class UploadMarketDataCommandHandlerV2 : IRequestHandler<UploadMarketData
     {
         var result = new MarketDataUploadResultDto();
         
-        // Process both 380 and 0.5 sheets
+        // Process futures sheets - ICE Singapore official codes
+        // SG380 = HSFO 380 CST Futures, SG05 = VLSFO 0.5% Futures
         var sheets = new[]
         {
-            ("380 Vol-OI", "380CST"),
-            ("0.5 Vol-OI", "VLSFO")
+            ("380 Vol-OI", "SG380"),
+            ("0.5 Vol-OI", "SG05")
         };
         
         foreach (var (sheetName, productBase) in sheets)
@@ -363,21 +365,29 @@ public class UploadMarketDataCommandHandlerV2 : IRequestHandler<UploadMarketData
                 var contractHeader = worksheet.Cell(1, colIndex).GetString();
                 if (string.IsNullOrEmpty(contractHeader))
                     continue;
-                
-                var contractMonth = ExtractContractMonth(contractHeader);
+
+                // Use new parser that supports both Platts MOPS format ("SG380 2511") and ICE format
+                var (productCode, contractMonth) = ParseProductCodeAndMonth(contractHeader);
                 if (string.IsNullOrEmpty(contractMonth))
+                {
+                    _logger.LogWarning("Could not extract contract month from header: '{Header}', skipping column {ColIndex}",
+                        contractHeader, colIndex);
                     continue;
-                
+                }
+
                 var priceCell = worksheet.Cell(row, colIndex);
                 if (!TryParsePrice(priceCell, out var price) || price <= 0)
                     continue;
-                
-                var productCode = $"ICE_{productBase}_{contractMonth}";
-                
+
+                // ProductCode is now clean base code (e.g., "SG380" not "SG380_202511")
+                // ContractMonth is separate field (e.g., "202511")
+                _logger.LogDebug("Processing futures price: ProductCode='{ProductCode}', ContractMonth='{ContractMonth}', Price={Price}",
+                    productCode, contractMonth, price);
+
                 // Check existing
                 var existingPrice = await _marketDataRepository.GetByProductAndDateAsync(
                     productCode, priceDate, cancellationToken);
-                
+
                 if (existingPrice != null)
                 {
                     if (Math.Abs(existingPrice.Price - price) > 0.0001m)
@@ -389,23 +399,20 @@ public class UploadMarketDataCommandHandlerV2 : IRequestHandler<UploadMarketData
                 }
                 else
                 {
-                    var marketPrice = new MarketPrice
-                    {
-                        PriceDate = priceDate,
-                        ProductCode = productCode,
-                        ProductName = $"ICE {productBase} {contractMonth}",
-                        PriceType = MarketPriceType.FuturesSettlement,
-                        Price = price,
-                        Currency = "USD",
-                        ContractMonth = contractMonth,
-                        Source = contractHeader,
-                        DataSource = "ICE Settlement",
-                        IsSettlement = true,
-                        ImportedAt = DateTime.UtcNow,
-                        ImportedBy = uploadedBy
-                    };
-                    marketPrice.SetId(Guid.NewGuid());
-                    marketPrice.SetCreated(uploadedBy, DateTime.UtcNow);
+                    var marketPrice = MarketPrice.Create(
+                        priceDate,
+                        productCode,                          // Clean base code: "SG380"
+                        $"{productCode} {contractMonth}",     // Display name: "SG380 202511"
+                        MarketPriceType.FuturesSettlement,
+                        price,
+                        "USD",
+                        contractHeader,                       // Original column header
+                        "ICE Settlement",
+                        true,
+                        DateTime.UtcNow,
+                        uploadedBy,
+                        contractMonth,                        // Separate contract month field
+                        GetRegionFromProductCode(productCode));
                     pricesToCreate.Add(marketPrice);
                 }
             }
@@ -551,23 +558,20 @@ public class UploadMarketDataCommandHandlerV2 : IRequestHandler<UploadMarketData
         string uploadedBy,
         MarketPriceType priceType)
     {
-        var marketPrice = new MarketPrice
-        {
-            PriceDate = priceDate,
-            ProductCode = productInfo.Code,
-            ProductName = productInfo.Name,
-            PriceType = priceType,
-            Price = price,
-            Currency = "USD",
-            Source = source,
-            DataSource = "Upload",
-            IsSettlement = priceType == MarketPriceType.FuturesSettlement,
-            ImportedAt = DateTime.UtcNow,
-            ImportedBy = uploadedBy
-        };
-        marketPrice.SetId(Guid.NewGuid());
-        marketPrice.SetCreated(uploadedBy, DateTime.UtcNow);
-        return marketPrice;
+        return MarketPrice.Create(
+            priceDate,
+            productInfo.Code,
+            productInfo.Name,
+            priceType,
+            price,
+            "USD",
+            source,
+            "Upload",
+            priceType == MarketPriceType.FuturesSettlement,
+            DateTime.UtcNow,
+            uploadedBy,
+            null,  // contractMonth (will be set if futures)
+            GetRegionFromProductCode(productInfo.Code));  // region based on product code
     }
     
     private string ExtractContractMonth(string header)
@@ -583,6 +587,101 @@ public class UploadMarketDataCommandHandlerV2 : IRequestHandler<UploadMarketData
             }
         }
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Parses product code and contract month from CSV column headers
+    /// Supports multiple formats:
+    /// 1. Platts MOPS format: "SG380 2511" -> ProductCode="SG380", ContractMonth="202511"
+    /// 2. ICE format: "FUEL OIL - 380CST - AUG25" -> ProductCode="FUEL OIL - 380CST", ContractMonth="AUG25"
+    /// 3. Plain format: "BRENT" -> ProductCode="BRENT", ContractMonth=null
+    /// </summary>
+    private (string ProductCode, string? ContractMonth) ParseProductCodeAndMonth(string header)
+    {
+        if (string.IsNullOrWhiteSpace(header))
+            return (header ?? string.Empty, null);
+
+        var trimmedHeader = header.Trim();
+
+        // Strategy 1: Platts MOPS format "PRODUCT YYMM" (e.g., "SG380 2511", "GO 10ppm 2601")
+        // Pattern: Product name followed by space and exactly 4 digits (YYMM)
+        var plattsMatch = Regex.Match(trimmedHeader, @"^(.+?)\s+(\d{4})$");
+        if (plattsMatch.Success)
+        {
+            var baseProduct = plattsMatch.Groups[1].Value.Trim();
+            var yymm = plattsMatch.Groups[2].Value;
+
+            // Validate month (01-12)
+            if (int.TryParse(yymm.Substring(0, 2), out var year) &&
+                int.TryParse(yymm.Substring(2, 2), out var month) &&
+                month >= 1 && month <= 12)
+            {
+                // Convert YYMM to YYYYMM format
+                var fullYear = 2000 + year;
+                var contractMonth = $"{fullYear:0000}{month:00}";
+
+                _logger.LogInformation("Parsed Platts MOPS format: '{Header}' -> ProductCode='{ProductCode}', ContractMonth='{ContractMonth}'",
+                    trimmedHeader, baseProduct, contractMonth);
+
+                return (baseProduct, contractMonth);
+            }
+        }
+
+        // Strategy 2: ICE format "PRODUCT - MONTH" (existing ExtractContractMonth logic)
+        var extractedMonth = ExtractContractMonth(trimmedHeader);
+        if (!string.IsNullOrEmpty(extractedMonth))
+        {
+            // Extract base product by removing the contract month from the header
+            var baseProduct = trimmedHeader.Replace(extractedMonth, "").Trim(' ', '-');
+
+            _logger.LogInformation("Parsed ICE format: '{Header}' -> ProductCode='{ProductCode}', ContractMonth='{ContractMonth}'",
+                trimmedHeader, baseProduct, extractedMonth);
+
+            return (baseProduct, extractedMonth);
+        }
+
+        // Strategy 3: No month detected - return header as-is with no contract month
+        _logger.LogDebug("No contract month pattern found in header: '{Header}'", trimmedHeader);
+        return (trimmedHeader, null);
+    }
+
+    /// <summary>
+    /// Extracts region from product code for spot prices
+    /// Singapore: MOPS_* and SING_* prefixes
+    /// Dubai: DUBAI prefix
+    /// Futures: null (exchange-traded, no physical region)
+    /// </summary>
+    private static string? GetRegionFromProductCode(string productCode)
+    {
+        if (string.IsNullOrEmpty(productCode))
+            return null;
+
+        // Singapore region - MOPS and SING prefixes
+        if (productCode.StartsWith("MOPS_", StringComparison.OrdinalIgnoreCase) ||
+            productCode.StartsWith("SING_", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Singapore";
+        }
+
+        // Dubai region - DUBAI prefix
+        if (productCode.StartsWith("DUBAI", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Dubai";
+        }
+
+        // Futures products - ICE Singapore codes (exchange-traded, no physical region)
+        // Legacy: ICE_, IPE_, DME_ prefixes
+        // Current: SG380, SG05, etc.
+        if (productCode.StartsWith("ICE_", StringComparison.OrdinalIgnoreCase) ||
+            productCode.StartsWith("IPE_", StringComparison.OrdinalIgnoreCase) ||
+            productCode.StartsWith("DME_", StringComparison.OrdinalIgnoreCase) ||
+            productCode.StartsWith("SG", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // Default: null (unknown or futures)
+        return null;
     }
     
     private async Task SaveBatch(

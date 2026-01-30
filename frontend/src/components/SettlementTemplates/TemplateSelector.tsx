@@ -18,7 +18,7 @@ import {
   Checkbox,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
-import { templateApi, SettlementTemplate, SettlementTemplateSummary } from '@/services/templateApi';
+import { templateApi, SettlementTemplate } from '@/services/templateApi';
 import { TemplatePreview } from './TemplatePreview';
 
 interface TemplateSelectorProps {

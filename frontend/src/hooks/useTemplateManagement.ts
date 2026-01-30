@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { templateApi, SettlementTemplate, CreateTemplateRequest, UpdateTemplateRequest, PagedResult, SettlementTemplateSummary } from '@/services/templateApi';
-import { SettlementTemplateConfig, defaultTemplateConfig } from '@/types/templates';
+import { templateApi, SettlementTemplate, CreateTemplateRequest, UpdateTemplateRequest } from '@/services/templateApi';
+import { SettlementTemplateConfig } from '@/types/templates';
 
 export interface UseTemplateManagementOptions {
   autoFetch?: boolean;

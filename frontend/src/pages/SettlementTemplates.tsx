@@ -8,17 +8,17 @@ import {
   Dialog,
   DialogTitle,
   Divider,
-  Grid,
+  
   LinearProgress,
   Paper,
-  Tab,
+  
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
+  
   TextField,
   Typography,
   Alert,
@@ -34,8 +34,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Share as ShareIcon,
-  MoreVert as MoreVertIcon,
-  FileDownload as DownloadIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import { useTemplateManagement } from '@/hooks/useTemplateManagement';
 import { TemplateForm } from '@/components/SettlementTemplates/TemplateForm';

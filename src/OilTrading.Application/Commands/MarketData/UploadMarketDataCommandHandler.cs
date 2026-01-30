@@ -119,23 +119,36 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
         {
             _logger.LogError(ex, "Error processing market data upload");
             result.Success = false;
-            result.Errors.Add($"Error: {ex.Message}");
+
+            // Log inner exception details for better debugging
+            var errorMsg = $"Error: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMsg += $" | Inner: {ex.InnerException.Message}";
+                _logger.LogError(ex.InnerException, "Inner exception details");
+            }
+
+            result.Errors.Add(errorMsg);
         }
         
         return result;
     }
     
     private async Task<MarketDataUploadResultDto> ProcessDailyPrices(
-        IXLWorkbook workbook, 
+        IXLWorkbook workbook,
         string uploadedBy,
         CancellationToken cancellationToken)
     {
         var result = new MarketDataUploadResultDto();
-        
-        // Try to find the worksheet with different possible names - Origin is the primary sheet name
-        var possibleNames = new[] { "Origin", "originfile", "Daily Prices", "Daily", "Prices", "MOPS", "Sheet1" };
+
+        // STEP 1: Find the Daily Prices worksheet (supports both Origin format and Daily Prices format)
+        var possibleNames = new[]
+        {
+            "2025 Daily MOPS_new",  // Latest Daily Prices format
+            "Origin", "originfile", "Daily Prices", "Daily", "Prices", "MOPS", "Sheet1"
+        };
         IXLWorksheet? worksheet = null;
-        
+
         foreach (var name in possibleNames)
         {
             try
@@ -152,133 +165,425 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                 continue;
             }
         }
-        
+
         if (worksheet == null)
         {
             var availableSheets = string.Join(", ", workbook.Worksheets.Select(w => w.Name));
             result.Errors.Add($"Daily Prices worksheet not found. Expected names: {string.Join(", ", possibleNames)}. Available worksheets: {availableSheets}");
             return result;
         }
-        
-        // Map column headers to product codes
-        var columnMappings = new Dictionary<int, string>();
-        var headerRow = 1; // Row 1 contains column headers
-        
-        // Scan the header row to find product columns (starting from column C/3)
-        for (int col = 3; col <= 29; col++) // Up to column AC
-        {
-            var headerCell = worksheet.Cell(headerRow, col);
-            var headerValue = headerCell.GetString();
-            if (!string.IsNullOrEmpty(headerValue) && _productMappings.ContainsKey(headerValue))
-            {
-                columnMappings[col] = headerValue;
-                _logger.LogDebug("Found product column: {Product} at column {Column}", headerValue, col);
-            }
-        }
-        
+
+        // STEP 2: Extract and map product headers from Row 1
+        // Build intelligent product mapping from actual Excel headers
+        var columnMappings = BuildSpotPriceColumnMappings(worksheet);
+
         if (columnMappings.Count == 0)
         {
-            result.Errors.Add("No valid product columns found in the worksheet");
+            result.Errors.Add("No valid product columns found in the worksheet. Column headers should contain product names like 'MOPS FO 380cst FOB Sg', 'Naphtha FOB Sing Cargo', etc.");
             return result;
         }
-        
-        // Find the last row with data
+
+        _logger.LogInformation("Identified {ProductCount} product columns for spot price import", columnMappings.Count);
+
+        // STEP 3: Find the last row with data
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
-        var startRow = 3; // Data starts from row 3 (row 1 is headers, row 2 is "Trade Close")
-        
+        var startRow = 3; // Data starts from row 3 (row 1 is headers, row 2 is "Average"/metadata)
+
         if (lastRow < startRow)
         {
             result.Messages.Add("No data rows found in the worksheet");
             return result;
         }
-        
-        // Process last 5 days of data (or all available data if less) - reduced for testing
-        var rowsToProcess = Math.Min(5, lastRow - startRow + 1);
+
+        // STEP 4: Process all available data (or configurable limit)
+        var rowsToProcess = Math.Min(500, lastRow - startRow + 1); // Process up to 500 days
         var firstRowToProcess = lastRow - rowsToProcess + 1;
-        
-        _logger.LogInformation("Processing rows {FirstRow} to {LastRow} ({RowCount} rows)", 
-            firstRowToProcess, lastRow, rowsToProcess);
-        
-        // Process each data row
+
+        _logger.LogInformation("Processing {RowCount} rows of daily spot prices (rows {FirstRow} to {LastRow})",
+            rowsToProcess, firstRowToProcess, lastRow);
+
+        // STEP 5: Process each data row with batch commit logic
+        var recordsToAdd = new List<MarketPrice>();
+        const int BATCH_COMMIT_SIZE = 50; // Commit every 50 product-date combinations
+
         for (int row = firstRowToProcess; row <= lastRow; row++)
         {
-            var dateCell = worksheet.Cell(row, 2); // Column B has timestamps
+            // Get date from Column B
+            var dateCell = worksheet.Cell(row, 2);
             if (!DateTime.TryParse(dateCell.GetString(), out var priceDate))
             {
-                _logger.LogWarning("Skipping row {Row}: Invalid date format", row);
+                _logger.LogWarning("Skipping row {Row}: Invalid date format in column B", row);
+                result.RecordsSkipped++;
                 continue;
             }
-            
+
             // Process each product column for this date
-            foreach (var (colIndex, originalCode) in columnMappings)
+            foreach (var (colIndex, productMapping) in columnMappings)
             {
                 var priceCell = worksheet.Cell(row, colIndex);
-                if (priceCell.TryGetValue<decimal>(out var price) && price > 0)
+
+                // Try to parse price as decimal
+                if (!TryParsePrice(priceCell, out var price) || price <= 0)
                 {
-                    if (_productMappings.TryGetValue(originalCode, out var productInfo))
+                    continue; // Skip empty or invalid prices
+                }
+
+                // Check if price already exists for this date and product (Spot prices only)
+                // Use GetSpotPriceAsync which properly checks the UNIQUE index constraint:
+                // (ProductCode, ContractMonth, PriceDate, PriceType)
+                // For Spot prices: ContractMonth=null, PriceType=Spot
+                var existingPrice = await _marketDataRepository.GetSpotPriceAsync(
+                    productMapping.ProductCode, priceDate, cancellationToken);
+
+                if (existingPrice != null)
+                {
+                    // Update existing price if different
+                    if (Math.Abs(existingPrice.Price - price) > 0.001m)
                     {
-                        // Check if price already exists for this date and product
-                        var existingPrice = await _marketDataRepository.GetByProductAndDateAsync(
-                            productInfo.Code, priceDate, cancellationToken);
-                        
-                        if (existingPrice != null)
-                        {
-                            // Update existing price if different
-                            if (existingPrice.Price != price)
-                            {
-                                existingPrice.Price = price;
-                                existingPrice.SetUpdatedBy(uploadedBy);
-                                await _marketDataRepository.UpdateAsync(existingPrice, cancellationToken);
-                                result.RecordsUpdated++;
-                            }
-                        }
-                        else
-                        {
-                            // Create new price record
-                            var marketPrice = new MarketPrice
-                            {
-                                PriceDate = priceDate,
-                                ProductCode = productInfo.Code,
-                                ProductName = productInfo.Name,
-                                PriceType = MarketPriceType.Spot,
-                                Price = price,
-                                Currency = "USD",
-                                Source = originalCode,
-                                DataSource = "Daily Prices Upload",
-                                IsSettlement = false,
-                                ImportedAt = DateTime.UtcNow,
-                                ImportedBy = uploadedBy
-                            };
-                            marketPrice.SetId(Guid.NewGuid());
-                            marketPrice.SetCreated(uploadedBy, DateTime.UtcNow);
-                            
-                            await _marketDataRepository.AddAsync(marketPrice, cancellationToken);
-                            result.RecordsCreated++;
-                            
-                            // Add to imported prices list (limit to first 100 for response)
-                            if (result.ImportedPrices.Count < 100)
-                            {
-                                result.ImportedPrices.Add(new MarketPriceDto
-                                {
-                                    Id = marketPrice.Id,
-                                    PriceDate = marketPrice.PriceDate,
-                                    ProductCode = marketPrice.ProductCode,
-                                    ProductName = marketPrice.ProductName,
-                                    Price = marketPrice.Price,
-                                    Currency = marketPrice.Currency,
-                                    PriceType = "Spot"
-                                });
-                            }
-                        }
-                        
-                        result.RecordsProcessed++;
+                        existingPrice.Price = price;
+                        existingPrice.SetUpdatedBy(uploadedBy);
+                        await _marketDataRepository.UpdateAsync(existingPrice, cancellationToken);
+                        result.RecordsUpdated++;
+                        _logger.LogDebug("Updated {Product} price on {Date}: {Price}",
+                            productMapping.ProductCode, priceDate.ToString("yyyy-MM-dd"), price);
                     }
                 }
+                else
+                {
+                    // CRITICAL: Check if this product/date is already in the batch to avoid UNIQUE constraint violations
+                    // This handles the case where the same product appears multiple times in the Excel file
+                    var isDuplicateInBatch = recordsToAdd.Any(r =>
+                        r.ProductCode == productMapping.ProductCode &&
+                        r.PriceDate.Date == priceDate.Date &&
+                        string.IsNullOrEmpty(r.ContractMonth) &&
+                        r.PriceType == MarketPriceType.Spot);
+
+                    if (isDuplicateInBatch)
+                    {
+                        result.Errors.Add($"Skipped duplicate entry in Excel file: {productMapping.ProductCode} on {priceDate:yyyy-MM-dd}");
+                        _logger.LogWarning("Skipped duplicate in batch: {Product} on {Date}",
+                            productMapping.ProductCode, priceDate.ToString("yyyy-MM-dd"));
+                    }
+                    else
+                    {
+                        // Create new price record (batch)
+                        var marketPrice = MarketPrice.Create(
+                            priceDate,
+                            productMapping.ProductCode,
+                            productMapping.ProductName,
+                            MarketPriceType.Spot,
+                            price,
+                            "USD",
+                            productMapping.HeaderText,
+                            "Daily Prices Upload",
+                            false,
+                            DateTime.UtcNow,
+                            uploadedBy,
+                            null); // Spot prices don't have contract months
+
+                        // Set unit if available
+                        if (!string.IsNullOrEmpty(productMapping.Unit))
+                        {
+                            if (Enum.TryParse<MarketPriceUnit>(productMapping.Unit, out var unit))
+                            {
+                                marketPrice.Unit = unit;
+                            }
+                        }
+
+                        recordsToAdd.Add(marketPrice);
+                        result.RecordsCreated++;
+
+                        // Add to imported prices list (limit to first 100 for response)
+                        if (result.ImportedPrices.Count < 100)
+                        {
+                            result.ImportedPrices.Add(new MarketPriceDto
+                            {
+                                Id = marketPrice.Id,
+                                PriceDate = marketPrice.PriceDate,
+                                ProductCode = marketPrice.ProductCode,
+                                ProductName = marketPrice.ProductName,
+                                Price = marketPrice.Price,
+                                Currency = marketPrice.Currency,
+                                PriceType = "Spot"
+                            });
+                        }
+                    }
+
+                    // Batch commit
+                    if (recordsToAdd.Count >= BATCH_COMMIT_SIZE)
+                    {
+                        foreach (var record in recordsToAdd)
+                        {
+                            await _marketDataRepository.AddAsync(record, cancellationToken);
+                        }
+                        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                        recordsToAdd.Clear();
+                        _logger.LogDebug("Committed batch of {Count} new price records", BATCH_COMMIT_SIZE);
+                    }
+                }
+
+                result.RecordsProcessed++;
             }
         }
-        
-        result.Messages.Add($"Processed {rowsToProcess} days of daily prices");
+
+        // Commit remaining records
+        if (recordsToAdd.Count > 0)
+        {
+            foreach (var record in recordsToAdd)
+            {
+                await _marketDataRepository.AddAsync(record, cancellationToken);
+            }
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _logger.LogDebug("Committed final batch of {Count} price records", recordsToAdd.Count);
+            recordsToAdd.Clear();
+        }
+
+        result.Messages.Add($"Successfully processed {rowsToProcess} days of daily spot prices");
+        result.Messages.Add($"Created {result.RecordsCreated} new price records, updated {result.RecordsUpdated} existing records");
         return result;
+    }
+
+    /// <summary>
+    /// Builds intelligent column mappings by analyzing Excel headers using oil trading expertise
+    /// Maps display headers to standardized product codes while preserving unit information
+    /// </summary>
+    private Dictionary<int, (string ProductCode, string ProductName, string HeaderText, string? Unit)> BuildSpotPriceColumnMappings(
+        IXLWorksheet worksheet)
+    {
+        var mappings = new Dictionary<int, (string ProductCode, string ProductName, string HeaderText, string? Unit)>();
+        var headerRow = 1;
+
+        // Find the last column with data
+        var lastColumn = worksheet.LastColumnUsed()?.ColumnNumber() ?? 50; // Default to 50 if unable to detect
+
+        // Process columns starting from column C (column 3)
+        for (int col = 3; col <= lastColumn; col++)
+        {
+            var headerCell = worksheet.Cell(headerRow, col);
+            var headerText = headerCell.GetString()?.Trim();
+
+            if (string.IsNullOrEmpty(headerText))
+                continue;
+
+            // Intelligent product mapping using oil trading domain knowledge
+            var productMapping = MapSpotPriceHeaderToProduct(headerText);
+
+            if (productMapping != null)
+            {
+                mappings[col] = (productMapping.Value.ProductCode, productMapping.Value.ProductName, headerText, productMapping.Value.Unit);
+
+                _logger.LogDebug(
+                    "Mapped Column {Column}: '{HeaderText}' -> {ProductCode} ({Unit})",
+                    col, headerText, productMapping.Value.ProductCode, productMapping.Value.Unit ?? "N/A");
+            }
+            else
+            {
+                _logger.LogDebug("Skipping unrecognized column {Column}: '{HeaderText}'", col, headerText);
+            }
+        }
+
+        return mappings;
+    }
+
+    /// <summary>
+    /// Expert-level product mapping for spot prices from Daily Prices.xlsx format
+    /// Combines oil trading knowledge with system architecture to create flexible, maintainable mappings
+    ///
+    /// Oil Product Categories:
+    /// - Crude Oils: Brent, WTI, Oman, Dubai, Murban
+    /// - Fuel Oils: 180cst, 380cst, HSFO, LSFO, VLSFO, Heavy Fuel Oil variants
+    /// - Distillates: Gasoil, Gas Oil, Marine Gas Oil (MGO), Jet Kero, Naphtha
+    /// - Gasoline: 92 RON, 95 RON, 97 RON
+    /// - Spreads & Premiums: Contango spreads, 3.5% premiums, arbitrage opportunities
+    /// - Specialty: MTBE, bunker fuel variants, delivered products
+    /// </summary>
+    private (string ProductCode, string ProductName, string? Unit)? MapSpotPriceHeaderToProduct(string headerText)
+    {
+        if (string.IsNullOrEmpty(headerText))
+            return null;
+
+        var normalized = headerText.ToUpperInvariant().Trim();
+
+        // CRUDE OILS - Foundation of oil trading
+        if (normalized.Contains("ICE BRENT FUTURE"))
+            return ("BRENT_CRUDE", "ICE Brent Crude Oil", "BBL");
+        if (normalized.Contains("BRENT 1ST LINE"))
+            return ("BRENT_1ST", "Brent 1st Line", "BBL");
+        if (normalized.Contains("DME OMAN"))
+            return ("OMAN_CRUDE", "DME Oman Crude", "BBL");
+        if (normalized.Contains("DUBAI CRUDE"))
+            return ("DUBAI_CRUDE", "Dubai Crude Oil", "BBL");
+        if (normalized.Contains("MURBAN CRUDE"))
+            return ("MURBAN_CRUDE", "Murban Crude Oil", "BBL");
+
+        // FUEL OILS - Core commodities in shipping/bunker market
+        // Singapore MOPS products - ordered by specificity (most specific first)
+        if (normalized.Contains("MOPS") && (normalized.Contains("MGO") || normalized.Contains("MARINE GAS OIL") || normalized.Contains("MARINE GASOIL")))
+            return ("MOPS_MGO", "MOPS Marine Gas Oil FOB Singapore", "MT");
+        if (normalized.Contains("MOPS") && (normalized.Contains("MARINE FUEL 0.5%") || normalized.Contains("0.5%") || normalized.Contains("VLSFO")))
+            return ("MOPS_MARINE_05", "MOPS Marine Fuel 0.5% (VLSFO)", "MT");
+        if (normalized.Contains("MOPS FO 180CST") && !normalized.Contains("PREMIUM") && !normalized.Contains("HIGH"))
+            return ("MOPS_180", "MOPS FO 180cst FOB Singapore", "MT");
+        if (normalized.Contains("MOPS FO 380CST") && !normalized.Contains("PREMIUM"))
+            return ("MOPS_380", "MOPS FO 380cst FOB Singapore", "MT");
+
+        // Rotterdam products - ordered by specificity (most specific first)
+        if (normalized.Contains("RTDM") && (normalized.Contains("MGO") || normalized.Contains("MARINE GAS OIL") || normalized.Contains("MARINE GASOIL") || normalized.Contains("GASOIL 0.1%")))
+            return ("MGO_RTDM", "Marine Gas Oil FOB Rotterdam", "MT");
+        if (normalized.Contains("MARINE FUEL 0.5%") && normalized.Contains("FOB RTDM"))
+            return ("MARINE_FUEL_05_RTDM", "Marine Fuel 0.5% FOB Rotterdam", "MT");
+        if (normalized.Contains("FUEL OIL 3.5%") && normalized.Contains("FOB RTDM"))
+            return ("FUEL_OIL_35_RTDM", "Fuel Oil 3.5% FOB Rotterdam", "MT");
+
+        // Generic fuel oil products (fallback - less specific)
+        if (normalized.Contains("FUEL OIL 3.5%"))
+            return ("FUEL_OIL_35", "Fuel Oil 3.5%", "MT");
+        if (normalized.Contains("MARINE FUEL 0.5%"))
+            return ("MARINE_FUEL_05", "Marine Fuel 0.5% (VLSFO)", "MT");
+        if (normalized.Contains("HSFO 380") || (normalized.Contains("HSFO") && normalized.Contains("380")))
+            return ("HSFO_380", "High Sulfur Fuel Oil 380cst", "MT");
+        if (normalized.Contains("LSFO") || normalized.Contains("LOW SULFUR"))
+            return ("LSFO_180", "Low Sulfur Fuel Oil 180cst", "MT");
+
+        // GASOIL / DISTILLATES - Major trading hub
+        if (normalized.Contains("IPE GASOIL FUTURES"))
+            return ("GASOIL_FUTURES", "IPE Gasoil Futures", "MT");
+        if (normalized.Contains("IPE GASOIL 1ST LINE"))
+            return ("GASOIL_1ST", "IPE Gasoil 1st Line", "MT");
+        if (normalized.Contains("GAS OIL 10PPM"))
+            return ("GO_10PPM", "Gas Oil 10ppm", "BBL");
+        if (normalized.Contains("GAS OIL 50PPM"))
+            return ("GO_50PPM", "Gas Oil 50ppm", "BBL");
+        if (normalized.Contains("GAS OIL 500PPM"))
+            return ("GO_500PPM", "Gas Oil 500ppm", "BBL");
+        if (normalized.Contains("GASOIL") && !normalized.Contains("PREMIUM"))
+            return ("GASOIL", "Gasoil", "MT");
+
+        // JET / KEROSENE
+        if (normalized.Contains("JET KERO") || normalized.Contains("JET KEROSENE"))
+            return ("JET_KERO", "Jet Kerosene", "BBL");
+
+        // NAPHTHA - Petrochemical feedstock
+        if (normalized.Contains("NAPHTHA") && normalized.Contains("JAPAN"))
+            return ("NAPHTHA_JAPAN", "Naphtha C+F Japan", "MT");
+        if (normalized.Contains("NAPHTHA") && normalized.Contains("SING"))
+            return ("NAPHTHA_SING", "Naphtha FOB Singapore", "BBL");
+        if (normalized.Contains("NAPHTHA"))
+            return ("NAPHTHA", "Naphtha", "MT");
+
+        // GASOLINE - Refined product market
+        if (normalized.Contains("GASOLINE 92"))
+            return ("GASOLINE_92", "Gasoline 92 RON FOB Singapore", "BBL");
+        if (normalized.Contains("GASOLINE 95"))
+            return ("GASOLINE_95", "Gasoline 95 RON FOB Singapore", "BBL");
+        if (normalized.Contains("GASOLINE 97"))
+            return ("GASOLINE_97", "Gasoline 97 RON FOB Singapore", "BBL");
+
+        // SPECIALTY PRODUCTS
+        if (normalized.Contains("MTBE"))
+            return ("MTBE", "MTBE FOB Singapore", "MT");
+        if (normalized.Contains("MOPJ"))
+            return ("MOPJ", "MOPS Japan", "MT");
+        if (normalized.Contains("VISCO"))
+            return ("MOPS_VISCO", "MOPS Viscosity", "MT");
+
+        // BUNKER PRODUCTS - Delivered variants with product differentiation
+        // Hong Kong market bunker products (ordered by specificity - most specific first)
+        if (normalized.Contains("HK") && (normalized.Contains("MGO") || normalized.Contains("MARINE GAS OIL") || normalized.Contains("MARINE GASOIL")))
+            return ("MGO_HK", "Marine Gas Oil Delivered Hong Kong", "MT");
+        if (normalized.Contains("HK") && (normalized.Contains("VLSFO") || normalized.Contains("0.5") || normalized.Contains("LOW SULFUR") || normalized.Contains("LSFO")))
+            return ("VLSFO_HK", "VLSFO 0.5% Delivered Hong Kong", "MT");
+        if (normalized.Contains("HK") && (normalized.Contains("HSFO") || normalized.Contains("380") || normalized.Contains("HIGH SULFUR")))
+            return ("HSFO_HK", "HSFO 380 Delivered Hong Kong", "MT");
+        if (normalized.Contains("BUNKER") && normalized.Contains("HK"))
+            return ("BUNKER_HK", "Bunker Fuel Delivered Hong Kong", "MT");
+
+        // Singapore market bunker products
+        if (normalized.Contains("SPORE") && (normalized.Contains("MGO") || normalized.Contains("MARINE GAS OIL")))
+            return ("MGO_SPORE", "Marine Gas Oil Delivered Singapore", "MT");
+        if (normalized.Contains("SPORE") && (normalized.Contains("VLSFO") || normalized.Contains("0.5")))
+            return ("VLSFO_SPORE", "VLSFO 0.5% Delivered Singapore", "MT");
+        if (normalized.Contains("BUNKER") && normalized.Contains("SPORE"))
+            return ("BUNKER_SPORE", "Bunker Fuel Delivered Singapore", "MT");
+
+        // MOP ARAB GULF VARIANTS - Middle East trading hub (ordered by specificity)
+        if ((normalized.Contains("MOPAG") || normalized.Contains("MOP ARAB GULF") || normalized.Contains("ARAB GULF")) && (normalized.Contains("MGO") || normalized.Contains("MARINE GAS OIL") || normalized.Contains("MARINE GASOIL")))
+            return ("MOPAG_MGO", "MOP Arab Gulf Marine Gas Oil", "MT");
+        if ((normalized.Contains("MOPAG") || normalized.Contains("MOP ARAB GULF") || normalized.Contains("ARAB GULF")) && (normalized.Contains("VLSFO") || normalized.Contains("0.5%") || normalized.Contains("MARINE FUEL 0.5")))
+            return ("MOPAG_VLSFO", "MOP Arab Gulf VLSFO 0.5%", "MT");
+        if (normalized.Contains("MOP ARAB GULF 180CST") || normalized.Contains("MOPAG 180"))
+            return ("MOPAG_180", "MOP Arab Gulf 180cst", "MT");
+        if (normalized.Contains("MOP ARAB GULF 380CST") || normalized.Contains("MOPAG 380"))
+            return ("MOPAG_380", "MOP Arab Gulf 380cst", "MT");
+        if (normalized.Contains("MOPAG 2500PPM"))
+            return ("MOPAG_2500", "MOP Arab Gulf 2500ppm", "MT");
+        if (normalized.Contains("MOPAG"))
+            return ("MOPAG", "MOP Arab Gulf", "MT");
+
+        // SPREADS & ARBITRAGE PRODUCTS - Advanced trading strategies
+        if (normalized.Contains("MOPS 10PPM") && normalized.Contains("MOPAG 2500PPM"))
+            return ("SPREAD_GO_MOPAG", "Spread: MOPS 10ppm vs MOPAG 2500ppm", "MT");
+        if (normalized.Contains("MOPAG 380") && normalized.Contains("MOPS 380"))
+            return ("SPREAD_ARAB_GULF", "Spread: MOP Arab Gulf 380 vs MOPS 380", "MT");
+        if (normalized.Contains("MOPAG 180") && normalized.Contains("MOPS 380"))
+            return ("SPREAD_MOPAG_MOPS", "Spread: MOP Arab Gulf 180 vs MOPS 380", "MT");
+        if (normalized.Contains("FO 180") && normalized.Contains("PREMIUM"))
+            return ("PREMIUM_FO180", "FO 180 3.5% Premium", "MT");
+        if (normalized.Contains("FO 380") && normalized.Contains("PREMIUM"))
+            return ("PREMIUM_FO380", "FO 380 3.5% Premium", "MT");
+        if (normalized.Contains("MARINE FUEL") && normalized.Contains("PREMIUM"))
+            return ("PREMIUM_MF", "Marine Fuel 0.5% Premium", "MT");
+        if (normalized.Contains("GASOIL 10PPM") && normalized.Contains("PREMIUM"))
+            return ("PREMIUM_GO10", "Gasoil 10ppm Premium", "MT");
+        if (normalized.Contains("MOPS/MOPJ"))
+            return ("SPREAD_MOPS_MOPJ", "Spread: MOPS vs MOPS Japan", "MT");
+
+        // Fallback: Try to extract first meaningful word as product code
+        _logger.LogWarning("No explicit mapping found for header: {HeaderText}. Attempting generic mapping.", headerText);
+
+        // Generic mapping for unrecognized products
+        var genericCode = normalized
+            .Split(new[] { ' ', '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?
+            .Replace("/", "_")
+            .Replace("-", "_");
+
+        if (!string.IsNullOrEmpty(genericCode) && genericCode.Length > 3)
+        {
+            return (genericCode, headerText, null);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Parse price value from Excel cell, handling both decimal values and string representations
+    /// </summary>
+    private bool TryParsePrice(IXLCell cell, out decimal price)
+    {
+        price = 0;
+
+        try
+        {
+            // First try direct decimal parsing
+            if (cell.TryGetValue<decimal>(out price))
+            {
+                return true;
+            }
+
+            // Try string parsing
+            var strValue = cell.GetString();
+            if (decimal.TryParse(strValue, out price))
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug("Error parsing price from cell: {Error}", ex.Message);
+        }
+
+        return false;
     }
     
     private async Task<MarketDataUploadResultDto> ProcessICESettlement(
@@ -408,24 +713,21 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                     }
                     else
                     {
-                        var marketPrice = new MarketPrice
-                        {
-                            PriceDate = priceDate,
-                            ProductCode = productCode,
-                            ProductName = productName,
-                            PriceType = MarketPriceType.FuturesSettlement,
-                            Price = price,
-                            Currency = "USD",
-                            ContractMonth = contractMonth,
-                            Source = contractHeader,
-                            DataSource = "ICE Settlement",
-                            IsSettlement = true,
-                            ImportedAt = DateTime.UtcNow,
-                            ImportedBy = uploadedBy
-                        };
-                        marketPrice.SetId(Guid.NewGuid());
-                        marketPrice.SetCreated(uploadedBy, DateTime.UtcNow);
-                        
+                        // Use the contract month already extracted from header (e.g., "AUG25")
+                        var marketPrice = MarketPrice.Create(
+                            priceDate,
+                            productCode,
+                            productName,
+                            MarketPriceType.FuturesSettlement,
+                            price,
+                            "USD",
+                            contractHeader,
+                            "ICE Settlement",
+                            true,
+                            DateTime.UtcNow,
+                            uploadedBy,
+                            contractMonth); // Pass contract month already extracted from header
+
                         await _marketDataRepository.AddAsync(marketPrice, cancellationToken);
                         result.RecordsCreated++;
                         
@@ -476,42 +778,46 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
     {
         var result = new MarketDataUploadResultDto();
         const int MAX_ERRORS = 50;
-        
+
+        // Track dates and products for summary
+        var processedDates = new HashSet<DateTime>();
+        var processedProducts = new HashSet<string>();
+
         try
         {
             // Convert byte array to string
             var csvContent = System.Text.Encoding.UTF8.GetString(request.FileContent);
             var lines = csvContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
+
             if (lines.Length < 2)
             {
                 result.Errors.Add("CSV file must have at least 2 rows (header and data)");
                 return result;
             }
-            
+
             // Parse unified CSV format:
             // Row 0: Date/产品名称1, 产品名称2, ...
             // Row 1+: 日期, 价格1, 价格2, ...
-            
+
             var headerLine = lines[0].Trim();
             var headers = headerLine.Split(',');
-            
+
             if (headers.Length < 2)
             {
                 result.Errors.Add("CSV must have at least 2 columns (Date and one product)");
                 return result;
             }
-            
+
             _logger.LogInformation("Processing unified CSV format with {ColumnCount} columns", headers.Length);
-            
+
             // Build column mappings starting from column 1 (skip Date column)
             var columnMappings = new Dictionary<int, (string ProductCode, string ContractMonth, MarketPriceType PriceType)>();
-            
+
             for (int col = 1; col < headers.Length; col++)
             {
                 var productHeader = headers[col]?.Trim();
                 if (string.IsNullOrEmpty(productHeader)) continue;
-                
+
                 // Analyze product type and extract info
                 var productInfo = AnalyzeProductHeader(productHeader);
                 if (productInfo != null)
@@ -525,22 +831,22 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                     _logger.LogWarning("Could not parse product header: {Header}", productHeader);
                 }
             }
-            
+
             if (columnMappings.Count == 0)
             {
                 result.Errors.Add("No valid product columns found in CSV header");
                 return result;
             }
-            
+
             // Process data rows (starting from row 1)
             for (int rowIndex = 1; rowIndex < lines.Length; rowIndex++)
             {
                 var line = lines[rowIndex].Trim();
                 if (string.IsNullOrWhiteSpace(line)) continue;
-                
+
                 var columns = line.Split(',');
                 if (columns.Length < 2) continue;
-                
+
                 // Parse date from first column
                 var dateStr = columns[0]?.Trim();
                 if (string.IsNullOrEmpty(dateStr) || !DateTime.TryParse(dateStr, out var priceDate))
@@ -548,27 +854,35 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                     _logger.LogWarning("Skipping row {Row}: Invalid date '{Date}'", rowIndex + 1, dateStr);
                     continue;
                 }
-                
+
+                // Track the date
+                processedDates.Add(priceDate.Date);
+
                 // Process each product column
                 foreach (var (colIndex, (productCode, contractMonth, priceType)) in columnMappings)
                 {
                     if (colIndex >= columns.Length) continue;
-                    
+
                     var priceStr = columns[colIndex]?.Trim();
                     if (string.IsNullOrEmpty(priceStr) || !decimal.TryParse(priceStr, out var price) || price <= 0)
                     {
                         continue; // Skip empty or invalid prices
                     }
-                    
+
                     try
                     {
-                        // Create unique key for product+contract combination
-                        var fullProductCode = string.IsNullOrEmpty(contractMonth) ? productCode : $"{productCode}_{contractMonth}";
-                        
+                        // Use clean product code (no underscore concatenation)
+                        // ContractMonth is stored separately in the entity
+                        var fullProductCode = productCode;
+
+                        // Track the product (use unique key for tracking)
+                        var trackingKey = string.IsNullOrEmpty(contractMonth) ? productCode : $"{productCode}_{contractMonth}";
+                        processedProducts.Add(trackingKey);
+
                         // Check if price already exists
                         var existingPrice = await _marketDataRepository.GetByProductAndDateAsync(
                             fullProductCode, priceDate, cancellationToken);
-                        
+
                         if (existingPrice != null)
                         {
                             if (existingPrice.Price != price)
@@ -581,26 +895,23 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                         }
                         else
                         {
-                            var marketPrice = new MarketPrice
-                            {
-                                ProductCode = fullProductCode,
-                                ProductName = GenerateProductName(productCode, contractMonth, priceType),
-                                PriceDate = priceDate,
-                                Price = price,
-                                Currency = "USD",
-                                PriceType = priceType,
-                                ContractMonth = contractMonth,
-                                Source = headers[colIndex],
-                                DataSource = "CSV Upload",
-                                ImportedBy = request.UploadedBy,
-                                ImportedAt = DateTime.UtcNow
-                            };
-                            marketPrice.SetId(Guid.NewGuid());
-                            marketPrice.SetCreated(request.UploadedBy, DateTime.UtcNow);
-                            
+                            var marketPrice = MarketPrice.Create(
+                                priceDate,
+                                productCode,  // Clean product code
+                                GenerateProductName(productCode, contractMonth, priceType),
+                                priceType,
+                                price,
+                                "USD",
+                                headers[colIndex],
+                                "CSV Upload",
+                                false,
+                                DateTime.UtcNow,
+                                request.UploadedBy,
+                                priceType == MarketPriceType.Spot ? null : contractMonth); // Pass contract month for futures
+
                             await _marketDataRepository.AddAsync(marketPrice, cancellationToken);
                             result.RecordsCreated++;
-                            
+
                             // Add to result for preview (limit to first 100)
                             if (result.ImportedPrices.Count < 100)
                             {
@@ -617,14 +928,14 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                                 });
                             }
                         }
-                        
+
                         result.RecordsProcessed++;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error processing price for {Product} on {Date}", productCode, priceDate);
                         result.Errors.Add($"Error processing {productCode} on {priceDate:yyyy-MM-dd}: {ex.Message}");
-                        
+
                         if (result.Errors.Count >= MAX_ERRORS)
                         {
                             result.Errors.Add("Too many errors, stopping processing");
@@ -632,19 +943,31 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                         }
                     }
                 }
-                
+
                 if (result.Errors.Count >= MAX_ERRORS) break;
             }
-            
+
+            // Set date range information
+            if (processedDates.Count > 0)
+            {
+                result.EarliestDate = processedDates.Min();
+                result.LatestDate = processedDates.Max();
+                result.UniqueDatesImported = processedDates.Count;
+            }
+
+            result.UniqueProductsImported = processedProducts.Count;
+
             result.Messages.Add($"Processed {result.RecordsProcessed} price records from unified CSV format");
             result.Messages.Add($"Found {columnMappings.Count} product columns");
+            result.Messages.Add($"Data covers {result.UniqueDatesImported} unique dates from {result.EarliestDate:yyyy-MM-dd} to {result.LatestDate:yyyy-MM-dd}");
+            result.Messages.Add($"Imported {result.UniqueProductsImported} unique products");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing CSV file");
             result.Errors.Add($"CSV processing error: {ex.Message}");
         }
-        
+
         return result;
     }
     
@@ -717,7 +1040,99 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
     {
         // Normalize the product name for mapping
         var normalizedName = productName.ToUpper().Trim();
-        
+
+        // Handle abbreviated product codes from test_data.csv (GO, SG, MF, etc.)
+        // These are market-standard shorthand codes
+        if (normalizedName.StartsWith("GO ") || normalizedName == "GO" || normalizedName.Contains("GO ") && int.TryParse(normalizedName.Substring(3, 2), out _))
+        {
+            // GO 10ppm, GO 50ppm, etc.
+            if (normalizedName.Contains("10"))
+                return "GO_10PPM";
+            if (normalizedName.Contains("50"))
+                return "GO_50PPM";
+            return "GAS_OIL";
+        }
+
+        // Singapore 180/380 products
+        if (normalizedName.StartsWith("SG") || (normalizedName.Contains("SG") && int.TryParse(normalizedName.Substring(2, 3), out _)))
+        {
+            if (normalizedName.Contains("180"))
+                return "SG_180";
+            if (normalizedName.Contains("380"))
+                return "SG_380";
+            return "SINGAPORE";
+        }
+
+        // Marine Fuel products
+        if (normalizedName.StartsWith("MF") || normalizedName.Contains("MARINE FUEL"))
+        {
+            if (normalizedName.Contains("0.5"))
+                return "MARINE_FUEL_05";
+            return "MARINE_FUEL";
+        }
+
+        // MOPJ - MOPS Japan products
+        if (normalizedName.Contains("MOPJ"))
+        {
+            if (normalizedName.Contains("TS"))
+                return "MOPJ_TS";
+            if (normalizedName.Contains("BRT"))
+                return "MOPJ_BRT";
+            return "MOPJ";
+        }
+
+        // 92/95/97 Gasoline products
+        if (normalizedName.StartsWith("92") || normalizedName.Contains("92R"))
+        {
+            if (normalizedName.Contains("TS"))
+                return "GASOLINE_92_TS";
+            if (normalizedName.Contains("BRT"))
+                return "GASOLINE_92_BRT";
+            return "GASOLINE_92";
+        }
+
+        // Kero/GO spread
+        if (normalizedName.Contains("KERO") || normalizedName.Contains("KERO/GO"))
+            return "KERO_GO_SPREAD";
+
+        // Viscosity products (Visco)
+        if (normalizedName.StartsWith("VISCO") || normalizedName.Contains("VISCOSITY"))
+            return "VISCOSITY";
+
+        // GO/180 and GO/380 spreads
+        if (normalizedName.Contains("GO/") && normalizedName.Contains("180"))
+            return "GO_180_SPREAD";
+        if (normalizedName.Contains("GO/") && normalizedName.Contains("380"))
+            return "GO_380_SPREAD";
+
+        // Singapore Hi5
+        if (normalizedName.Contains("SING HI5") || normalizedName.Contains("SING") && normalizedName.Contains("HI5"))
+            return "SING_HI5";
+
+        // Brent Futures/Swaps
+        if (normalizedName.Contains("BRT FUT") || normalizedName.Contains("BRENT FUT"))
+            return "BRENT_FUTURES";
+        if (normalizedName.Contains("BRT SWP") || normalizedName.Contains("BRENT SWP"))
+            return "BRENT_SWAPS";
+
+        // Brent spreads
+        if (normalizedName.Contains("GO BRT"))
+            return "GO_BRENT_SPREAD";
+        if (normalizedName.Contains("380 BRT"))
+            return "FUEL_OIL_380_BRENT_SPREAD";
+        if (normalizedName.Contains("MF") && normalizedName.Contains("BRT"))
+            return "MF_05_BRENT_SPREAD";
+
+        // EFS products (Exchange for Swaps)
+        if (normalizedName.Contains("EFS") || normalizedName.Contains("EXCHANGE FOR SWAP"))
+        {
+            if (normalizedName.Contains("10"))
+                return "GO_10PPM_EFS";
+            if (normalizedName.Contains("0.5"))
+                return "MARINE_05_EFS";
+            return "EFS";
+        }
+
         // Map to standardized product codes with specific handling for similar products
         if (normalizedName.Contains("ICE BRENT") && normalizedName.Contains("FUTURE"))
             return "BRENT";
@@ -800,8 +1215,8 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
         if (priceType == MarketPriceType.FuturesSettlement && !string.IsNullOrEmpty(contractMonth))
         {
             // Parse contract month to readable format
-            if (contractMonth.Length == 6 && 
-                int.TryParse(contractMonth.Substring(0, 4), out var year) && 
+            if (contractMonth.Length == 6 &&
+                int.TryParse(contractMonth.Substring(0, 4), out var year) &&
                 int.TryParse(contractMonth.Substring(4, 2), out var month))
             {
                 var monthName = new DateTime(year, month, 1).ToString("MMM");
@@ -809,7 +1224,34 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
             }
             return $"{productCode} Futures {contractMonth}";
         }
-        
+
         return $"{productCode} Spot";
+    }
+
+    /// <summary>
+    /// Extracts contract month from product code (e.g., "BRT_FUT_202511" -> "NOV25")
+    /// </summary>
+    private string? ExtractContractMonthFromCode(string productCode)
+    {
+        if (string.IsNullOrEmpty(productCode))
+            return null;
+
+        // Try to extract YYYYMM format from product code using regex
+        var match = Regex.Match(productCode, @"(\d{6})$");
+        if (!match.Success)
+            return null;
+
+        var yyyymm = match.Groups[1].Value;
+
+        // Parse YYYYMM format
+        if (!int.TryParse(yyyymm.Substring(0, 4), out var year) ||
+            !int.TryParse(yyyymm.Substring(4, 2), out var month) ||
+            month < 1 || month > 12)
+            return null;
+
+        // Format to MMM-YY (e.g., "NOV25")
+        var monthNames = new[] { "", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+        var yy = year % 100;
+        return $"{monthNames[month]}{yy:D2}";
     }
 }

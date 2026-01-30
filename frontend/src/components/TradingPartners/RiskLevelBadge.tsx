@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Chip, Tooltip } from '@mui/material';
+import { Chip, Tooltip } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import ErrorIcon from '@mui/icons-material/Error';
 import InfoIcon from '@mui/icons-material/Info';

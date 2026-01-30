@@ -21,7 +21,7 @@ public class ReportExecutionConfiguration : IEntityTypeConfiguration<ReportExecu
             .HasDefaultValue("Pending");
 
         builder.Property(e => e.ErrorMessage)
-            .HasColumnType("nvarchar(max)");
+            .HasColumnType("TEXT");
 
         builder.Property(e => e.OutputFilePath)
             .HasMaxLength(512);

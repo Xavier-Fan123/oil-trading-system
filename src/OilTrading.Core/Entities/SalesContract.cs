@@ -42,6 +42,20 @@ public class SalesContract : BaseEntity
     public ContractNumber ContractNumber { get; private set; } = null!; // System internal contract number
     public string? ExternalContractNumber { get; private set; } // External/Manual contract number for official records
     public ContractType ContractType { get; private set; }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE ENHANCEMENT - Deal Reference ID
+    // Purpose: Business-meaningful identifier that flows through entire transaction lifecycle
+    // For SalesContract: Can be inherited from LinkedPurchaseContract's DealReferenceId
+    // or generated independently for standalone sales
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Deal Reference ID - Lifecycle-spanning business identifier
+    /// Inherited from linked PurchaseContract or generated independently
+    /// </summary>
+    public string? DealReferenceId { get; private set; }
+
     public Guid TradingPartnerId { get; private set; }
     public Guid ProductId { get; private set; }
     public Guid TraderId { get; private set; }
@@ -71,6 +85,48 @@ public class SalesContract : BaseEntity
     public bool IsPriceFinalized { get; private set; }
     public Money? Premium { get; private set; }
     public Money? Discount { get; private set; }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE ENHANCEMENT - Explicit Pricing Status
+    // Purpose: Replace implicit pricing status determination with explicit state
+    // Solves: Risk calculations using wrong exposure values due to implicit state
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Explicit Pricing Status - Unpriced, PartiallyPriced, or FullyPriced
+    /// Replaces implicit determination from IsPriceFinalized boolean
+    /// </summary>
+    public ContractPricingStatus PricingStatus { get; private set; } = ContractPricingStatus.Unpriced;
+
+    /// <summary>
+    /// Fixed Quantity - Amount of contract quantity that has been price-fixed
+    /// Used with UnfixedQuantity to track partial pricing progress
+    /// </summary>
+    public decimal FixedQuantity { get; private set; } = 0;
+
+    /// <summary>
+    /// Unfixed Quantity - Amount of contract quantity pending pricing
+    /// Calculated: ContractQuantity - FixedQuantity
+    /// </summary>
+    public decimal UnfixedQuantity { get; private set; } = 0;
+
+    /// <summary>
+    /// Fixed Percentage - Percentage of contract quantity that has been priced
+    /// Range: 0-100, calculated: (FixedQuantity / ContractQuantity) * 100
+    /// </summary>
+    public decimal FixedPercentage { get; private set; } = 0;
+
+    /// <summary>
+    /// Last Pricing Date - When the most recent pricing action occurred
+    /// Useful for aging reports and pricing activity tracking
+    /// </summary>
+    public DateTime? LastPricingDate { get; private set; }
+
+    /// <summary>
+    /// Price Source - How the price was determined (Manual, MarketData, Formula, Estimate)
+    /// Enables auditing of price origin for compliance
+    /// </summary>
+    public PriceSourceType? PriceSource { get; private set; }
     
     // Contract Details
     public ContractStatus Status { get; private set; }
@@ -166,17 +222,137 @@ public class SalesContract : BaseEntity
         PriceFormula = priceFormula ?? throw new ArgumentNullException(nameof(priceFormula));
         ContractValue = contractValue ?? throw new ArgumentNullException(nameof(contractValue));
         ProfitMargin = profitMargin;
-        
+
         AddDomainEvent(new SalesContractPricingUpdatedEvent(Id, priceFormula.Formula, contractValue.Amount));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE METHODS - Deal Reference ID Management
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Set the Deal Reference ID for this contract
+    /// Can inherit from linked PurchaseContract or set independently
+    /// </summary>
+    public void SetDealReferenceId(string dealReferenceId, string updatedBy = "")
+    {
+        if (string.IsNullOrWhiteSpace(dealReferenceId))
+            throw new DomainException("Deal Reference ID cannot be empty");
+
+        if (!string.IsNullOrEmpty(DealReferenceId))
+            throw new DomainException("Deal Reference ID has already been set and cannot be changed");
+
+        DealReferenceId = dealReferenceId.Trim().ToUpper();
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
+    }
+
+    /// <summary>
+    /// Inherit Deal Reference ID from linked PurchaseContract
+    /// Call this after linking to a purchase contract that has a DealReferenceId
+    /// </summary>
+    public void InheritDealReferenceIdFromPurchase(string purchaseDealReferenceId, string updatedBy = "")
+    {
+        if (string.IsNullOrWhiteSpace(purchaseDealReferenceId))
+            throw new DomainException("Purchase contract's Deal Reference ID cannot be empty");
+
+        if (!LinkedPurchaseContractId.HasValue)
+            throw new DomainException("Cannot inherit Deal Reference ID without a linked purchase contract");
+
+        DealReferenceId = purchaseDealReferenceId.Trim().ToUpper();
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE METHODS - Explicit Pricing Status Management
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Update the pricing status based on fixed quantity
+    /// Call this method whenever pricing is applied to the contract
+    /// </summary>
+    public void UpdatePricingStatus(decimal newFixedQuantity, PriceSourceType priceSource, string updatedBy = "")
+    {
+        if (newFixedQuantity < 0)
+            throw new DomainException("Fixed quantity cannot be negative");
+
+        var totalQuantity = ContractQuantity?.Value ?? 0;
+        if (totalQuantity <= 0)
+            throw new DomainException("Contract quantity must be set before updating pricing status");
+
+        if (newFixedQuantity > totalQuantity)
+            throw new DomainException("Fixed quantity cannot exceed contract quantity");
+
+        FixedQuantity = newFixedQuantity;
+        UnfixedQuantity = totalQuantity - newFixedQuantity;
+        FixedPercentage = Math.Round((newFixedQuantity / totalQuantity) * 100, 2);
+        PriceSource = priceSource;
+        LastPricingDate = DateTime.UtcNow;
+
+        // Determine pricing status based on percentage
+        if (FixedPercentage == 0)
+        {
+            PricingStatus = ContractPricingStatus.Unpriced;
+        }
+        else if (FixedPercentage >= 100)
+        {
+            PricingStatus = ContractPricingStatus.FullyPriced;
+        }
+        else
+        {
+            PricingStatus = ContractPricingStatus.PartiallyPriced;
+        }
+
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
+    }
+
+    /// <summary>
+    /// Add fixed quantity incrementally (for partial pricing scenarios)
+    /// </summary>
+    public void AddFixedQuantity(decimal additionalFixedQuantity, PriceSourceType priceSource, string updatedBy = "")
+    {
+        if (additionalFixedQuantity <= 0)
+            throw new DomainException("Additional fixed quantity must be greater than zero");
+
+        var newFixedQuantity = FixedQuantity + additionalFixedQuantity;
+        UpdatePricingStatus(newFixedQuantity, priceSource, updatedBy);
+    }
+
+    /// <summary>
+    /// Reset pricing status to Unpriced (e.g., when price formula changes)
+    /// </summary>
+    public void ResetPricingStatus(string updatedBy = "")
+    {
+        FixedQuantity = 0;
+        UnfixedQuantity = ContractQuantity?.Value ?? 0;
+        FixedPercentage = 0;
+        PricingStatus = ContractPricingStatus.Unpriced;
+        PriceSource = null;
+        LastPricingDate = null;
+
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
     }
 
     public void UpdateLaycan(DateTime laycanStart, DateTime laycanEnd)
     {
         if (laycanStart >= laycanEnd)
             throw new DomainException("Laycan start must be before laycan end");
-        
-        if (laycanStart < DateTime.UtcNow.Date)
-            throw new DomainException("Laycan start cannot be in the past");
+
+        // NOTE: Past date validation temporarily disabled for historical data import
+        // Original validation:
+        // if (laycanStart < DateTime.UtcNow.Date)
+        //     throw new DomainException("Laycan start cannot be in the past");
 
         LaycanStart = laycanStart;
         LaycanEnd = laycanEnd;

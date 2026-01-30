@@ -6,6 +6,8 @@ using OilTrading.Application.Queries.PurchaseContracts;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Common;
 using OilTrading.Application.Services;
+using OilTrading.Core.Enums;
+using OilTrading.Core.Repositories;
 
 namespace OilTrading.Api.Controllers;
 
@@ -17,15 +19,18 @@ public class SalesContractController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<SalesContractController> _logger;
     private readonly IPaymentStatusCalculationService _paymentStatusService;
+    private readonly ISalesContractRepository _salesContractRepository;
 
     public SalesContractController(
         IMediator mediator,
         ILogger<SalesContractController> logger,
-        IPaymentStatusCalculationService paymentStatusService)
+        IPaymentStatusCalculationService paymentStatusService,
+        ISalesContractRepository salesContractRepository)
     {
         _mediator = mediator;
         _logger = logger;
         _paymentStatusService = paymentStatusService ?? throw new ArgumentNullException(nameof(paymentStatusService));
+        _salesContractRepository = salesContractRepository ?? throw new ArgumentNullException(nameof(salesContractRepository));
     }
 
     private string GetCurrentUserName()
@@ -391,4 +396,332 @@ public class SalesContractController : ControllerBase
 
         return Ok(details);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRICING STATUS ENDPOINTS (Data Lineage Enhancement v2.18.0)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Gets the current pricing status for a sales contract.
+    /// Returns detailed pricing information including fixed percentage, price source, and pricing dates.
+    /// </summary>
+    /// <param name="id">Sales contract ID</param>
+    /// <returns>Pricing status details</returns>
+    [HttpGet("{id:guid}/pricing-status")]
+    [ProducesResponseType(typeof(SalesContractPricingStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SalesContractPricingStatusDto>> GetPricingStatus(Guid id)
+    {
+        try
+        {
+            _logger.LogInformation("Getting pricing status for sales contract {ContractId}", id);
+
+            var contract = await _salesContractRepository.GetByIdAsync(id);
+            if (contract == null)
+            {
+                return NotFound(new { error = $"Sales contract {id} not found" });
+            }
+
+            var result = new SalesContractPricingStatusDto
+            {
+                ContractId = contract.Id,
+                ContractNumber = contract.ContractNumber?.Value ?? "",
+                PricingStatus = contract.PricingStatus.ToString(),
+                PricingStatusValue = (int)contract.PricingStatus,
+                FixedPercentage = contract.FixedPercentage,
+                FixedQuantity = contract.FixedQuantity,
+                TotalQuantity = contract.ContractQuantity?.Value ?? 0,
+                UnfixedQuantity = (contract.ContractQuantity?.Value ?? 0) - contract.FixedQuantity,
+                PriceSource = contract.PriceSource.ToString(),
+                PriceSourceValue = (int)contract.PriceSource,
+                LastPricingDate = contract.LastPricingDate,
+                PricingPeriodStart = contract.PricingPeriodStart,
+                PricingPeriodEnd = contract.PricingPeriodEnd,
+                IsPriceFinalized = contract.IsPriceFinalized,
+                CanUpdatePricing = !contract.IsPriceFinalized && contract.Status != Core.Entities.ContractStatus.Completed
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting pricing status for sales contract {ContractId}", id);
+            return StatusCode(500, new { error = "An error occurred while retrieving pricing status: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Updates the pricing status for a sales contract.
+    /// Records a pricing event with quantity fixed and price source.
+    /// </summary>
+    /// <param name="id">Sales contract ID</param>
+    /// <param name="request">Pricing update details</param>
+    /// <returns>Updated pricing status</returns>
+    [HttpPost("{id:guid}/pricing-status")]
+    [ProducesResponseType(typeof(SalesContractPricingStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SalesContractPricingStatusDto>> UpdatePricingStatus(
+        Guid id,
+        [FromBody] UpdateSalesPricingStatusRequestDto request)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Updating pricing status for sales contract {ContractId}: FixedQuantity={FixedQuantity}, Source={Source}",
+                id, request.FixedQuantity, request.PriceSource);
+
+            var contract = await _salesContractRepository.GetByIdAsync(id);
+            if (contract == null)
+            {
+                return NotFound(new { error = $"Sales contract {id} not found" });
+            }
+
+            if (contract.IsPriceFinalized)
+            {
+                return BadRequest(new { error = "Cannot update pricing status for a finalized contract" });
+            }
+
+            if (contract.Status == Core.Entities.ContractStatus.Completed)
+            {
+                return BadRequest(new { error = "Cannot update pricing status for a completed contract" });
+            }
+
+            var priceSource = (PriceSourceType)request.PriceSource;
+            var updatedBy = request.UpdatedBy ?? GetCurrentUserName();
+
+            contract.UpdatePricingStatus(request.FixedQuantity, priceSource, updatedBy);
+            await _salesContractRepository.UpdateAsync(contract);
+
+            _logger.LogInformation(
+                "Updated pricing status for sales contract {ContractId}: Status={Status}, FixedPct={FixedPct}%",
+                id, contract.PricingStatus, contract.FixedPercentage);
+
+            var result = new SalesContractPricingStatusDto
+            {
+                ContractId = contract.Id,
+                ContractNumber = contract.ContractNumber?.Value ?? "",
+                PricingStatus = contract.PricingStatus.ToString(),
+                PricingStatusValue = (int)contract.PricingStatus,
+                FixedPercentage = contract.FixedPercentage,
+                FixedQuantity = contract.FixedQuantity,
+                TotalQuantity = contract.ContractQuantity?.Value ?? 0,
+                UnfixedQuantity = (contract.ContractQuantity?.Value ?? 0) - contract.FixedQuantity,
+                PriceSource = contract.PriceSource.ToString(),
+                PriceSourceValue = (int)contract.PriceSource,
+                LastPricingDate = contract.LastPricingDate,
+                PricingPeriodStart = contract.PricingPeriodStart,
+                PricingPeriodEnd = contract.PricingPeriodEnd,
+                IsPriceFinalized = contract.IsPriceFinalized,
+                CanUpdatePricing = !contract.IsPriceFinalized && contract.Status != Core.Entities.ContractStatus.Completed
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating pricing status for sales contract {ContractId}", id);
+            return StatusCode(500, new { error = "An error occurred while updating pricing status: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Gets sales contracts filtered by pricing status.
+    /// </summary>
+    /// <param name="status">Pricing status filter (1=Unpriced, 2=PartiallyPriced, 3=FullyPriced)</param>
+    /// <param name="page">Page number (default 1)</param>
+    /// <param name="pageSize">Page size (default 20)</param>
+    /// <returns>Paginated list of contracts with the specified pricing status</returns>
+    [HttpGet("by-pricing-status/{status:int}")]
+    [ProducesResponseType(typeof(PagedResult<SalesContractSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PagedResult<SalesContractSummaryDto>>> GetByPricingStatus(
+        int status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            if (status < 1 || status > 3)
+            {
+                return BadRequest(new { error = "Invalid pricing status. Valid values: 1=Unpriced, 2=PartiallyPriced, 3=FullyPriced" });
+            }
+
+            var pricingStatus = (ContractPricingStatus)status;
+            _logger.LogInformation("Getting sales contracts with pricing status {Status}", pricingStatus);
+
+            // Use the standard query and filter by pricing status
+            var query = new GetSalesContractsQuery
+            {
+                Page = page,
+                PageSize = pageSize * 10 // Fetch more to filter
+            };
+
+            var allContracts = await _mediator.Send(query);
+            var filteredItems = allContracts.Items
+                .Where(c => c.PricingStatus == pricingStatus.ToString())
+                .Take(pageSize)
+                .ToList();
+
+            // Use fully-qualified name to avoid conflict with SettlementController's local PagedResult
+            var result = new OilTrading.Application.Common.PagedResult<SalesContractSummaryDto>(
+                filteredItems,
+                filteredItems.Count,
+                page,
+                pageSize);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting sales contracts by pricing status {Status}", status);
+            return StatusCode(500, new { error = "An error occurred while retrieving contracts: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Resets the pricing status for a sales contract to Unpriced.
+    /// Use with caution - this clears the fixed quantity and percentage.
+    /// </summary>
+    /// <param name="id">Sales contract ID</param>
+    /// <returns>Updated pricing status</returns>
+    [HttpPost("{id:guid}/pricing-status/reset")]
+    [ProducesResponseType(typeof(SalesContractPricingStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SalesContractPricingStatusDto>> ResetPricingStatus(Guid id)
+    {
+        try
+        {
+            _logger.LogWarning("Resetting pricing status for sales contract {ContractId}", id);
+
+            var contract = await _salesContractRepository.GetByIdAsync(id);
+            if (contract == null)
+            {
+                return NotFound(new { error = $"Sales contract {id} not found" });
+            }
+
+            if (contract.IsPriceFinalized)
+            {
+                return BadRequest(new { error = "Cannot reset pricing status for a finalized contract" });
+            }
+
+            if (contract.Status == Core.Entities.ContractStatus.Completed)
+            {
+                return BadRequest(new { error = "Cannot reset pricing status for a completed contract" });
+            }
+
+            contract.ResetPricingStatus(GetCurrentUserName());
+            await _salesContractRepository.UpdateAsync(contract);
+
+            _logger.LogInformation("Reset pricing status for sales contract {ContractId}", id);
+
+            var result = new SalesContractPricingStatusDto
+            {
+                ContractId = contract.Id,
+                ContractNumber = contract.ContractNumber?.Value ?? "",
+                PricingStatus = contract.PricingStatus.ToString(),
+                PricingStatusValue = (int)contract.PricingStatus,
+                FixedPercentage = contract.FixedPercentage,
+                FixedQuantity = contract.FixedQuantity,
+                TotalQuantity = contract.ContractQuantity?.Value ?? 0,
+                UnfixedQuantity = (contract.ContractQuantity?.Value ?? 0) - contract.FixedQuantity,
+                PriceSource = contract.PriceSource.ToString(),
+                PriceSourceValue = (int)contract.PriceSource,
+                LastPricingDate = contract.LastPricingDate,
+                PricingPeriodStart = contract.PricingPeriodStart,
+                PricingPeriodEnd = contract.PricingPeriodEnd,
+                IsPriceFinalized = contract.IsPriceFinalized,
+                CanUpdatePricing = true
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting pricing status for sales contract {ContractId}", id);
+            return StatusCode(500, new { error = "An error occurred while resetting pricing status: " + ex.Message });
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SALES CONTRACT PRICING STATUS DTOs (Data Lineage Enhancement v2.18.0)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// DTO for sales contract pricing status information
+/// </summary>
+public class SalesContractPricingStatusDto
+{
+    /// <summary>Contract ID</summary>
+    public Guid ContractId { get; set; }
+
+    /// <summary>Contract number</summary>
+    public string ContractNumber { get; set; } = string.Empty;
+
+    /// <summary>Current pricing status (Unpriced, PartiallyPriced, FullyPriced)</summary>
+    public string PricingStatus { get; set; } = "Unpriced";
+
+    /// <summary>Pricing status as integer (1=Unpriced, 2=PartiallyPriced, 3=FullyPriced)</summary>
+    public int PricingStatusValue { get; set; } = 1;
+
+    /// <summary>Percentage of contract quantity that has been priced (0-100)</summary>
+    public decimal FixedPercentage { get; set; }
+
+    /// <summary>Quantity that has been priced</summary>
+    public decimal FixedQuantity { get; set; }
+
+    /// <summary>Total contract quantity</summary>
+    public decimal TotalQuantity { get; set; }
+
+    /// <summary>Quantity remaining to be priced</summary>
+    public decimal UnfixedQuantity { get; set; }
+
+    /// <summary>Source of the price (Manual, MarketData, Formula, Estimate, Import)</summary>
+    public string PriceSource { get; set; } = "Manual";
+
+    /// <summary>Price source as integer</summary>
+    public int PriceSourceValue { get; set; } = 1;
+
+    /// <summary>Date of last pricing update</summary>
+    public DateTime? LastPricingDate { get; set; }
+
+    /// <summary>Start of pricing period for floating prices</summary>
+    public DateTime? PricingPeriodStart { get; set; }
+
+    /// <summary>End of pricing period for floating prices</summary>
+    public DateTime? PricingPeriodEnd { get; set; }
+
+    /// <summary>Whether the price has been finalized (no further changes allowed)</summary>
+    public bool IsPriceFinalized { get; set; }
+
+    /// <summary>Whether pricing can still be updated</summary>
+    public bool CanUpdatePricing { get; set; }
+}
+
+/// <summary>
+/// Request DTO for updating sales contract pricing status
+/// </summary>
+public class UpdateSalesPricingStatusRequestDto
+{
+    /// <summary>
+    /// Quantity that has been priced (cumulative, not incremental)
+    /// </summary>
+    public decimal FixedQuantity { get; set; }
+
+    /// <summary>
+    /// Source of the price:
+    /// 1 = Manual entry
+    /// 2 = Market data feed
+    /// 3 = Formula calculation
+    /// 4 = System estimate
+    /// 5 = External import
+    /// </summary>
+    public int PriceSource { get; set; } = 1;
+
+    /// <summary>
+    /// User performing the update
+    /// </summary>
+    public string? UpdatedBy { get; set; }
 }

@@ -11,17 +11,27 @@ export default defineConfig({
   },
   server: {
     port: 3002,
-    host: 'localhost',
+    host: '0.0.0.0',
     strictPort: false,
     open: false,
     hmr: {
-      overlay: false,
-      port: 3001,
-      protocol: 'ws',
+      overlay: true,
     },
     watch: {
       usePolling: true,
-      interval: 300,
+      interval: 1000,
+      // Ignore directories that cause excessive file watching
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/dist/**',
+        '**/coverage/**',
+        '**/.vite/**',
+        '**/build/**',
+        '**/.cache/**',
+        '**/tmp/**',
+        '**/temp/**',
+      ],
     },
     proxy: {
       '/api': {
@@ -31,21 +41,29 @@ export default defineConfig({
         ws: false,
       },
     },
+    fs: {
+      // Restrict file system access to project directory only
+      strict: true,
+      allow: ['.'],
+    },
   },
   build: {
     outDir: 'dist',
+    // Reduce concurrent operations to prevent file handle exhaustion
+    chunkSizeWarningLimit: 1000,
   },
   optimizeDeps: {
+    // Re-enable dependency discovery but limit file watching
+    noDiscovery: false,
     include: [
-      'react', 
+      'react',
       'react-dom',
+      'react-router-dom',
       '@mui/material',
       '@mui/icons-material',
       'axios',
-      'date-fns',
-      '@tanstack/react-query',
-      'react-router-dom',
-      'recharts',
     ],
+    // Exclude large dependencies from optimization
+    exclude: ['@mui/x-data-grid'],
   },
 })

@@ -574,6 +574,7 @@ public class FinancialReportControllerIntegrationTests : IClassFixture<InMemoryW
             IsActive = true,
         };
 
+        tradingPartner.SetRowVersion(new byte[] { 0 });
         context.TradingPartners.Add(tradingPartner);
         await context.SaveChangesAsync();
 
@@ -597,6 +598,7 @@ public class FinancialReportControllerIntegrationTests : IClassFixture<InMemoryW
         report.UpdatePerformanceData(15000m, 1500m, 2000m);
         report.SetCreated("integration.test");
 
+        report.SetRowVersion(new byte[] { 0 });
         context.FinancialReports.Add(report);
         await context.SaveChangesAsync();
 

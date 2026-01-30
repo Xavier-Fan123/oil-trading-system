@@ -24,13 +24,12 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-  Info as InfoIcon,
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import reportingApi, { ReportConfiguration } from '@/services/reportingApi';
 import ReportConfigurationForm from './ReportConfigurationForm';
-import AlertBanner from '@/components/Common/AlertBanner';
+import { Alert } from '@mui/material';
 
 const ReportConfigurationsList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -105,29 +104,23 @@ const ReportConfigurationsList: React.FC = () => {
 
   if (isError) {
     return (
-      <AlertBanner
-        message="Error loading configurations"
-        severity="error"
-        onClose={() => {}}
-      />
+      <Alert severity="error">
+        Error loading configurations
+      </Alert>
     );
   }
 
   return (
     <Box sx={{ width: '100%' }}>
       {error && (
-        <AlertBanner
-          message={error}
-          severity="error"
-          onClose={() => setError(null)}
-        />
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
       {success && (
-        <AlertBanner
-          message={success}
-          severity="success"
-          onClose={() => setSuccess(null)}
-        />
+        <Alert severity="success" onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
       )}
 
       <Card sx={{ mb: 2 }}>

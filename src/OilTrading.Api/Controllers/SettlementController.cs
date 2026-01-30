@@ -3,8 +3,10 @@ using MediatR;
 using OilTrading.Application.Commands.Settlements;
 using OilTrading.Application.Queries.Settlements;
 using OilTrading.Application.DTOs;
+using OilTrading.Application.Services;
 using OilTrading.Core.Repositories;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 using System.Globalization;
 
 namespace OilTrading.Api.Controllers;
@@ -177,6 +179,7 @@ public class SettlementController : ControllerBase
     private readonly IContractSettlementRepository _contractSettlementRepository;
     private readonly IPurchaseSettlementRepository _purchaseSettlementRepository;
     private readonly ISalesSettlementRepository _salesSettlementRepository;
+    private readonly ISettlementCalculationService _settlementCalculationService;
 
     public SettlementController(
         IMediator mediator,
@@ -185,7 +188,8 @@ public class SettlementController : ControllerBase
         ISalesContractRepository salesContractRepository,
         IContractSettlementRepository contractSettlementRepository,
         IPurchaseSettlementRepository purchaseSettlementRepository,
-        ISalesSettlementRepository salesSettlementRepository)
+        ISalesSettlementRepository salesSettlementRepository,
+        ISettlementCalculationService settlementCalculationService)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -194,6 +198,7 @@ public class SettlementController : ControllerBase
         _contractSettlementRepository = contractSettlementRepository ?? throw new ArgumentNullException(nameof(contractSettlementRepository));
         _purchaseSettlementRepository = purchaseSettlementRepository ?? throw new ArgumentNullException(nameof(purchaseSettlementRepository));
         _salesSettlementRepository = salesSettlementRepository ?? throw new ArgumentNullException(nameof(salesSettlementRepository));
+        _settlementCalculationService = settlementCalculationService ?? throw new ArgumentNullException(nameof(settlementCalculationService));
     }
 
     private string GetCurrentUserName()
@@ -1397,6 +1402,201 @@ public class SettlementController : ControllerBase
         _logger.LogWarning("Excel export requested but not yet fully implemented, returning CSV as fallback");
         return GenerateCsvExport(settlements);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AMENDMENT CHAIN ENDPOINTS (Data Lineage Enhancement v2.18.0)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Creates an amendment to an existing settlement.
+    /// The previous settlement is marked as superseded and a new version is created.
+    /// </summary>
+    /// <remarks>
+    /// Amendment Types:
+    /// - Amendment (2): General modification to settlement terms
+    /// - Correction (3): Error correction to prior settlement
+    /// - SecondaryPricing (4): Additional pricing event
+    /// - FinalSettlement (5): Closing settlement superseding provisional
+    /// </remarks>
+    [HttpPost("{settlementId:guid}/amend")]
+    [ProducesResponseType(typeof(ContractSettlementDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ContractSettlementDto>> CreateAmendment(
+        Guid settlementId,
+        [FromBody] CreateAmendmentRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Creating amendment for settlement {SettlementId} with type {AmendmentType}",
+                settlementId, request.AmendmentType);
+
+            if (string.IsNullOrWhiteSpace(request.AmendmentReason))
+            {
+                return BadRequest(new { error = "Amendment reason is required" });
+            }
+
+            var amendmentType = (SettlementAmendmentType)request.AmendmentType;
+            var amendedSettlement = await _settlementCalculationService.CreateAmendmentAsync(
+                settlementId,
+                amendmentType,
+                request.AmendmentReason,
+                request.CreatedBy ?? GetCurrentUserName(),
+                cancellationToken);
+
+            _logger.LogInformation(
+                "Created amendment settlement {NewSettlementId} (sequence {Sequence}) for original {OriginalId}",
+                amendedSettlement.Id, amendedSettlement.SettlementSequence, settlementId);
+
+            return CreatedAtAction(nameof(GetSettlement), new { settlementId = amendedSettlement.Id }, amendedSettlement);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Settlement not found: {SettlementId}", settlementId);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Cannot amend settlement {SettlementId}: {Reason}", settlementId, ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating amendment for settlement {SettlementId}", settlementId);
+            return StatusCode(500, new { error = "An error occurred while creating the amendment: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Gets all settlements in the amendment chain for a given settlement.
+    /// Returns settlements from the original to the latest version, ordered by sequence.
+    /// </summary>
+    [HttpGet("{settlementId:guid}/amendment-chain")]
+    [ProducesResponseType(typeof(AmendmentChainResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AmendmentChainResponseDto>> GetAmendmentChain(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting amendment chain for settlement {SettlementId}", settlementId);
+
+            var chain = await _settlementCalculationService.GetAmendmentChainAsync(settlementId, cancellationToken);
+            var chainList = chain.ToList();
+
+            if (chainList.Count == 0)
+            {
+                return NotFound(new { error = "Settlement not found" });
+            }
+
+            var response = new AmendmentChainResponseDto
+            {
+                OriginalSettlementId = chainList.First().Id,
+                LatestSettlementId = chainList.Last().Id,
+                TotalVersions = chainList.Count,
+                Settlements = chainList
+            };
+
+            _logger.LogInformation(
+                "Found {Count} settlements in amendment chain for {SettlementId}",
+                chainList.Count, settlementId);
+
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Settlement not found: {SettlementId}", settlementId);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting amendment chain for settlement {SettlementId}", settlementId);
+            return StatusCode(500, new { error = "An error occurred while retrieving the amendment chain: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Gets the latest (current) version of a settlement in an amendment chain.
+    /// </summary>
+    [HttpGet("{settlementId:guid}/latest-version")]
+    [ProducesResponseType(typeof(ContractSettlementDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ContractSettlementDto>> GetLatestVersion(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting latest version for settlement {SettlementId}", settlementId);
+
+            var latestSettlement = await _settlementCalculationService.GetLatestVersionAsync(settlementId, cancellationToken);
+
+            if (latestSettlement == null)
+            {
+                return NotFound(new { error = "Settlement not found" });
+            }
+
+            _logger.LogInformation(
+                "Latest version is {LatestId} (sequence {Sequence})",
+                latestSettlement.Id, latestSettlement.SettlementSequence);
+
+            return Ok(latestSettlement);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Settlement not found: {SettlementId}", settlementId);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting latest version for settlement {SettlementId}", settlementId);
+            return StatusCode(500, new { error = "An error occurred while retrieving the latest version: " + ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Gets the original (first) settlement in an amendment chain.
+    /// </summary>
+    [HttpGet("{settlementId:guid}/original")]
+    [ProducesResponseType(typeof(ContractSettlementDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ContractSettlementDto>> GetOriginalSettlement(
+        Guid settlementId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting original settlement for {SettlementId}", settlementId);
+
+            var originalSettlement = await _settlementCalculationService.GetOriginalSettlementAsync(settlementId, cancellationToken);
+
+            if (originalSettlement == null)
+            {
+                return NotFound(new { error = "Settlement not found" });
+            }
+
+            _logger.LogInformation("Original settlement is {OriginalId}", originalSettlement.Id);
+
+            return Ok(originalSettlement);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Settlement not found: {SettlementId}", settlementId);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting original settlement for {SettlementId}", settlementId);
+            return StatusCode(500, new { error = "An error occurred while retrieving the original settlement: " + ex.Message });
+        }
+    }
 }
 
 /// <summary>
@@ -1512,4 +1712,59 @@ public class UpdateChargeRequestDto
     public string? Description { get; set; }
     public decimal? Amount { get; set; }
     public string? UpdatedBy { get; set; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AMENDMENT CHAIN DTOs (Data Lineage Enhancement v2.18.0)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// DTO for creating a settlement amendment
+/// </summary>
+public class CreateAmendmentRequestDto
+{
+    /// <summary>
+    /// Type of amendment:
+    /// 2 = Amendment (general modification)
+    /// 3 = Correction (error fix)
+    /// 4 = SecondaryPricing (additional pricing event)
+    /// 5 = FinalSettlement (closing settlement)
+    /// </summary>
+    public int AmendmentType { get; set; } = 2;
+
+    /// <summary>
+    /// Business justification for the amendment (required)
+    /// </summary>
+    public string AmendmentReason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// User creating the amendment
+    /// </summary>
+    public string? CreatedBy { get; set; }
+}
+
+/// <summary>
+/// Response DTO for amendment chain queries
+/// </summary>
+public class AmendmentChainResponseDto
+{
+    /// <summary>
+    /// ID of the original (first) settlement in the chain
+    /// </summary>
+    public Guid OriginalSettlementId { get; set; }
+
+    /// <summary>
+    /// ID of the latest (current) settlement in the chain
+    /// </summary>
+    public Guid LatestSettlementId { get; set; }
+
+    /// <summary>
+    /// Total number of versions in the chain
+    /// </summary>
+    public int TotalVersions { get; set; }
+
+    /// <summary>
+    /// All settlements in the chain, ordered by sequence
+    /// </summary>
+    public List<ContractSettlementDto> Settlements { get; set; } = new();
 }

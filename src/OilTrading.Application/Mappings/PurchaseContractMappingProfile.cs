@@ -64,6 +64,10 @@ public class PurchaseContractMappingProfile : Profile
             // Payment status fields - will be populated from PaymentStatusCalculationService during query execution
             .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
             .ForMember(dest => dest.UnpaidSettledAmount, opt => opt.Ignore())
+            // Pricing status fields (Data Lineage Enhancement v2.18.0)
+            .ForMember(dest => dest.PricingStatus, opt => opt.MapFrom(src => src.PricingStatus.ToString()))
+            .ForMember(dest => dest.FixedPercentage, opt => opt.MapFrom(src => src.FixedPercentage))
+            .ForMember(dest => dest.FixedQuantity, opt => opt.MapFrom(src => src.FixedQuantity))
             .ForMember(dest => dest.ShippingOperationsCount, opt => opt.MapFrom(src => src.ShippingOperations != null ? src.ShippingOperations.Count : 0))
             .ForMember(dest => dest.LinkedSalesContractsCount, opt => opt.MapFrom(src => src.LinkedSalesContracts != null ? src.LinkedSalesContracts.Count : 0))
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt));
@@ -129,6 +133,10 @@ public class PurchaseContractMappingProfile : Profile
             // Payment status fields - will be populated from PaymentStatusCalculationService during query execution
             .ForMember(dest => dest.PaymentStatus, opt => opt.Ignore())
             .ForMember(dest => dest.UnpaidSettledAmount, opt => opt.Ignore())
+            // Pricing status fields (Data Lineage Enhancement v2.18.0)
+            .ForMember(dest => dest.PricingStatus, opt => opt.MapFrom(src => src.PricingStatus.ToString()))
+            .ForMember(dest => dest.FixedPercentage, opt => opt.MapFrom(src => src.FixedPercentage))
+            .ForMember(dest => dest.FixedQuantity, opt => opt.MapFrom(src => src.FixedQuantity))
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt));
 
         // Shipping Operation mappings

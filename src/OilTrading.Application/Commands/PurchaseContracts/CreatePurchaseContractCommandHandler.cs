@@ -145,6 +145,10 @@ public class CreatePurchaseContractCommandHandler : IRequestHandler<CreatePurcha
         // Set created by
         contract.SetCreatedBy(request.CreatedBy);
 
+        // Initialize RowVersion for EF Core InMemory database compatibility
+        // See BaseEntity.SetRowVersion() for explanation of why this is needed
+        contract.SetRowVersion(new byte[] { 0 });
+
         // Add to repository
         await _purchaseContractRepository.AddAsync(contract, cancellationToken);
 

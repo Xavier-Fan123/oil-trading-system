@@ -117,6 +117,11 @@ public class PurchaseContractListDto
     public ContractPaymentStatus? PaymentStatus { get; set; }
     public decimal UnpaidSettledAmount { get; set; }
 
+    // Pricing Status Information (Data Lineage Enhancement v2.18.0)
+    public string PricingStatus { get; set; } = "Unpriced";
+    public decimal FixedPercentage { get; set; }
+    public decimal FixedQuantity { get; set; }
+
     public int ShippingOperationsCount { get; set; }
     public int LinkedSalesContractsCount { get; set; }
     public DateTime CreatedAt { get; set; }

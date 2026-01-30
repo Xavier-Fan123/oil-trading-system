@@ -1,6 +1,7 @@
 using OilTrading.Core.Common;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Events;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Core.Entities;
 
@@ -43,6 +44,56 @@ public class ShippingOperation : BaseEntity
     public string ShippingNumber { get; private set; } = string.Empty;
     public Guid ContractId { get; private set; }
     public string VesselName { get; private set; } = string.Empty;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE ENHANCEMENT - Deal Reference ID & Split Tracking
+    // Purpose: Enable full lifecycle traceability and parent-child tracking for splits
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Deal Reference ID - Inherited from the contract this shipping operation belongs to
+    /// Enables tracing shipping operation back to original deal
+    /// </summary>
+    public string? DealReferenceId { get; private set; }
+
+    /// <summary>
+    /// Parent Shipping Operation ID - Links to the original shipment if this is a split
+    /// Null for original (unsplit) shipping operations
+    /// </summary>
+    public Guid? ParentShippingOperationId { get; private set; }
+
+    /// <summary>
+    /// Split Sequence - Order in the split chain (1 = first split, 2 = second split, etc.)
+    /// 0 for original (unsplit) shipping operations
+    /// </summary>
+    public int SplitSequence { get; private set; } = 0;
+
+    /// <summary>
+    /// Split Reason - Business justification for the split
+    /// Required when ParentShippingOperationId is set
+    /// </summary>
+    public SplitReason? SplitReasonType { get; private set; }
+
+    /// <summary>
+    /// Split Reason Notes - Additional details about the split reason
+    /// </summary>
+    public string? SplitReasonNotes { get; private set; }
+
+    /// <summary>
+    /// Original Planned Quantity - The planned quantity before any splits
+    /// Useful for validation that splits sum to original
+    /// </summary>
+    public Quantity? OriginalPlannedQuantity { get; private set; }
+
+    /// <summary>
+    /// Is Split - Quick filter flag indicating this is a split shipment
+    /// True if ParentShippingOperationId is set
+    /// </summary>
+    public bool IsSplit { get; private set; } = false;
+
+    // Navigation property for split tracking
+    public ShippingOperation? ParentShippingOperation { get; private set; }
+    public ICollection<ShippingOperation> SplitShipments { get; private set; } = new List<ShippingOperation>();
     public Quantity PlannedQuantity { get; private set; } = null!;
     public Quantity? ActualQuantity { get; private set; }
     public DateTime LoadPortETA { get; private set; }
@@ -246,5 +297,92 @@ public class ShippingOperation : BaseEntity
     public override string ToString()
     {
         return $"Shipping {ShippingNumber} - {VesselName} ({Status})";
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE METHODS - Deal Reference ID & Split Tracking Management
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Set the Deal Reference ID inherited from the contract
+    /// Should be called when creating the shipping operation
+    /// </summary>
+    public void SetDealReferenceId(string dealReferenceId, string updatedBy = "")
+    {
+        if (string.IsNullOrWhiteSpace(dealReferenceId))
+            throw new DomainException("Deal Reference ID cannot be empty");
+
+        DealReferenceId = dealReferenceId.Trim().ToUpper();
+        SetUpdatedBy(updatedBy);
+    }
+
+    /// <summary>
+    /// Initialize this shipping operation as a split from a parent shipment
+    /// </summary>
+    public void InitializeAsSplit(
+        Guid parentShippingOperationId,
+        string parentDealReferenceId,
+        Quantity originalPlannedQuantity,
+        int splitSequence,
+        SplitReason splitReason,
+        string? splitReasonNotes = null,
+        string updatedBy = "")
+    {
+        if (Status != ShippingStatus.Planned)
+            throw new DomainException("Can only create split from a Planned shipping operation");
+
+        if (splitSequence <= 0)
+            throw new DomainException("Split sequence must be greater than zero");
+
+        ParentShippingOperationId = parentShippingOperationId;
+        DealReferenceId = parentDealReferenceId?.Trim().ToUpper();
+        OriginalPlannedQuantity = originalPlannedQuantity;
+        SplitSequence = splitSequence;
+        SplitReasonType = splitReason;
+        SplitReasonNotes = splitReasonNotes?.Trim();
+        IsSplit = true;
+
+        SetUpdatedBy(updatedBy);
+    }
+
+    /// <summary>
+    /// Mark this shipping operation as the parent that has been split
+    /// Called on the parent when creating split children
+    /// </summary>
+    public void MarkAsSplitParent(string updatedBy = "")
+    {
+        if (OriginalPlannedQuantity == null)
+        {
+            // Store the original planned quantity before any splits
+            OriginalPlannedQuantity = PlannedQuantity;
+        }
+        SetUpdatedBy(updatedBy);
+    }
+
+    /// <summary>
+    /// Check if this shipping operation can be split
+    /// </summary>
+    public bool CanBeSplit() =>
+        Status == ShippingStatus.Planned && !IsSplit;
+
+    /// <summary>
+    /// Check if this is a split shipment (not the original)
+    /// </summary>
+    public bool IsSplitShipment() => IsSplit && ParentShippingOperationId.HasValue;
+
+    /// <summary>
+    /// Check if this shipment has been split into multiple shipments
+    /// </summary>
+    public bool HasBeenSplit() => SplitShipments.Any();
+
+    /// <summary>
+    /// Get the total quantity across all splits (including this one if it's the parent)
+    /// </summary>
+    public decimal GetTotalSplitQuantity()
+    {
+        if (!HasBeenSplit())
+            return PlannedQuantity.Value;
+
+        return SplitShipments.Sum(s => s.PlannedQuantity.Value);
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Infrastructure.Data.Configurations;
 
@@ -84,7 +85,42 @@ public class PaperContractConfiguration : IEntityTypeConfiguration<PaperContract
                
         builder.Property(e => e.Notes)
                .HasMaxLength(1000);
-        
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // DATA LINEAGE ENHANCEMENT - Hedge Linking
+        // Purpose: Establish direct FK relationship between paper contracts and physical contracts
+        // Solves: String-based matching leading to wrong hedges applied to physical positions
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Hedged Contract ID - Direct FK to the physical contract being hedged
+        // Can reference either PurchaseContract or SalesContract based on HedgedContractType
+        builder.Property(e => e.HedgedContractId)
+               .IsRequired(false);
+
+        // Hedged Contract Type - Whether this hedges a Purchase or Sales contract
+        builder.Property(e => e.HedgedContractType)
+               .HasConversion<int>()
+               .IsRequired(false);
+
+        // Hedge Ratio - The ratio of hedge quantity to physical quantity (e.g., 1.0 for 1:1)
+        builder.Property(e => e.HedgeRatio)
+               .HasPrecision(8, 4)
+               .HasDefaultValue(1.0m);
+
+        // Hedge Effectiveness - Accounting metric for hedge effectiveness (0-100%)
+        builder.Property(e => e.HedgeEffectiveness)
+               .HasPrecision(5, 2)
+               .IsRequired(false);
+
+        // Hedge Designation Date - When this paper contract was formally designated as a hedge
+        builder.Property(e => e.HedgeDesignationDate)
+               .IsRequired(false);
+
+        // Is Designated Hedge - Quick filter flag indicating formal hedge designation
+        builder.Property(e => e.IsDesignatedHedge)
+               .IsRequired()
+               .HasDefaultValue(false);
+
         // Audit fields
         builder.Property(e => e.CreatedAt).IsRequired();
         builder.Property(e => e.UpdatedAt);
@@ -109,7 +145,22 @@ public class PaperContractConfiguration : IEntityTypeConfiguration<PaperContract
                
         builder.HasIndex(e => new { e.ProductType, e.ContractMonth })
                .HasDatabaseName("IX_PaperContracts_ProductType_ContractMonth");
-               
+
+        // Data Lineage Enhancement - Hedge Linking Indexes
+        builder.HasIndex(e => e.HedgedContractId)
+               .HasDatabaseName("IX_PaperContracts_HedgedContractId");
+
+        builder.HasIndex(e => e.IsDesignatedHedge)
+               .HasDatabaseName("IX_PaperContracts_IsDesignatedHedge");
+
+        // Composite index for hedge queries
+        builder.HasIndex(e => new { e.HedgedContractId, e.HedgedContractType })
+               .HasDatabaseName("IX_PaperContracts_HedgedContractId_Type");
+
+        // Composite index for designated hedge queries
+        builder.HasIndex(e => new { e.IsDesignatedHedge, e.Status })
+               .HasDatabaseName("IX_PaperContracts_IsDesignatedHedge_Status");
+
         builder.ToTable("PaperContracts");
         
         // Ignore domain events collection for EF

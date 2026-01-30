@@ -1,5 +1,6 @@
 using OilTrading.Core.Common;
 using OilTrading.Core.Events;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Core.Entities;
 
@@ -53,6 +54,61 @@ public class PurchaseSettlement : BaseEntity
     // Contract reference (denormalized for easy access)
     public string ContractNumber { get; private set; } = string.Empty;
     public string ExternalContractNumber { get; private set; } = string.Empty;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE ENHANCEMENT - Deal Reference ID & Amendment Chain
+    // Purpose: Enable full lifecycle traceability and audit trail for settlements
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Deal Reference ID - Inherited from the purchase contract this settlement belongs to
+    /// Enables tracing settlement back to original deal
+    /// </summary>
+    public string? DealReferenceId { get; private set; }
+
+    /// <summary>
+    /// Previous Settlement ID - Links to the prior version of this settlement (amendment chain)
+    /// Null for initial settlements
+    /// </summary>
+    public Guid? PreviousSettlementId { get; private set; }
+
+    /// <summary>
+    /// Original Settlement ID - Links to the root of the amendment chain
+    /// For initial settlements, this equals Id. For amendments, points to first settlement.
+    /// </summary>
+    public Guid? OriginalSettlementId { get; private set; }
+
+    /// <summary>
+    /// Settlement Sequence - Version number in the amendment chain (1 = initial, 2+ = amendments)
+    /// </summary>
+    public int SettlementSequence { get; private set; } = 1;
+
+    /// <summary>
+    /// Amendment Type - Why this settlement was created (Initial, Amendment, Correction, etc.)
+    /// </summary>
+    public SettlementAmendmentType AmendmentType { get; private set; } = SettlementAmendmentType.Initial;
+
+    /// <summary>
+    /// Amendment Reason - Business justification for non-initial settlements
+    /// Required for Amendment, Correction, SecondaryPricing types
+    /// </summary>
+    public string? AmendmentReason { get; private set; }
+
+    /// <summary>
+    /// Is Latest Version - Quick filter flag indicating this is the current active version
+    /// False for superseded settlements
+    /// </summary>
+    public bool IsLatestVersion { get; private set; } = true;
+
+    /// <summary>
+    /// Superseded Date - When this settlement was replaced by a newer version
+    /// Null for the latest version
+    /// </summary>
+    public DateTime? SupersededDate { get; private set; }
+
+    // Navigation property for amendment chain
+    public PurchaseSettlement? PreviousSettlement { get; private set; }
+    public PurchaseSettlement? OriginalSettlement { get; private set; }
 
     // Document information (B/L or CQ)
     public string? DocumentNumber { get; private set; }
@@ -309,4 +365,99 @@ public class PurchaseSettlement : BaseEntity
     public bool RequiresRecalculation() =>
         Status == ContractSettlementStatus.Draft &&
         (BenchmarkAmount == 0 || CalculationQuantityMT == 0);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LINEAGE METHODS - Deal Reference ID & Amendment Chain Management
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Set the Deal Reference ID inherited from the purchase contract
+    /// Should be called when creating the settlement
+    /// </summary>
+    public void SetDealReferenceId(string dealReferenceId, string updatedBy = "")
+    {
+        if (string.IsNullOrWhiteSpace(dealReferenceId))
+            throw new DomainException("Deal Reference ID cannot be empty");
+
+        DealReferenceId = dealReferenceId.Trim().ToUpper();
+        LastModifiedDate = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            LastModifiedBy = updatedBy;
+        }
+    }
+
+    /// <summary>
+    /// Initialize as the first settlement in the chain (no prior version)
+    /// OriginalSettlementId will equal this settlement's Id
+    /// </summary>
+    public void InitializeAsOriginal()
+    {
+        OriginalSettlementId = Id;
+        PreviousSettlementId = null;
+        SettlementSequence = 1;
+        AmendmentType = SettlementAmendmentType.Initial;
+        IsLatestVersion = true;
+        SupersededDate = null;
+    }
+
+    /// <summary>
+    /// Create this settlement as an amendment to a previous settlement
+    /// </summary>
+    public void InitializeAsAmendment(
+        Guid previousSettlementId,
+        Guid originalSettlementId,
+        int previousSequence,
+        SettlementAmendmentType amendmentType,
+        string amendmentReason,
+        string updatedBy = "")
+    {
+        if (amendmentType == SettlementAmendmentType.Initial)
+            throw new DomainException("Cannot initialize as amendment with Initial type");
+
+        if (string.IsNullOrWhiteSpace(amendmentReason) &&
+            (amendmentType == SettlementAmendmentType.Amendment ||
+             amendmentType == SettlementAmendmentType.Correction))
+            throw new DomainException("Amendment reason is required for Amendment or Correction types");
+
+        PreviousSettlementId = previousSettlementId;
+        OriginalSettlementId = originalSettlementId;
+        SettlementSequence = previousSequence + 1;
+        AmendmentType = amendmentType;
+        AmendmentReason = amendmentReason?.Trim();
+        IsLatestVersion = true;
+        SupersededDate = null;
+
+        LastModifiedDate = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            LastModifiedBy = updatedBy;
+        }
+    }
+
+    /// <summary>
+    /// Mark this settlement as superseded by a newer version
+    /// Called on the previous settlement when a new amendment is created
+    /// </summary>
+    public void MarkAsSuperseded(string updatedBy = "")
+    {
+        IsLatestVersion = false;
+        SupersededDate = DateTime.UtcNow;
+        LastModifiedDate = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(updatedBy))
+        {
+            LastModifiedBy = updatedBy;
+        }
+    }
+
+    /// <summary>
+    /// Check if this is the original (first) settlement in the chain
+    /// </summary>
+    public bool IsOriginalSettlement() =>
+        SettlementSequence == 1 && AmendmentType == SettlementAmendmentType.Initial;
+
+    /// <summary>
+    /// Check if this settlement has been superseded by a newer version
+    /// </summary>
+    public bool IsSuperseded() => !IsLatestVersion && SupersededDate.HasValue;
 }

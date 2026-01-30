@@ -1,57 +1,59 @@
 @echo off
 REM Oil Trading System - Complete Startup Script
-REM Start Redis, Backend API, and Frontend in separate windows
-REM No VS Code termination - VS Code stays open
+REM Starts: Redis Server + Backend API + Frontend React App
 
 setlocal enabledelayedexpansion
-cd /d "C:\Users\itg\Desktop\X"
 
 echo.
 echo ============================================
-echo  Oil Trading System - Complete Startup
+echo Oil Trading System - Full Stack Startup
 echo ============================================
 echo.
 
-REM Only kill dotnet, node, redis - NOT VS Code
-echo Cleaning up old processes (NOT closing VS Code)...
-taskkill /F /IM dotnet.exe >nul 2>&1
-taskkill /F /IM node.exe >nul 2>&1
-taskkill /F /IM redis-server.exe >nul 2>&1
-timeout /t 2 /nobreak >nul
+REM Kill any existing processes and clean Vite cache
+echo Cleaning up existing processes and Vite cache...
+taskkill /f /im dotnet.exe >nul 2>&1
+taskkill /f /im node.exe >nul 2>&1
+if exist "C:\Users\itg\Desktop\X\frontend\node_modules\.vite" (
+    rmdir /s /q "C:\Users\itg\Desktop\X\frontend\node_modules\.vite"
+    echo [OK] Vite cache cleaned
+)
+timeout /t 2 >nul
 
-REM Start Redis
-echo.
-echo [1/3] Starting Redis Cache Server (port 6379)...
-start "Redis-Cache" cmd /k "cd /d C:\Users\itg\Desktop\X\redis && redis-server.exe redis.windows.conf"
-timeout /t 3 /nobreak >nul
+REM Start Redis in a new window
+echo [1/3] Starting Redis Cache Server on port 6379...
+start "Redis Server" /d "C:\Users\itg\Desktop\X\redis" "C:\Users\itg\Desktop\X\redis\redis-server.exe" "C:\Users\itg\Desktop\X\redis\redis.windows.conf"
+timeout /t 3 >nul
 
-REM Start Backend API
-echo [2/3] Starting Backend API (port 5000)...
-start "Backend-API" cmd /k "cd /d C:\Users\itg\Desktop\X\src\OilTrading.Api && dotnet run"
-timeout /t 10 /nobreak >nul
+REM Start Backend API in a new window
+echo [2/3] Starting Backend API on port 5000...
+start "Backend API" cmd /k "cd /d C:\Users\itg\Desktop\X\src\OilTrading.Api && dotnet run --no-build"
+timeout /t 10 >nul
 
-REM Start Frontend
-echo [3/3] Starting Frontend React App (port 3002)...
-start "Frontend-App" cmd /k "cd /d C:\Users\itg\Desktop\X\frontend && npm run dev"
-timeout /t 8 /nobreak >nul
+REM Start Frontend React App in a new window (with EMFILE fix)
+echo [3/3] Starting Frontend React App on port 3002 (with optimized file watching)...
+start "Frontend App" cmd /k "cd /d C:\Users\itg\Desktop\X\frontend && npm run dev"
+timeout /t 8 >nul
 
 echo.
 echo ============================================
-echo  All Services Started!
+echo System Startup Complete!
 echo ============================================
 echo.
-echo Access Points:
-echo   Frontend:  http://localhost:3002
-echo   Backend:   http://localhost:5000
-echo   Health:    http://localhost:5000/health
-echo   Swagger:   http://localhost:5000/swagger
+echo Application Access Points:
+echo - Frontend:        http://localhost:3002
+echo - Backend API:     http://localhost:5000
+echo - API Health:      http://localhost:5000/health
+echo - API Swagger:     http://localhost:5000/swagger
+echo - Redis:           localhost:6379
 echo.
-echo Opening frontend in browser...
-timeout /t 2 /nobreak >nul
+echo Opening browser in 5 seconds...
+timeout /t 5 >nul
 start http://localhost:3002
-
 echo.
-echo Done! Check the 3 new terminal windows for status.
-echo VS Code remains open and unaffected.
+echo System is running. All windows will remain open.
+echo Press CTRL+C in each window to stop services.
 echo.
 pause
+
+endlocal

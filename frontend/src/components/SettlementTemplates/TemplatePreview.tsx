@@ -15,7 +15,7 @@ import {
   TableContainer,
   Paper,
   Tooltip,
-  IconButton,
+  
 } from '@mui/material';
 import {
   ContentCopy as ContentCopyIcon,
@@ -50,15 +50,6 @@ const formatDate = (date: string | Date | undefined): string => {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 };
 
-const getPermissionLabel = (permissionLevel: number): string => {
-  const levels: Record<number, string> = {
-    0: 'View Only',
-    1: 'Can Use',
-    2: 'Can Edit',
-    3: 'Admin',
-  };
-  return levels[permissionLevel] || 'Unknown';
-};
 
 export const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   template,

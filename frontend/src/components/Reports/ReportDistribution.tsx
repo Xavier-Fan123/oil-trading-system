@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardActions,
   TextField,
   Chip,
   Dialog,
@@ -42,8 +41,6 @@ import {
   Storage as SftpIcon,
   Webhook as WebhookIcon,
   MoreVert as MoreVertIcon,
-  CheckCircle as SuccessIcon,
-  Cancel as FailIcon,
 } from '@mui/icons-material';
 import { advancedReportingApi } from '@/services/advancedReportingApi';
 import type { ReportDistribution as ReportDistributionType } from '@/types/advancedReporting';

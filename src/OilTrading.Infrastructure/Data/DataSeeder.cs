@@ -29,12 +29,31 @@ public class DataSeeder
             // DEVELOPMENT MODE: Always clear and re-seed for complete data integrity
             // This ensures seeded contracts always have all required fields
             _logger.LogInformation("Clearing existing data to ensure fresh seeding...");
-            await _context.PurchaseContracts.ExecuteDeleteAsync();
-            await _context.SalesContracts.ExecuteDeleteAsync();
-            await _context.ShippingOperations.ExecuteDeleteAsync();
-            await _context.Users.ExecuteDeleteAsync();
-            await _context.TradingPartners.ExecuteDeleteAsync();
-            await _context.Products.ExecuteDeleteAsync();
+
+            // Check if using InMemory database - ExecuteDeleteAsync is NOT supported by InMemory provider
+            var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
+
+            if (isInMemory)
+            {
+                // For InMemory database, use traditional RemoveRange approach
+                _logger.LogInformation("Using InMemory database - using RemoveRange for data clearing");
+                _context.PurchaseContracts.RemoveRange(_context.PurchaseContracts);
+                _context.SalesContracts.RemoveRange(_context.SalesContracts);
+                _context.ShippingOperations.RemoveRange(_context.ShippingOperations);
+                _context.Users.RemoveRange(_context.Users);
+                _context.TradingPartners.RemoveRange(_context.TradingPartners);
+                _context.Products.RemoveRange(_context.Products);
+            }
+            else
+            {
+                // For SQL databases, use efficient bulk delete
+                await _context.PurchaseContracts.ExecuteDeleteAsync();
+                await _context.SalesContracts.ExecuteDeleteAsync();
+                await _context.ShippingOperations.ExecuteDeleteAsync();
+                await _context.Users.ExecuteDeleteAsync();
+                await _context.TradingPartners.ExecuteDeleteAsync();
+                await _context.Products.ExecuteDeleteAsync();
+            }
             await _context.SaveChangesAsync();
             _logger.LogInformation("Old data cleared. Starting fresh seeding...");
 
@@ -56,6 +75,10 @@ public class DataSeeder
 
             // Seed Sales Contracts
             await SeedSalesContractsAsync();
+            await _context.SaveChangesAsync();
+
+            // Seed Market Data (Spot Prices)
+            await SeedMarketPricesAsync();
             await _context.SaveChangesAsync();
 
             // Seed Shipping Operations
@@ -139,8 +162,47 @@ public class DataSeeder
                 Density = 0.991m,
                 Origin = "Multiple Sources",
                 IsActive = true
+            },
+            // DAXIN MARINE products - Gas Oil and Gasoline
+            new Product
+            {
+                Code = "GASOIL",
+                Name = "Gas Oil (Diesel)",
+                ProductName = "Gas Oil (Diesel)",
+                ProductCode = "GASOIL",
+                Type = ProductType.RefinedProducts,
+                ProductType = ProductType.RefinedProducts,
+                Description = "Gas Oil / Diesel for DAXIN MARINE contracts",
+                Grade = "Standard",
+                Specification = "ISO 8217",
+                UnitOfMeasure = "BBL",
+                Density = 0.85m,
+                Origin = "Singapore",
+                IsActive = true
+            },
+            new Product
+            {
+                Code = "GASOLINE",
+                Name = "Gasoline",
+                ProductName = "Gasoline",
+                ProductCode = "GASOLINE",
+                Type = ProductType.RefinedProducts,
+                ProductType = ProductType.RefinedProducts,
+                Description = "Gasoline for DAXIN MARINE contracts",
+                Grade = "Standard",
+                Specification = "Standard",
+                UnitOfMeasure = "BBL",
+                Density = 0.75m,
+                Origin = "Singapore",
+                IsActive = true
             }
         };
+
+        // Initialize RowVersion for InMemory database (required property)
+        foreach (var product in products)
+        {
+            product.SetRowVersion(new byte[] { 0 });
+        }
 
         await _context.Products.AddRangeAsync(products);
         _logger.LogInformation("Added {Count} products", products.Length);
@@ -263,8 +325,32 @@ public class DataSeeder
                 Address = "Baar, Switzerland",
                 CreditLimitValidUntil = DateTime.UtcNow.AddYears(1),
                 IsActive = true
+            },
+            // DAXIN MARINE - Myanmar customer for oil sales
+            new TradingPartner
+            {
+                Code = "DAXIN",
+                Name = "DAXIN MARINE PTE LTD",
+                CompanyCode = "DAXIN",
+                CompanyName = "DAXIN MARINE PTE LTD",
+                Type = TradingPartnerType.Customer,
+                PartnerType = TradingPartnerType.Customer,
+                CreditLimit = 100000000m,
+                Country = "Singapore",
+                ContactEmail = "trading@daxinmarine.com",
+                ContactPhone = "+65-6000-0000",
+                Address = "Singapore",
+                PaymentTermDays = 45,
+                CreditLimitValidUntil = DateTime.UtcNow.AddYears(2),
+                IsActive = true
             }
         };
+
+        // Initialize RowVersion for InMemory database (required property)
+        foreach (var partner in partners)
+        {
+            partner.SetRowVersion(new byte[] { 0 });
+        }
 
         await _context.TradingPartners.AddRangeAsync(partners);
         _logger.LogInformation("Added {Count} trading partners", partners.Length);
@@ -317,6 +403,12 @@ public class DataSeeder
                 IsActive = true
             }
         };
+
+        // Initialize RowVersion for InMemory database (required property)
+        foreach (var user in users)
+        {
+            user.SetRowVersion(new byte[] { 0 });
+        }
 
         await _context.Users.AddRangeAsync(users);
         _logger.LogInformation("Added {Count} users", users.Length);
@@ -416,6 +508,12 @@ public class DataSeeder
         contract3.AddNotes("Sample Brent crude contract - PC-2025-003");
         contracts.Add(contract3);
 
+        // Initialize RowVersion for InMemory database (required property)
+        foreach (var contract in contracts)
+        {
+            contract.SetRowVersion(new byte[] { 0 });
+        }
+
         await _context.PurchaseContracts.AddRangeAsync(contracts);
         _logger.LogInformation("Added {Count} complete sample purchase contracts with all required fields", contracts.Count);
     }
@@ -429,12 +527,18 @@ public class DataSeeder
             ?? throw new InvalidOperationException("BRENT product not found");
         var wtiProduct = await _context.Products.FirstOrDefaultAsync(p => p.Code == "WTI")
             ?? throw new InvalidOperationException("WTI product not found");
+        var gasoilProduct = await _context.Products.FirstOrDefaultAsync(p => p.Code == "GASOIL")
+            ?? throw new InvalidOperationException("GASOIL product not found");
+        var gasolineProduct = await _context.Products.FirstOrDefaultAsync(p => p.Code == "GASOLINE")
+            ?? throw new InvalidOperationException("GASOLINE product not found");
         var trader02 = await _context.Users.FirstOrDefaultAsync(u => u.Name == "trader02")
             ?? throw new InvalidOperationException("trader02 user not found");
         var vitol = await _context.TradingPartners.FirstOrDefaultAsync(p => p.Code == "VITOL")
             ?? throw new InvalidOperationException("VITOL partner not found");
         var trafigura = await _context.TradingPartners.FirstOrDefaultAsync(p => p.Code == "TRAFIGURA")
             ?? throw new InvalidOperationException("TRAFIGURA partner not found");
+        var daxin = await _context.TradingPartners.FirstOrDefaultAsync(p => p.Code == "DAXIN")
+            ?? throw new InvalidOperationException("DAXIN partner not found");
 
         var contracts = new List<SalesContract>();
 
@@ -489,8 +593,78 @@ public class DataSeeder
         contract3.UpdatePorts("Singapore", "Bangkok, Thailand");
         contracts.Add(contract3);
 
+        // ============================================================
+        // DAXIN MARINE PTE LTD - 18 Sales Contracts from EXPORT.XLSX
+        // Payment Terms: NET 45, Delivery: DES, Settlement: TT
+        // Route: Singapore -> Yangon
+        // ============================================================
+        var daxinContracts = new[]
+        {
+            new { Ext = "ITGR-2025-CAG-S0267", Prod = "GASOIL", Qty = 103500m, Price = 90.4m, Date = new DateTime(2025, 10, 10) },
+            new { Ext = "ITGR-2025-CAG-S0271", Prod = "GASOIL", Qty = 22500m, Price = 85.2m, Date = new DateTime(2025, 10, 20) },
+            new { Ext = "ITGR-2025-CAG-S0280", Prod = "GASOLINE", Qty = 30000m, Price = 80.3m, Date = new DateTime(2025, 10, 27) },
+            new { Ext = "ITGR-2025-CAG-S0276", Prod = "GASOLINE", Qty = 100000m, Price = 80.3m, Date = new DateTime(2025, 10, 28) },
+            new { Ext = "ITGR-2025-CAG-S0274", Prod = "GASOLINE", Qty = 150000m, Price = 80.3m, Date = new DateTime(2025, 10, 28) },
+            new { Ext = "ITGR-2025-CAG-S0281", Prod = "GASOIL", Qty = 22500m, Price = 85.4m, Date = new DateTime(2025, 10, 28) },
+            new { Ext = "ITGR-2025-CAG-S0282", Prod = "GASOIL", Qty = 36000m, Price = 85.4m, Date = new DateTime(2025, 10, 28) },
+            new { Ext = "ITGR-2025-CAG-S0283", Prod = "BRENT", Qty = 85066m, Price = 45.4m, Date = new DateTime(2025, 10, 29) },
+            new { Ext = "ITGR-2025-CAG-S0286", Prod = "GASOLINE", Qty = 67500m, Price = 80.4m, Date = new DateTime(2025, 11, 5) },
+            new { Ext = "ITGR-2025-CAG-S0287", Prod = "GASOIL", Qty = 30000m, Price = 95.4m, Date = new DateTime(2025, 11, 5) },
+            new { Ext = "ITGR-2025-CAG-S0293", Prod = "GASOIL", Qty = 30000m, Price = 95.4m, Date = new DateTime(2025, 11, 25) },
+            new { Ext = "ITGR-2025-CAG-S0295", Prod = "GASOIL", Qty = 21000m, Price = 95.4m, Date = new DateTime(2025, 11, 27) },
+            new { Ext = "ITGR-2025-CAG-S0296", Prod = "GASOIL", Qty = 54750m, Price = 95.4m, Date = new DateTime(2025, 12, 1) },
+            new { Ext = "ITGR-2025-CAG-S0301", Prod = "GASOIL", Qty = 93750m, Price = 85.4m, Date = new DateTime(2025, 12, 9) },
+            new { Ext = "ITGR-2025-CAG-S0302", Prod = "GASOIL", Qty = 48750m, Price = 85.4m, Date = new DateTime(2025, 12, 9) },
+            new { Ext = "ITGR-2025-CAG-S0297", Prod = "GASOLINE", Qty = 180000m, Price = 80.3m, Date = new DateTime(2025, 12, 12) },
+            new { Ext = "ITGR-2025-CAG-S0298", Prod = "GASOLINE", Qty = 100000m, Price = 80.3m, Date = new DateTime(2025, 12, 12) },
+            new { Ext = "ITGR-2025-CAG-S0303", Prod = "GASOIL", Qty = 60000m, Price = 85.4m, Date = new DateTime(2025, 12, 16) }
+        };
+
+        int daxinContractNum = 100;
+        foreach (var dc in daxinContracts)
+        {
+            var productId = dc.Prod switch
+            {
+                "GASOIL" => gasoilProduct.Id,
+                "GASOLINE" => gasolineProduct.Id,
+                "BRENT" => brentProduct.Id,
+                _ => throw new InvalidOperationException($"Unknown product: {dc.Prod}")
+            };
+
+            var contract = new SalesContract(
+                ContractNumber.Parse($"SC-2025-{daxinContractNum:D3}"),
+                ContractType.CARGO,
+                daxin.Id,
+                productId,
+                trader02.Id,
+                new Quantity(dc.Qty, QuantityUnit.BBL),
+                7.6m,
+                null,
+                null,
+                dc.Ext
+            );
+
+            // Set laycan dates (contract date + 1 day for end)
+            contract.UpdateLaycan(dc.Date, dc.Date.AddDays(1));
+            contract.UpdatePorts("Singapore", "Yangon");
+
+            // Set fixed price and contract value
+            var contractValue = new Money(dc.Qty * dc.Price, "USD");
+            contract.UpdatePricing(PriceFormula.Fixed(dc.Price), contractValue);
+
+            contracts.Add(contract);
+            daxinContractNum++;
+        }
+
+        // Initialize RowVersion for InMemory database (required property)
+        foreach (var contract in contracts)
+        {
+            contract.SetRowVersion(new byte[] { 0 });
+        }
+
         await _context.SalesContracts.AddRangeAsync(contracts);
-        _logger.LogInformation("Added {Count} sales contracts", contracts.Count);
+        _logger.LogInformation("Added {Count} sales contracts (including {DaxinCount} DAXIN MARINE contracts)",
+            contracts.Count, daxinContracts.Length);
     }
 
     private async Task SeedShippingOperationsAsync()
@@ -548,7 +722,146 @@ public class DataSeeder
 
         shippingOps[2].UpdateVesselDetails("MT Ocean Destiny", "5555555", 120000m);
 
+        // Set RowVersion for InMemory database compatibility
+        foreach (var op in shippingOps)
+        {
+            op.SetRowVersion(new byte[] { 0 });
+        }
+
         await _context.ShippingOperations.AddRangeAsync(shippingOps);
         _logger.LogInformation("Added {Count} shipping operations", shippingOps.Length);
+    }
+
+    private async Task SeedMarketPricesAsync()
+    {
+        _logger.LogInformation("Seeding market prices (spot and futures)...");
+
+        // Only seed if no prices exist
+        var existingPrices = await _context.Set<MarketPrice>().AnyAsync();
+
+        if (existingPrices)
+        {
+            _logger.LogInformation("Market prices already exist, skipping seeding");
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var prices = new List<MarketPrice>();
+
+        // Create spot prices for last 30 days - using professional API product codes
+        // Following international oil trading standards (Vitol, Trafigura, Glencore)
+        var spotProducts = new[]
+        {
+            new { ApiCode = "BRENT_CRUDE", DisplayName = "Brent Crude", BasePrice = 82.50m, Unit = MarketPriceUnit.BBL, Region = "North Sea", Source = "Platts" },
+            new { ApiCode = "MOPS_GASOIL", DisplayName = "Gasoil 0.1% S", BasePrice = 95.50m, Unit = MarketPriceUnit.MT, Region = "Singapore", Source = "MOPS" },
+            new { ApiCode = "MGO", DisplayName = "Marine Gas Oil", BasePrice = 650.00m, Unit = MarketPriceUnit.MT, Region = "Singapore", Source = "MOPS" },
+            new { ApiCode = "JET_FUEL", DisplayName = "Jet Fuel (Kerosene)", BasePrice = 98.75m, Unit = MarketPriceUnit.BBL, Region = "Singapore", Source = "MOPS" },
+            new { ApiCode = "BUNKER_SPORE", DisplayName = "HSFO 380 CST", BasePrice = 520.00m, Unit = MarketPriceUnit.MT, Region = "Singapore", Source = "MOPS" },
+            new { ApiCode = "BUNKER_HK", DisplayName = "HSFO 380 CST", BasePrice = 525.00m, Unit = MarketPriceUnit.MT, Region = "Hong Kong", Source = "MOPS" },
+            new { ApiCode = "FUEL_OIL_35_RTDM", DisplayName = "HSFO 380 CST", BasePrice = 515.00m, Unit = MarketPriceUnit.MT, Region = "Rotterdam", Source = "Platts" },
+            new { ApiCode = "GASOLINE_92", DisplayName = "Gasoline 92 RON", BasePrice = 92.00m, Unit = MarketPriceUnit.BBL, Region = "Singapore", Source = "MOPS" },
+            new { ApiCode = "GASOLINE_95", DisplayName = "Gasoline 95 RON", BasePrice = 95.50m, Unit = MarketPriceUnit.BBL, Region = "Singapore", Source = "MOPS" },
+            new { ApiCode = "GASOLINE_97", DisplayName = "Gasoline 97 RON", BasePrice = 98.00m, Unit = MarketPriceUnit.BBL, Region = "Singapore", Source = "MOPS" }
+        };
+
+        for (int daysAgo = 30; daysAgo >= 0; daysAgo--)
+        {
+            var priceDate = now.AddDays(-daysAgo).Date;
+
+            foreach (var product in spotProducts)
+            {
+                // Add slight daily variation
+                var variation = (decimal)(new Random(product.ApiCode.GetHashCode() ^ daysAgo).NextDouble() * 4 - 2);
+                var price = product.BasePrice + variation;
+
+                var marketPrice = MarketPrice.Create(
+                    priceDate: priceDate,
+                    productCode: product.ApiCode,
+                    productName: product.DisplayName,
+                    priceType: MarketPriceType.Spot,
+                    price: Math.Max(price, 10m), // Ensure price is positive
+                    currency: "USD",
+                    source: product.Source,
+                    dataSource: "DataSeeder",
+                    isSettlement: false,
+                    importedAt: now,
+                    importedBy: "System",
+                    region: product.Region
+                );
+
+                marketPrice.Unit = product.Unit;
+                marketPrice.ExchangeName = null; // Spot prices have no exchange
+
+                prices.Add(marketPrice);
+            }
+        }
+
+        // Create futures prices for next 6 contract months - using professional futures product codes
+        // Following exchange standards (ICE, NYMEX)
+        var futuresProducts = new[]
+        {
+            new { FuturesCode = "BRENT", DisplayName = "Brent Crude", BasePrice = 83.00m, Unit = MarketPriceUnit.BBL, Exchange = "ICE" },
+            new { FuturesCode = "WTI", DisplayName = "WTI Crude", BasePrice = 79.00m, Unit = MarketPriceUnit.BBL, Exchange = "NYMEX" },
+            new { FuturesCode = "GASOIL_FUTURES", DisplayName = "Gasoil 0.1% S", BasePrice = 96.00m, Unit = MarketPriceUnit.MT, Exchange = "ICE" }
+        };
+
+        // Contract months: current month + next 5 months in ISO format (YYYY-MM)
+        var contractMonths = new List<string>();
+        for (int monthOffset = 0; monthOffset < 6; monthOffset++)
+        {
+            var futureMonth = now.AddMonths(monthOffset);
+            contractMonths.Add(futureMonth.ToString("yyyy-MM"));
+        }
+
+        for (int daysAgo = 30; daysAgo >= 0; daysAgo--)
+        {
+            var priceDate = now.AddDays(-daysAgo).Date;
+
+            foreach (var product in futuresProducts)
+            {
+                // Add futures prices for each contract month
+                for (int monthIndex = 0; monthIndex < contractMonths.Count; monthIndex++)
+                {
+                    var contractMonth = contractMonths[monthIndex];
+
+                    // Futures typically have contango structure (forward months slightly higher)
+                    var monthPremium = (decimal)monthIndex * 0.5m;
+                    var variation = (decimal)(new Random((product.FuturesCode.GetHashCode() ^ daysAgo ^ monthIndex)).NextDouble() * 3 - 1.5);
+                    var price = product.BasePrice + monthPremium + variation;
+
+                    var futuresPrice = MarketPrice.Create(
+                        priceDate: priceDate,
+                        productCode: product.FuturesCode,  // Professional futures code (BRENT, WTI, GASOIL_FUTURES)
+                        productName: product.DisplayName,
+                        priceType: MarketPriceType.FuturesClose,
+                        price: Math.Max(price, 10m), // Ensure price is positive
+                        currency: "USD",
+                        source: product.Exchange,
+                        dataSource: "DataSeeder",
+                        isSettlement: false,
+                        importedAt: now,
+                        importedBy: "System",
+                        contractMonth: contractMonth // Separate field for contract month in ISO format
+                    );
+
+                    futuresPrice.Unit = product.Unit;
+                    futuresPrice.ExchangeName = product.Exchange;
+
+                    prices.Add(futuresPrice);
+                }
+            }
+        }
+
+        // Set RowVersion for InMemory database compatibility
+        foreach (var price in prices)
+        {
+            price.SetRowVersion(new byte[] { 0 });
+        }
+
+        await _context.Set<MarketPrice>().AddRangeAsync(prices);
+        _logger.LogInformation("Added {Count} market price records ({SpotCount} spot + {FuturesCount} futures)",
+            prices.Count,
+            prices.Count(p => p.PriceType == MarketPriceType.Spot),
+            prices.Count(p => p.PriceType == MarketPriceType.FuturesClose));
     }
 }

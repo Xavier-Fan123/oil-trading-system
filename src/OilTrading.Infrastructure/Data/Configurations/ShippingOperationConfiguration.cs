@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 
 namespace OilTrading.Infrastructure.Data.Configurations;
 
@@ -74,6 +75,58 @@ public class ShippingOperationConfiguration : IEntityTypeConfiguration<ShippingO
         builder.Property(e => e.ShippingAgent).HasMaxLength(200);
         builder.Property(e => e.Notes).HasMaxLength(2000);
 
+        // ═══════════════════════════════════════════════════════════════════════════
+        // DATA LINEAGE ENHANCEMENT - Deal Reference ID & Split Tracking
+        // Purpose: Enable full lifecycle traceability and parent-child tracking for splits
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        // Deal Reference ID - Business-meaningful identifier inherited from contract
+        builder.Property(e => e.DealReferenceId)
+               .HasMaxLength(50)
+               .IsRequired(false);
+
+        // Parent Shipping Operation ID - Self-referencing FK for split tracking
+        builder.Property(e => e.ParentShippingOperationId)
+               .IsRequired(false);
+
+        // Split Sequence - Order in split (0 = not a split or parent, 1+ = split children)
+        builder.Property(e => e.SplitSequence)
+               .IsRequired()
+               .HasDefaultValue(0);
+
+        // Split Reason Type - Why this shipping operation was split
+        builder.Property(e => e.SplitReasonType)
+               .HasConversion<int>()
+               .IsRequired(false);
+
+        // Split Reason Notes - Additional context for the split
+        builder.Property(e => e.SplitReasonNotes)
+               .HasMaxLength(500)
+               .IsRequired(false);
+
+        // Is Split - Quick filter flag indicating this is a split shipment
+        builder.Property(e => e.IsSplit)
+               .IsRequired()
+               .HasDefaultValue(false);
+
+        // Configure OriginalPlannedQuantity as owned entity (from parent before split)
+        builder.OwnsOne(e => e.OriginalPlannedQuantity, quantity =>
+        {
+            quantity.Property(q => q.Value)
+                    .HasColumnName("OriginalPlannedQuantity")
+                    .HasPrecision(18, 6);
+
+            quantity.Property(q => q.Unit)
+                    .HasColumnName("OriginalPlannedQuantityUnit");
+        });
+
+        // Self-referencing relationship for split tracking - Parent Shipping Operation
+        builder.HasOne(e => e.ParentShippingOperation)
+               .WithMany(e => e.SplitShipments)
+               .HasForeignKey(e => e.ParentShippingOperationId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .IsRequired(false);
+
         // Audit fields
         builder.Property(e => e.CreatedAt).IsRequired();
         builder.Property(e => e.UpdatedAt);
@@ -103,6 +156,21 @@ public class ShippingOperationConfiguration : IEntityTypeConfiguration<ShippingO
 
         builder.HasIndex(e => e.CreatedAt)
                .HasDatabaseName("IX_ShippingOperations_CreatedAt");
+
+        // Data Lineage Enhancement - Deal Reference ID Index
+        builder.HasIndex(e => e.DealReferenceId)
+               .HasDatabaseName("IX_ShippingOperations_DealReferenceId");
+
+        // Data Lineage Enhancement - Split Tracking Indexes
+        builder.HasIndex(e => e.ParentShippingOperationId)
+               .HasDatabaseName("IX_ShippingOperations_ParentShippingOperationId");
+
+        builder.HasIndex(e => e.IsSplit)
+               .HasDatabaseName("IX_ShippingOperations_IsSplit");
+
+        // Composite index for split queries
+        builder.HasIndex(e => new { e.ParentShippingOperationId, e.SplitSequence })
+               .HasDatabaseName("IX_ShippingOperations_ParentId_SplitSequence");
 
         // Table configuration
         builder.ToTable("ShippingOperations");

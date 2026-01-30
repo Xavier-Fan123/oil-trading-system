@@ -57,13 +57,13 @@ export const MarketDataTable: React.FC<MarketDataTableProps> = ({ onTabChange })
   
   // Convert futures prices to match the display format
   const convertedFuturesPrices = futuresPrices.map(fp => ({
-    productCode: `${fp.productType}_${fp.contractMonth}`,
-    productName: `${fp.productType} ${fp.contractMonth} Futures`,
-    price: fp.settlementPrice,
+    productCode: `${fp.productCode}_${fp.contractMonth}`,
+    productName: `${fp.productName} ${fp.contractMonth}`,
+    price: fp.price,
     previousPrice: fp.previousSettlement,
     change: fp.change,
     changePercent: fp.change && fp.previousSettlement ? (fp.change / fp.previousSettlement) * 100 : null,
-    priceDate: fp.settlementDate
+    priceDate: fp.priceDate
   }));
   
   // Combine all prices

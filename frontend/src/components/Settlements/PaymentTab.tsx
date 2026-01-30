@@ -16,8 +16,7 @@ import {
   TimelineConnector,
   TimelineContent,
   TimelineOppositeContent,
-  TimelineDot,
-  TimelineProps
+  TimelineDot
 } from '@mui/lab';
 import { ContractSettlementDto } from '@/types/settlement';
 import { format } from 'date-fns';
@@ -208,7 +207,6 @@ export const PaymentTab: React.FC<PaymentTabProps> = ({ settlement }) => {
                 padding: 0,
               },
             }}
-            slotProps={{}}
           >
             <TimelineItem>
               <TimelineOppositeContent color="textSecondary">

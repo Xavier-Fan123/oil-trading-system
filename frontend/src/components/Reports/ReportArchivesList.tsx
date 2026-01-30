@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -27,7 +28,6 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import reportingApi, { ReportArchive } from '@/services/reportingApi';
-import AlertBanner from '@/components/Common/AlertBanner';
 
 const ReportArchivesList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -142,29 +142,23 @@ const ReportArchivesList: React.FC = () => {
 
   if (isError) {
     return (
-      <AlertBanner
-        message="Error loading archives"
-        severity="error"
-        onClose={() => {}}
-      />
+      <Alert severity="error">
+        Error loading archives
+      </Alert>
     );
   }
 
   return (
     <Box sx={{ width: '100%' }}>
       {error && (
-        <AlertBanner
-          message={error}
-          severity="error"
-          onClose={() => setError(null)}
-        />
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
       {success && (
-        <AlertBanner
-          message={success}
-          severity="success"
-          onClose={() => setSuccess(null)}
-        />
+        <Alert severity="success" onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
       )}
 
       <Card>

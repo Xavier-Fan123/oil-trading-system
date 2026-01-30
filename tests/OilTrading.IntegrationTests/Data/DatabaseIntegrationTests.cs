@@ -62,6 +62,7 @@ public class DatabaseIntegrationTests : IClassFixture<InMemoryWebApplicationFact
             quantity);
 
         // Act
+        contract.SetRowVersion(new byte[] { 0 });
         context.PurchaseContracts.Add(contract);
         await context.SaveChangesAsync();
 
@@ -102,6 +103,7 @@ public class DatabaseIntegrationTests : IClassFixture<InMemoryWebApplicationFact
         };
 
         // Act
+        product.SetRowVersion(new byte[] { 0 });
         context.Products.Add(product);
         await context.SaveChangesAsync();
 
@@ -145,6 +147,7 @@ public class DatabaseIntegrationTests : IClassFixture<InMemoryWebApplicationFact
             Origin = "Test Origin"
         };
 
+        product.SetRowVersion(new byte[] { 0 });
         context.Products.Add(product);
         await context.SaveChangesAsync();
 
@@ -194,6 +197,7 @@ public class DatabaseIntegrationTests : IClassFixture<InMemoryWebApplicationFact
         };
 
         // Act
+        tradingPartner.SetRowVersion(new byte[] { 0 });
         context.TradingPartners.Add(tradingPartner);
         await context.SaveChangesAsync();
 
@@ -233,6 +237,7 @@ public class DatabaseIntegrationTests : IClassFixture<InMemoryWebApplicationFact
             new Product { Name = "Product C", Code = codeC, ProductName = "Product C", ProductCode = codeC, Type = ProductType.CrudeOil, Grade = "Grade C", Specification = "Spec C", UnitOfMeasure = "BBL", Density = 850m, Origin = "Origin C" }
         };
 
+        foreach (var p in products) { p.SetRowVersion(new byte[] { 0 }); }
         context.Products.AddRange(products);
         await context.SaveChangesAsync();
 
@@ -280,6 +285,7 @@ public class DatabaseIntegrationTests : IClassFixture<InMemoryWebApplicationFact
             Origin = "Test Origin"
         };
 
+        product.SetRowVersion(new byte[] { 0 });
         context1.Products.Add(product);
         await context1.SaveChangesAsync();
         var productId = product.Id;

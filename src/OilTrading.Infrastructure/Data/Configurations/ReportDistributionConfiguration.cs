@@ -25,14 +25,14 @@ public class ReportDistributionConfiguration : IEntityTypeConfiguration<ReportDi
 
         builder.Property(e => e.ChannelConfiguration)
             .IsRequired()
-            .HasColumnType("nvarchar(max)")
+            .HasColumnType("TEXT")
             .HasDefaultValue("{}");
 
         builder.Property(e => e.LastTestStatus)
             .HasMaxLength(50);
 
         builder.Property(e => e.LastTestMessage)
-            .HasColumnType("nvarchar(max)");
+            .HasColumnType("TEXT");
 
         // Relationships
         builder.HasOne(e => e.ReportConfig)

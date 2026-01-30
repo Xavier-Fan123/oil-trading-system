@@ -59,6 +59,7 @@ public class CreateTradingPartnerCommandHandler : IRequestHandler<CreateTradingP
             IsActive = true
         };
 
+        partner.SetRowVersion(new byte[] { 0 });
         await _repository.AddAsync(partner, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

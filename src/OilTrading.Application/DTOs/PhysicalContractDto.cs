@@ -154,22 +154,29 @@ public class NetPositionDto
 {
     public string ProductType { get; set; } = string.Empty;
     public string Month { get; set; } = string.Empty;
-    
+
+    /// <summary>
+    /// Contract month in YYMM format (e.g., "2511" for Nov 2025, "2512" for Dec 2025)
+    /// Provides machine-readable month specification for API consumption and risk aggregation
+    /// Distinct from Month field which is human-readable format (e.g., "Nov25")
+    /// </summary>
+    public string? ContractMonth { get; set; }
+
     // Physical Contracts (Legacy)
     public decimal PhysicalPurchases { get; set; }
     public decimal PhysicalSales { get; set; }
     public decimal PhysicalNetPosition { get; set; }
-    
+
     // Purchase & Sales Contracts (New Main System)
     public decimal PurchaseContractQuantity { get; set; }
     public decimal SalesContractQuantity { get; set; }
     public decimal ContractNetPosition { get; set; }
-    
+
     // Paper Contracts (from existing system)
     public decimal PaperLongPosition { get; set; }
     public decimal PaperShortPosition { get; set; }
     public decimal PaperNetPosition { get; set; }
-    
+
     // Combined
     public decimal TotalNetPosition { get; set; }
     public string PositionStatus { get; set; } = string.Empty;
@@ -215,4 +222,101 @@ public class PnLDto
     public decimal RealizedPnL { get; set; }
     public string Currency { get; set; } = "USD";
     public DateTime AsOfDate { get; set; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HEDGE LINKING DTOs (Data Lineage Enhancement)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// DTO for positions with explicit hedge linkage information
+/// </summary>
+public class HedgedPositionDto
+{
+    public string ProductType { get; set; } = string.Empty;
+    public string Month { get; set; } = string.Empty;
+
+    // Physical position details
+    public decimal PhysicalQuantity { get; set; }
+    public string PhysicalPositionType { get; set; } = string.Empty; // "Long" or "Short"
+
+    // Linked hedge details
+    public decimal HedgedQuantity { get; set; }
+    public decimal UnhedgedQuantity { get; set; }
+    public decimal HedgeRatio { get; set; } // Percentage of physical position hedged
+
+    // Paper hedges linked to this position
+    public ICollection<LinkedHedgeDto> LinkedHedges { get; set; } = new List<LinkedHedgeDto>();
+
+    // Exposure metrics
+    public decimal GrossExposure { get; set; }
+    public decimal NetExposure { get; set; }
+    public decimal MarketPrice { get; set; }
+
+    // Calculated metrics
+    public bool IsFullyHedged => HedgeRatio >= 1.0m;
+    public bool IsPartiallyHedged => HedgeRatio > 0 && HedgeRatio < 1.0m;
+    public bool IsUnhedged => HedgeRatio == 0;
+}
+
+/// <summary>
+/// DTO for a paper hedge linked to a physical contract
+/// </summary>
+public class LinkedHedgeDto
+{
+    public Guid PaperContractId { get; set; }
+    public string ContractNumber { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public string Position { get; set; } = string.Empty; // "Long" or "Short"
+    public decimal HedgeRatio { get; set; }
+    public decimal HedgeEffectiveness { get; set; }
+    public string? DealReferenceId { get; set; }
+    public DateTime DesignationDate { get; set; }
+}
+
+/// <summary>
+/// DTO for hedge effectiveness metrics
+/// </summary>
+public class HedgeEffectivenessDto
+{
+    public Guid PhysicalContractId { get; set; }
+    public string ContractNumber { get; set; } = string.Empty;
+    public string ProductType { get; set; } = string.Empty;
+    public decimal PhysicalQuantity { get; set; }
+    public string PhysicalPosition { get; set; } = string.Empty;
+
+    // Aggregate hedge metrics
+    public decimal TotalHedgedQuantity { get; set; }
+    public decimal OverallHedgeRatio { get; set; }
+    public decimal WeightedAverageEffectiveness { get; set; }
+
+    // Individual hedges
+    public ICollection<LinkedHedgeDto> Hedges { get; set; } = new List<LinkedHedgeDto>();
+
+    // Effectiveness assessment
+    public string EffectivenessStatus { get; set; } = string.Empty; // "Highly Effective", "Effective", "Ineffective"
+    public bool MeetsAccountingThreshold { get; set; } // 80-125% for IFRS 9
+
+    public DateTime CalculatedAt { get; set; }
+}
+
+/// <summary>
+/// DTO for unhedged physical positions
+/// </summary>
+public class UnhedgedPositionDto
+{
+    public Guid ContractId { get; set; }
+    public string ContractNumber { get; set; } = string.Empty;
+    public string ContractType { get; set; } = string.Empty; // "Purchase" or "Sales"
+    public string ProductType { get; set; } = string.Empty;
+    public string Month { get; set; } = string.Empty;
+    public decimal Quantity { get; set; }
+    public decimal MarketPrice { get; set; }
+    public decimal Exposure { get; set; }
+    public string? DealReferenceId { get; set; }
+    public DateTime ContractDate { get; set; }
+
+    // Risk metrics
+    public decimal PotentialLoss { get; set; } // Based on VaR or stress test
+    public string RiskLevel { get; set; } = string.Empty; // "Low", "Medium", "High"
 }

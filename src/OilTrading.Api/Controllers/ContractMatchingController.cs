@@ -113,9 +113,27 @@ namespace OilTrading.Api.Controllers
                     return this.CreateBusinessRuleErrorResponse(
                         ErrorCodes.InvalidBusinessOperation,
                         "Contracts must be for the same product to be matched",
-                        new { 
+                        new {
                             PurchaseProductId = purchaseContract.ProductId,
-                            SalesProductId = salesContract.ProductId 
+                            SalesProductId = salesContract.ProductId
+                        }
+                    );
+                }
+
+                // ✅ VALIDATION: Check if laycan dates overlap
+                // This ensures purchase and sales contracts have compatible delivery periods
+                if (salesContract.LaycanStart.HasValue && purchaseContract.LaycanEnd.HasValue &&
+                    salesContract.LaycanStart > purchaseContract.LaycanEnd)
+                {
+                    return this.CreateBusinessRuleErrorResponse(
+                        ErrorCodes.InvalidBusinessOperation,
+                        "Contract delivery periods must overlap for matching",
+                        new
+                        {
+                            SalesLaycanStart = salesContract.LaycanStart,
+                            PurchaseLaycanEnd = purchaseContract.LaycanEnd,
+                            Message = "Sales contract laycan start cannot be after purchase contract laycan end. " +
+                                     "Contracts must have overlapping delivery periods."
                         }
                     );
                 }
@@ -245,6 +263,35 @@ namespace OilTrading.Api.Controllers
             }).ToList();
 
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Validates that contract months match for contract linking.
+        /// Both months must be either set to the same value, or both can be null (edge case for spot contracts).
+        /// Contract months are in YYMM format (e.g., "2511" for Nov 2025, "2512" for Dec 2025)
+        ///
+        /// Matching Rules:
+        /// - "2511" matches "2511" ✅ (same month)
+        /// - "2511" does NOT match "2512" ❌ (different months)
+        /// - null matches null ✅ (both spot/unspecified - allowed edge case)
+        /// - null does NOT match "2511" ❌ (one is spot, one is futures - incompatible)
+        ///
+        /// Business Context:
+        /// For futures/derivatives contracts, the contract month is critical for risk matching.
+        /// A purchase of August Brent cannot be hedged with September Brent - these are different products.
+        /// </summary>
+        private static bool ContractMonthsMatch(string? salesMonth, string? purchaseMonth)
+        {
+            // Both null = allowed (edge case for spot contracts without fixed delivery month)
+            if (string.IsNullOrEmpty(salesMonth) && string.IsNullOrEmpty(purchaseMonth))
+                return true;
+
+            // One null, one set = not allowed (cannot match spot with futures)
+            if (string.IsNullOrEmpty(salesMonth) || string.IsNullOrEmpty(purchaseMonth))
+                return false;
+
+            // Both set = must be identical (exact month match required)
+            return salesMonth.Equals(purchaseMonth, StringComparison.OrdinalIgnoreCase);
         }
 
         [HttpPost("bulk-insert-test-data")]

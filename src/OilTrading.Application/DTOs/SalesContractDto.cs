@@ -110,6 +110,11 @@ public class SalesContractSummaryDto
     public ContractPaymentStatus? PaymentStatus { get; set; }
     public decimal UnpaidSettledAmount { get; set; }
 
+    // Pricing Status Information (Data Lineage Enhancement v2.18.0)
+    public string PricingStatus { get; set; } = "Unpriced";
+    public decimal FixedPercentage { get; set; }
+    public decimal FixedQuantity { get; set; }
+
     public DateTime? LaycanStart { get; set; }
     public DateTime? LaycanEnd { get; set; }
     public DateTime CreatedAt { get; set; }

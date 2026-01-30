@@ -18,11 +18,14 @@ export const usePriceHistory = (
   productCode: string,
   startDate?: string,
   endDate?: string,
+  priceType?: string,
+  contractMonth?: string,
+  region?: string,
   enabled = true
 ) => {
   return useQuery({
-    queryKey: ['market-data', 'history', productCode, startDate, endDate],
-    queryFn: () => marketDataApi.getPriceHistory(productCode, startDate, endDate),
+    queryKey: ['market-data', 'history', productCode, startDate, endDate, priceType, contractMonth, region],
+    queryFn: () => marketDataApi.getPriceHistory(productCode, startDate, endDate, priceType, contractMonth, region),
     enabled: enabled && !!productCode,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
@@ -156,13 +159,28 @@ export const useDeleteMarketDataByDate = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate, reason }: { 
-      startDate: string; 
-      endDate: string; 
-      reason?: string 
+    mutationFn: ({ startDate, endDate, reason }: {
+      startDate: string;
+      endDate: string;
+      reason?: string
     }) => marketDataApi.deleteMarketDataByDate(startDate, endDate, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['market-data'] });
     },
+  });
+};
+
+// Get available contract months for a product
+export const useAvailableContractMonths = (
+  productCode: string,
+  priceType?: string,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ['market-data', 'contract-months', productCode, priceType],
+    queryFn: () => marketDataApi.getAvailableContractMonths(productCode, priceType),
+    enabled: enabled && !!productCode,
+    staleTime: 15 * 60 * 1000, // 15 minutes (contract months don't change frequently)
+    retry: 1,
   });
 };

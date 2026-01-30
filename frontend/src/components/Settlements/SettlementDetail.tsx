@@ -259,7 +259,13 @@ export const SettlementDetail: React.FC<SettlementDetailProps> = ({
           {activeTab === 2 && <SettlementHistoryTab settlementId={settlementId} />}
           {activeTab === 3 && <ExecutionStatusTab settlementId={settlementId} />}
           {activeTab === 4 && <PaymentTab settlement={settlement} />}
-          {activeTab === 5 && <ChargeManager settlementId={settlementId} canEdit={settlement.canBeModified} />}
+          {activeTab === 5 && (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography color="text.secondary">
+                Charge management functionality will be available soon.
+              </Typography>
+            </Box>
+          )}
         </CardContent>
       </Card>
 

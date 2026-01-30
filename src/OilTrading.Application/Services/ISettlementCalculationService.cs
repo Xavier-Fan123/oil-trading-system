@@ -1,4 +1,5 @@
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Application.DTOs;
 
@@ -176,5 +177,57 @@ public interface ISettlementCalculationService
     /// <returns>List of settlement DTOs</returns>
     Task<IEnumerable<ContractSettlementDto>> GetSettlementsByStatusAsync(
         ContractSettlementStatus status,
+        CancellationToken cancellationToken = default);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AMENDMENT CHAIN METHODS (Data Lineage Enhancement)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Creates an amendment to an existing settlement, maintaining the amendment chain.
+    /// The previous settlement is marked as superseded and a new version is created.
+    /// </summary>
+    /// <param name="originalSettlementId">ID of the settlement to amend</param>
+    /// <param name="amendmentType">Type of amendment (Amendment, Correction, SecondaryPricing)</param>
+    /// <param name="amendmentReason">Business justification for the amendment</param>
+    /// <param name="createdBy">User creating the amendment</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Newly created amendment settlement</returns>
+    Task<ContractSettlementDto> CreateAmendmentAsync(
+        Guid originalSettlementId,
+        SettlementAmendmentType amendmentType,
+        string amendmentReason,
+        string createdBy = "System",
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all settlements in the amendment chain for a given settlement.
+    /// Returns settlements from the original to the latest version.
+    /// </summary>
+    /// <param name="settlementId">Any settlement ID in the chain</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of all settlements in the chain, ordered by sequence</returns>
+    Task<IEnumerable<ContractSettlementDto>> GetAmendmentChainAsync(
+        Guid settlementId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the latest (current) version of a settlement in an amendment chain.
+    /// </summary>
+    /// <param name="settlementId">Any settlement ID in the chain</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The latest settlement version</returns>
+    Task<ContractSettlementDto?> GetLatestVersionAsync(
+        Guid settlementId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the original (first) settlement in an amendment chain.
+    /// </summary>
+    /// <param name="settlementId">Any settlement ID in the chain</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The original settlement</returns>
+    Task<ContractSettlementDto?> GetOriginalSettlementAsync(
+        Guid settlementId,
         CancellationToken cancellationToken = default);
 }

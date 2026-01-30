@@ -48,11 +48,15 @@ public class RiskCalculationService : IRiskCalculationService
             };
         }
 
-        // Get unique product types
-        var productTypes = positions.Select(p => p.ProductType).Distinct().ToList();
+        // Get unique product-month combinations
+        // UPDATED: Group by (ProductType, ContractMonth) for proper futures/derivatives VaR
+        var productMonthPairs = positions
+            .Select(p => $"{p.ProductType}|{p.ContractMonth}")
+            .Distinct()
+            .ToList();
 
-        // Get historical returns for all products
-        var productReturns = await GetHistoricalReturnsAsync(productTypes, calculationDate, historicalDays);
+        // Get historical returns for all product-month combinations
+        var productReturns = await GetHistoricalReturnsAsync(productMonthPairs, calculationDate, historicalDays);
 
         // Calculate portfolio returns (for historical VaR)
         var portfolioReturns = CalculatePortfolioReturns(positions, productReturns);
@@ -73,7 +77,7 @@ public class RiskCalculationService : IRiskCalculationService
         var stressTests = new List<StressTestResultDto>();
         if (includeStressTests)
         {
-            var currentPrices = await GetCurrentPricesAsync(productTypes, calculationDate);
+            var currentPrices = await GetCurrentPricesAsync(productMonthPairs, calculationDate);
             stressTests = await RunStressTestsAsync(positions, currentPrices);
         }
 
@@ -168,9 +172,17 @@ public class RiskCalculationService : IRiskCalculationService
 
         try
         {
-            // 1. Get product list and ensure we have return data for all positions
-            var products = positions.Select(p => p.ProductType).Distinct().ToList();
-            var productsWithData = products.Where(p => productReturns.ContainsKey(p) && productReturns[p].Any()).ToList();
+            // 1. Get product-month combinations and ensure we have return data for all positions
+            // UPDATED: Group by (ProductType, ContractMonth) for proper futures/derivatives VaR
+            // This ensures different months (e.g., AUG25 vs SEP25) are treated as separate risk factors
+            var productMonthPairs = positions
+                .Select(p => $"{p.ProductType}|{p.ContractMonth}")
+                .Distinct()
+                .ToList();
+
+            var productsWithData = productMonthPairs
+                .Where(pm => productReturns.ContainsKey(pm) && productReturns[pm].Any())
+                .ToList();
 
             if (!productsWithData.Any())
             {
@@ -377,7 +389,14 @@ public class RiskCalculationService : IRiskCalculationService
 
         for (int i = 0; i < n; i++)
         {
-            var productPositions = positions.Where(p => p.ProductType == products[i]);
+            // UPDATED: Parse composite key (ProductType|ContractMonth) for proper futures/derivatives grouping
+            var parts = products[i].Split('|');
+            var productType = parts[0];
+            var contractMonth = parts.Length > 1 ? parts[1] : string.Empty;
+
+            var productPositions = positions.Where(p =>
+                p.ProductType == productType &&
+                p.ContractMonth == contractMonth);
 
             decimal productExposure = 0;
             foreach (var position in productPositions)
@@ -661,8 +680,12 @@ public class RiskCalculationService : IRiskCalculationService
 
         try
         {
-            // Get products with data
-            var products = positions.Select(p => p.ProductType).Distinct().ToList();
+            // Get product-month combinations with data
+            // UPDATED: Group by (ProductType, ContractMonth) for proper futures/derivatives volatility calculation
+            var products = positions
+                .Select(p => $"{p.ProductType}|{p.ContractMonth}")
+                .Distinct()
+                .ToList();
             var productsWithData = products.Where(p => productReturns.ContainsKey(p) && productReturns[p].Any()).ToList();
 
             if (!productsWithData.Any())
@@ -677,8 +700,9 @@ public class RiskCalculationService : IRiskCalculationService
             var covarianceMatrix = CalculateCovarianceMatrix(productReturns, productsWithData);
 
             // Calculate position weights (normalized by total portfolio value)
+            // Use composite key format for matching: ProductType|ContractMonth
             var totalValue = positions
-                .Where(p => productsWithData.Contains(p.ProductType))
+                .Where(p => productsWithData.Contains($"{p.ProductType}|{p.ContractMonth}"))
                 .Sum(p => Math.Abs(p.Quantity * p.LotSize * (p.CurrentPrice ?? p.EntryPrice)));
 
             if (totalValue == 0)
@@ -687,7 +711,8 @@ public class RiskCalculationService : IRiskCalculationService
             var weights = new decimal[n];
             for (int i = 0; i < n; i++)
             {
-                var productPositions = positions.Where(p => p.ProductType == productsWithData[i]);
+                // Match using composite key format
+                var productPositions = positions.Where(p => $"{p.ProductType}|{p.ContractMonth}" == productsWithData[i]);
                 decimal productValue = 0;
 
                 foreach (var position in productPositions)
@@ -902,30 +927,33 @@ public class RiskCalculationService : IRiskCalculationService
         Dictionary<string, List<decimal>> productReturns)
     {
         var exposures = new List<ProductExposureDto>();
-        
-        var productGroups = positions.GroupBy(p => p.ProductType);
-        
+
+        // UPDATED: Group by (ProductType, ContractMonth) for proper futures/derivatives exposure reporting
+        var productGroups = positions.GroupBy(p => new { p.ProductType, p.ContractMonth });
+
         foreach (var group in productGroups)
         {
             var productPositions = group.ToList();
             var longPositions = productPositions.Where(p => p.Position == PositionType.Long).ToList();
             var shortPositions = productPositions.Where(p => p.Position == PositionType.Short).ToList();
-            
+
             var longExposure = longPositions.Sum(p => p.Quantity * p.LotSize * (p.CurrentPrice ?? p.EntryPrice));
             var shortExposure = shortPositions.Sum(p => p.Quantity * p.LotSize * (p.CurrentPrice ?? p.EntryPrice));
-            
+
             var volatility = 0m;
-            if (productReturns.ContainsKey(group.Key) && productReturns[group.Key].Any())
+            // Create composite key for lookup
+            var compositeKey = $"{group.Key.ProductType}|{group.Key.ContractMonth}";
+            if (productReturns.ContainsKey(compositeKey) && productReturns[compositeKey].Any())
             {
-                var returns = productReturns[group.Key];
+                var returns = productReturns[compositeKey];
                 var mean = returns.Average();
                 var variance = returns.Sum(r => Math.Pow((double)(r - mean), 2)) / returns.Count;
                 volatility = (decimal)Math.Sqrt(variance * 252); // Annualized
             }
-            
+
             exposures.Add(new ProductExposureDto
             {
-                ProductType = group.Key,
+                ProductType = $"{group.Key.ProductType}|{group.Key.ContractMonth}",
                 NetExposure = Math.Round(longExposure - shortExposure),
                 GrossExposure = Math.Round(longExposure + shortExposure),
                 LongPositions = longPositions.Count,
@@ -935,7 +963,7 @@ public class RiskCalculationService : IRiskCalculationService
                 VaR99 = 0  // Would be calculated per product
             });
         }
-        
+
         return exposures;
     }
 

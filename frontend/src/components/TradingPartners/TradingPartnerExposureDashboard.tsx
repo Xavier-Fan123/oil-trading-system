@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Container,
@@ -48,7 +48,7 @@ const TabPanel = (props: TabPanelProps) => {
 export const TradingPartnerExposureDashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [sortBy, setSortBy] = useState<string>('riskLevel');
-  const [sortDescending, setSortDescending] = useState(true);
+  const [sortDescending] = useState(true);
   const [selectedPartner, setSelectedPartner] = useState<TradingPartnerExposureDto | null>(null);
   const [showSettlementDetails, setShowSettlementDetails] = useState(false);
 

@@ -289,15 +289,18 @@ public static class TestConfiguration
                 var change = (random.NextDouble() - 0.5) * 2 * volatility;
                 var price = basePrice + change;
 
-                marketData.Add(new MarketPrice
-                {
-                    ProductName = products[i],
-                    Price = (decimal)Math.Max(price, basePrice * 0.5), // Prevent negative prices
-                    PriceDate = date,
-                    Source = i < 3 ? "ICE" : "NYMEX",
-                    Currency = "USD",
-                    // Unit property removed from MarketPrice entity
-                });
+                marketData.Add(MarketPrice.Create(
+                    date,
+                    products[i],
+                    products[i],
+                    i % 2 == 0 ? MarketPriceType.Spot : MarketPriceType.FuturesSettlement,
+                    (decimal)Math.Max(price, basePrice * 0.5), // Prevent negative prices
+                    "USD",
+                    i < 3 ? "ICE" : "NYMEX",
+                    "Test Data",
+                    false,
+                    DateTime.UtcNow,
+                    "TestUser"));
             }
         }
 

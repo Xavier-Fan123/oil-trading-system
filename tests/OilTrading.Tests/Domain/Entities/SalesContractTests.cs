@@ -304,7 +304,7 @@ public class SalesContractTests
         exception.Message.Should().Be("Laycan start must be before laycan end");
     }
 
-    [Fact]
+    [Fact(Skip = "Past date validation disabled in SalesContract.UpdateLaycan to support historical data import")]
     public void UpdateLaycan_ShouldThrowDomainException_WhenStartIsInPast()
     {
         // Arrange

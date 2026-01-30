@@ -137,6 +137,10 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
             salesContract.UpdatePricing(priceFormula, contractValue, profitMargin);
         }
 
+        // Initialize RowVersion for EF Core InMemory database compatibility
+        // See BaseEntity.SetRowVersion() for explanation of why this is needed
+        salesContract.SetRowVersion(new byte[] { 0 });
+
         // Add to repository
         await _salesContractRepository.AddAsync(salesContract, cancellationToken);
 

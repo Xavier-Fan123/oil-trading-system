@@ -375,12 +375,6 @@ namespace OilTrading.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("ActualPayableDueDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ActualPaymentDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("ActualQuantityBBL")
                         .HasPrecision(18, 6)
                         .HasColumnType("TEXT");
@@ -392,6 +386,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<decimal>("AdjustmentAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("AmendmentReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AmendmentType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.Property<decimal>("BenchmarkAmount")
                         .HasPrecision(18, 2)
@@ -443,6 +446,10 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DealReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
@@ -487,11 +494,22 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsLatestVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("LastModifiedBy")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OriginalSettlementId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PreviousSettlementId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PricingEndDate")
@@ -518,8 +536,16 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("USD");
 
+                    b.Property<int>("SettlementSequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SupersededDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("TotalCharges")
                         .HasPrecision(18, 2)
@@ -543,6 +569,9 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("CreatedDate")
                         .HasDatabaseName("IX_ContractSettlements_CreatedDate");
 
+                    b.HasIndex("DealReferenceId")
+                        .HasDatabaseName("IX_ContractSettlements_DealReferenceId");
+
                     b.HasIndex("DocumentDate")
                         .HasDatabaseName("IX_ContractSettlements_DocumentDate");
 
@@ -555,6 +584,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("IsFinalized")
                         .HasDatabaseName("IX_ContractSettlements_IsFinalized");
 
+                    b.HasIndex("IsLatestVersion")
+                        .HasDatabaseName("IX_ContractSettlements_IsLatestVersion");
+
+                    b.HasIndex("OriginalSettlementId")
+                        .HasDatabaseName("IX_ContractSettlements_OriginalSettlementId");
+
+                    b.HasIndex("PreviousSettlementId")
+                        .HasDatabaseName("IX_ContractSettlements_PreviousSettlementId");
+
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_ContractSettlements_Status");
 
@@ -563,6 +601,9 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("IsFinalized", "CreatedDate")
                         .HasDatabaseName("IX_ContractSettlements_IsFinalized_CreatedDate");
+
+                    b.HasIndex("OriginalSettlementId", "SettlementSequence")
+                        .HasDatabaseName("IX_ContractSettlements_OriginalSettlementId_Sequence");
 
                     b.HasIndex("Status", "CreatedDate")
                         .HasDatabaseName("IX_ContractSettlements_Status_CreatedDate");
@@ -1555,6 +1596,7 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("DeletedBy")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("ImportedAt")
@@ -1592,11 +1634,16 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Region")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("BLOB");
+                        .HasColumnType("BLOB")
+                        .HasDefaultValueSql("X'00'");
 
                     b.Property<string>("Source")
                         .HasMaxLength(100)
@@ -1626,9 +1673,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("ProductCode")
                         .HasDatabaseName("IX_MarketPrices_ProductCode");
 
-                    b.HasIndex("ProductCode", "PriceDate")
+                    b.HasIndex("ProductCode", "ContractMonth", "PriceDate", "PriceType")
                         .IsUnique()
-                        .HasDatabaseName("IX_MarketPrices_ProductCode_PriceDate");
+                        .HasDatabaseName("IX_MarketPrices_ProductCode_ContractMonth_PriceDate_PriceType");
+
+                    b.HasIndex("ProductCode", "Region", "PriceDate", "PriceType")
+                        .HasDatabaseName("IX_MarketPrices_ProductCode_Region_PriceDate_PriceType");
 
                     b.ToTable("MarketPrices", (string)null);
                 });
@@ -1772,8 +1822,32 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("HedgeDesignationDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("HedgeEffectiveness")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("HedgeRatio")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(8, 4)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(1.0m);
+
+                    b.Property<Guid?>("HedgedContractId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("HedgedContractType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDesignatedHedge")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<bool>("IsSpread")
                         .ValueGeneratedOnAdd()
@@ -1865,6 +1939,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("ContractMonth")
                         .HasDatabaseName("IX_PaperContracts_ContractMonth");
 
+                    b.HasIndex("HedgedContractId")
+                        .HasDatabaseName("IX_PaperContracts_HedgedContractId");
+
+                    b.HasIndex("IsDesignatedHedge")
+                        .HasDatabaseName("IX_PaperContracts_IsDesignatedHedge");
+
                     b.HasIndex("Position")
                         .HasDatabaseName("IX_PaperContracts_Position");
 
@@ -1878,6 +1958,12 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasDatabaseName("IX_PaperContracts_TradeDate");
 
                     b.HasIndex("TradeGroupId");
+
+                    b.HasIndex("HedgedContractId", "HedgedContractType")
+                        .HasDatabaseName("IX_PaperContracts_HedgedContractId_Type");
+
+                    b.HasIndex("IsDesignatedHedge", "Status")
+                        .HasDatabaseName("IX_PaperContracts_IsDesignatedHedge_Status");
 
                     b.HasIndex("ProductType", "ContractMonth")
                         .HasDatabaseName("IX_PaperContracts_ProductType_ContractMonth");
@@ -1947,9 +2033,6 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid>("SettlementId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("SettlementId1")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
@@ -1971,12 +2054,108 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("SettlementId")
                         .HasDatabaseName("IX_Payments_SettlementId");
 
-                    b.HasIndex("SettlementId1");
-
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_Payments_Status");
 
                     b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.PaymentRiskAlert", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AlertType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int?>("DaysOverdue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DaysUntilDue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsResolved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("ResolvedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TradingPartnerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlertType")
+                        .HasDatabaseName("IX_PaymentRiskAlerts_AlertType");
+
+                    b.HasIndex("CreatedDate")
+                        .HasDatabaseName("IX_PaymentRiskAlerts_CreatedDate");
+
+                    b.HasIndex("Severity")
+                        .HasDatabaseName("IX_PaymentRiskAlerts_Severity");
+
+                    b.HasIndex("TradingPartnerId")
+                        .HasDatabaseName("IX_PaymentRiskAlerts_TradingPartnerId");
+
+                    b.HasIndex("TradingPartnerId", "IsResolved")
+                        .HasDatabaseName("IX_PaymentRiskAlerts_TradingPartnerId_IsResolved");
+
+                    b.ToTable("PaymentRiskAlerts");
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.PhysicalContract", b =>
@@ -2568,6 +2747,10 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int?>("CreditPeriodDays")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("DealReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
@@ -2583,13 +2766,22 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("EstimatedPaymentDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ExternalContractNumber")
                         .HasMaxLength(100)
                         .IsUnicode(true)
                         .HasColumnType("TEXT");
+
+                    b.Property<decimal>("FixedPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("FixedQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 6)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
 
                     b.Property<string>("Incoterms")
                         .HasMaxLength(50)
@@ -2606,6 +2798,9 @@ namespace OilTrading.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastPricingDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LaycanEnd")
                         .HasColumnType("TEXT");
@@ -2635,11 +2830,19 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid?>("PriceBenchmarkId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PriceSource")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("PricingPeriodEnd")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PricingPeriodStart")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("PricingStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("TEXT");
@@ -2678,6 +2881,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid>("TradingPartnerId")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("UnfixedQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 6)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
 
@@ -2692,11 +2901,17 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_PurchaseContracts_CreatedAt");
 
+                    b.HasIndex("DealReferenceId")
+                        .HasDatabaseName("IX_PurchaseContracts_DealReferenceId");
+
                     b.HasIndex("ExternalContractNumber")
                         .HasDatabaseName("IX_PurchaseContracts_ExternalContractNumber");
 
                     b.HasIndex("PriceBenchmarkId")
                         .HasDatabaseName("IX_PurchaseContracts_PriceBenchmarkId");
+
+                    b.HasIndex("PricingStatus")
+                        .HasDatabaseName("IX_PurchaseContracts_PricingStatus");
 
                     b.HasIndex("ProductId")
                         .HasDatabaseName("IX_PurchaseContracts_ProductId");
@@ -2712,6 +2927,9 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("TradingPartnerId")
                         .HasDatabaseName("IX_PurchaseContracts_TradingPartnerId");
+
+                    b.HasIndex("DealReferenceId", "Status")
+                        .HasDatabaseName("IX_PurchaseContracts_DealReferenceId_Status");
 
                     b.HasIndex("LaycanStart", "LaycanEnd")
                         .HasDatabaseName("IX_PurchaseContracts_Laycan_Period")
@@ -2753,6 +2971,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<decimal>("AdjustmentAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("AmendmentReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AmendmentType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.Property<decimal>("BenchmarkAmount")
                         .HasPrecision(18, 2)
@@ -2801,6 +3028,10 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DealReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
@@ -2845,11 +3076,22 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsLatestVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("LastModifiedBy")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OriginalSettlementId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PreviousSettlementId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PricingEndDate")
@@ -2879,8 +3121,16 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("USD");
 
+                    b.Property<int>("SettlementSequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SupersededDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("TotalCharges")
                         .HasPrecision(18, 2)
@@ -2901,6 +3151,9 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("CreatedDate")
                         .HasDatabaseName("IX_PurchaseSettlements_CreatedDate");
 
+                    b.HasIndex("DealReferenceId")
+                        .HasDatabaseName("IX_PurchaseSettlements_DealReferenceId");
+
                     b.HasIndex("DocumentDate")
                         .HasDatabaseName("IX_PurchaseSettlements_DocumentDate");
 
@@ -2913,6 +3166,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("IsFinalized")
                         .HasDatabaseName("IX_PurchaseSettlements_IsFinalized");
 
+                    b.HasIndex("IsLatestVersion")
+                        .HasDatabaseName("IX_PurchaseSettlements_IsLatestVersion");
+
+                    b.HasIndex("OriginalSettlementId")
+                        .HasDatabaseName("IX_PurchaseSettlements_OriginalSettlementId");
+
+                    b.HasIndex("PreviousSettlementId")
+                        .HasDatabaseName("IX_PurchaseSettlements_PreviousSettlementId");
+
                     b.HasIndex("PurchaseContractId")
                         .HasDatabaseName("IX_PurchaseSettlements_PurchaseContractId");
 
@@ -2922,6 +3184,9 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("IsFinalized", "CreatedDate")
                         .HasDatabaseName("IX_PurchaseSettlements_IsFinalized_CreatedDate");
 
+                    b.HasIndex("OriginalSettlementId", "SettlementSequence")
+                        .HasDatabaseName("IX_PurchaseSettlements_OriginalSettlementId_Sequence");
+
                     b.HasIndex("PurchaseContractId", "Status")
                         .HasDatabaseName("IX_PurchaseSettlements_PurchaseContractId_Status");
 
@@ -2929,6 +3194,360 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasDatabaseName("IX_PurchaseSettlements_Status_CreatedDate");
 
                     b.ToTable("PurchaseSettlements", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportArchive", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ArchiveDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ExecutionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("FileSize")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0L);
+
+                    b.Property<bool>("IsCompressed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RetentionDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(90);
+
+                    b.Property<string>("StorageLocation")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArchiveDate");
+
+                    b.HasIndex("ExecutionId");
+
+                    b.HasIndex("ExpiryDate");
+
+                    b.HasIndex("ExpiryDate", "IsDeleted")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("ReportArchives", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportConfiguration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ColumnsJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExportFormat")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("CSV");
+
+                    b.Property<string>("FilterJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IncludeMetadata")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReportType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("CreatedDate");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("ReportType");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.HasIndex("IsActive", "IsDeleted");
+
+                    b.ToTable("ReportConfigurations", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportDistribution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChannelConfiguration")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("{}");
+
+                    b.Property<string>("ChannelName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChannelType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastTestMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastTestStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastTestedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxRetries")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("ReportConfigId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("RetryDelaySeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelType");
+
+                    b.HasIndex("IsEnabled");
+
+                    b.HasIndex("ReportConfigId");
+
+                    b.HasIndex("ReportConfigId", "ChannelType");
+
+                    b.ToTable("ReportDistributions", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportExecution", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("DurationSeconds")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ExecutedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExecutionEndTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExecutionStartTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FailedDistributions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("FileSizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsScheduled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OutputFileFormat")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("CSV");
+
+                    b.Property<string>("OutputFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OutputFilePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RecordsProcessed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("ReportConfigId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<int>("SuccessfulDistributions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TotalRecords")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutedBy");
+
+                    b.HasIndex("ExecutionStartTime")
+                        .HasDatabaseName("IX_ReportExecutions_ExecutionStartTime_Active")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("IsScheduled");
+
+                    b.HasIndex("ReportConfigId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ReportConfigId", "Status");
+
+                    b.ToTable("ReportExecutions", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("DayOfMonth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DayOfWeek")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastRunDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NextRunDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ReportConfigId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Time")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Timezone")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsEnabled");
+
+                    b.HasIndex("NextRunDate")
+                        .HasFilter("[IsEnabled] = 1 AND [IsDeleted] = 0");
+
+                    b.HasIndex("ReportConfigId");
+
+                    b.HasIndex("Frequency", "IsEnabled");
+
+                    b.ToTable("ReportSchedules", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.RiskReport", b =>
@@ -3091,6 +3710,104 @@ namespace OilTrading.Infrastructure.Migrations
                     b.ToTable("RiskReportSection");
                 });
 
+            modelBuilder.Entity("OilTrading.Core.Entities.RuleExecutionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ActionsExecuted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("AffectedSettlementIds")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ConditionsEvaluated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetailedLog")
+                        .HasMaxLength(5000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ExecutionDurationMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ExecutionEndTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExecutionStartTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SettlementCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("TriggerSource")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionStartTime")
+                        .HasDatabaseName("IX_ExecutionStartTime");
+
+                    b.HasIndex("RuleId")
+                        .HasDatabaseName("IX_ExecutionRuleId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_ExecutionStatus");
+
+                    b.HasIndex("RuleId", "ExecutionStartTime")
+                        .HasDatabaseName("IX_RuleExecutionTime");
+
+                    b.ToTable("RuleExecutionRecords", (string)null);
+                });
+
             modelBuilder.Entity("OilTrading.Core.Entities.SalesContract", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3110,6 +3827,10 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<int?>("CreditPeriodDays")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("DealReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
@@ -3125,13 +3846,22 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("EstimatedPaymentDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ExternalContractNumber")
                         .HasMaxLength(100)
                         .IsUnicode(true)
                         .HasColumnType("TEXT");
+
+                    b.Property<decimal>("FixedPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("FixedQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 6)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
 
                     b.Property<string>("Incoterms")
                         .HasMaxLength(50)
@@ -3146,6 +3876,9 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<bool>("IsPriceFinalized")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastPricingDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LaycanEnd")
                         .HasColumnType("TEXT");
@@ -3175,11 +3908,19 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid?>("PriceBenchmarkId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PriceSource")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("PricingPeriodEnd")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PricingPeriodStart")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("PricingStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("TEXT");
@@ -3218,6 +3959,12 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<Guid>("TradingPartnerId")
                         .HasColumnType("TEXT");
 
+                    b.Property<decimal>("UnfixedQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 6)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue(0m);
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
 
@@ -3230,6 +3977,9 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_SalesContracts_CreatedAt");
 
+                    b.HasIndex("DealReferenceId")
+                        .HasDatabaseName("IX_SalesContracts_DealReferenceId");
+
                     b.HasIndex("ExternalContractNumber")
                         .HasDatabaseName("IX_SalesContracts_ExternalContractNumber");
 
@@ -3237,6 +3987,9 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasDatabaseName("IX_SalesContracts_LinkedPurchaseContractId");
 
                     b.HasIndex("PriceBenchmarkId");
+
+                    b.HasIndex("PricingStatus")
+                        .HasDatabaseName("IX_SalesContracts_PricingStatus");
 
                     b.HasIndex("ProductId")
                         .HasDatabaseName("IX_SalesContracts_ProductId");
@@ -3251,6 +4004,9 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("TradingPartnerId")
                         .HasDatabaseName("IX_SalesContracts_TradingPartnerId");
+
+                    b.HasIndex("DealReferenceId", "Status")
+                        .HasDatabaseName("IX_SalesContracts_DealReferenceId_Status");
 
                     b.HasIndex("LaycanStart", "LaycanEnd")
                         .HasDatabaseName("IX_SalesContracts_LaycanDates");
@@ -3284,6 +4040,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<decimal>("AdjustmentAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("AmendmentReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AmendmentType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.Property<decimal>("BenchmarkAmount")
                         .HasPrecision(18, 2)
@@ -3332,6 +4097,10 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DealReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
@@ -3376,11 +4145,22 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsLatestVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("LastModifiedBy")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OriginalSettlementId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PreviousSettlementId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("PricingEndDate")
@@ -3410,8 +4190,16 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("USD");
 
+                    b.Property<int>("SettlementSequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SupersededDate")
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("TotalCharges")
                         .HasPrecision(18, 2)
@@ -3432,6 +4220,9 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("CreatedDate")
                         .HasDatabaseName("IX_SalesSettlements_CreatedDate");
 
+                    b.HasIndex("DealReferenceId")
+                        .HasDatabaseName("IX_SalesSettlements_DealReferenceId");
+
                     b.HasIndex("DocumentDate")
                         .HasDatabaseName("IX_SalesSettlements_DocumentDate");
 
@@ -3444,6 +4235,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("IsFinalized")
                         .HasDatabaseName("IX_SalesSettlements_IsFinalized");
 
+                    b.HasIndex("IsLatestVersion")
+                        .HasDatabaseName("IX_SalesSettlements_IsLatestVersion");
+
+                    b.HasIndex("OriginalSettlementId")
+                        .HasDatabaseName("IX_SalesSettlements_OriginalSettlementId");
+
+                    b.HasIndex("PreviousSettlementId")
+                        .HasDatabaseName("IX_SalesSettlements_PreviousSettlementId");
+
                     b.HasIndex("SalesContractId")
                         .HasDatabaseName("IX_SalesSettlements_SalesContractId");
 
@@ -3452,6 +4252,9 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("IsFinalized", "CreatedDate")
                         .HasDatabaseName("IX_SalesSettlements_IsFinalized_CreatedDate");
+
+                    b.HasIndex("OriginalSettlementId", "SettlementSequence")
+                        .HasDatabaseName("IX_SalesSettlements_OriginalSettlementId_Sequence");
 
                     b.HasIndex("SalesContractId", "Status")
                         .HasDatabaseName("IX_SalesSettlements_SalesContractId_Status");
@@ -3462,24 +4265,10 @@ namespace OilTrading.Infrastructure.Migrations
                     b.ToTable("SalesSettlements", (string)null);
                 });
 
-            modelBuilder.Entity("OilTrading.Core.Entities.Settlement", b =>
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementAutomationRule", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CancellationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CompletedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("CompletedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ContractId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
@@ -3487,7 +4276,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasMaxLength(200)
+                        .HasMaxLength(250)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedDate")
@@ -3500,124 +4289,79 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DueDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("PayeePartyId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("PayerPartyId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ProcessedBy")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ProcessedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("PurchaseContractId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
                         .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("BLOB");
-
-                    b.Property<Guid?>("SalesContractId")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("SettlementNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
+                    b.Property<DateTime?>("DisabledDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContractId")
-                        .HasDatabaseName("IX_Settlements_ContractId");
-
-                    b.HasIndex("DueDate")
-                        .HasDatabaseName("IX_Settlements_DueDate");
-
-                    b.HasIndex("PayeePartyId");
-
-                    b.HasIndex("PayerPartyId");
-
-                    b.HasIndex("PurchaseContractId");
-
-                    b.HasIndex("SalesContractId");
-
-                    b.HasIndex("SettlementNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Settlements_SettlementNumber");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("IX_Settlements_Status");
-
-                    b.HasIndex("Type")
-                        .HasDatabaseName("IX_Settlements_Type");
-
-                    b.HasIndex("Status", "DueDate")
-                        .HasDatabaseName("IX_Settlements_Status_DueDate");
-
-                    b.ToTable("Settlements", (string)null);
-                });
-
-            modelBuilder.Entity("OilTrading.Core.Entities.SettlementAdjustment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("AdjustedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("AdjustmentDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DeletedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
+                    b.Property<string>("DisabledReason")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Reference")
+                    b.Property<int>("ExecutionCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("FailureCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("GroupingDimension")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastExecutedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastExecutionError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LastExecutionSettlementCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(250)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaxSettlementsPerExecution")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrchestrationStrategy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Normal");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -3625,11 +4369,41 @@ namespace OilTrading.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("BLOB");
 
-                    b.Property<Guid?>("SettlementId")
+                    b.Property<int>("RuleType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RuleVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("ScheduleExpression")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
+                    b.Property<int>("Scope")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("ScopeFilter")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(3);
+
+                    b.Property<int>("SuccessCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("Trigger")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -3639,18 +4413,23 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AdjustedBy")
-                        .HasDatabaseName("IX_SettlementAdjustments_AdjustedBy");
+                    b.HasIndex("CreatedDate")
+                        .HasDatabaseName("IX_CreatedDate");
 
-                    b.HasIndex("AdjustmentDate")
-                        .HasDatabaseName("IX_SettlementAdjustments_AdjustmentDate");
+                    b.HasIndex("IsEnabled");
 
-                    b.HasIndex("SettlementId");
+                    b.HasIndex("LastExecutedDate")
+                        .HasDatabaseName("IX_LastExecuted");
 
-                    b.HasIndex("Type")
-                        .HasDatabaseName("IX_SettlementAdjustments_Type");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.ToTable("SettlementAdjustments", (string)null);
+                    b.HasIndex("Status");
+
+                    b.HasIndex("RuleType", "IsEnabled")
+                        .HasDatabaseName("IX_RuleTypeEnabled");
+
+                    b.ToTable("SettlementAutomationRules", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.SettlementCharge", b =>
@@ -3747,6 +4526,367 @@ namespace OilTrading.Infrastructure.Migrations
                     b.ToTable("SettlementCharges", (string)null);
                 });
 
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementRuleAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NotificationTemplateId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Parameters")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("StopOnFailure")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActionType")
+                        .HasDatabaseName("IX_ActionType");
+
+                    b.HasIndex("RuleId", "SequenceNumber")
+                        .HasDatabaseName("IX_RuleActionSequence");
+
+                    b.ToTable("SettlementRuleActions", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementRuleCondition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GroupReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LogicalOperator")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("AND");
+
+                    b.Property<string>("OperatorType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RuleId", "SequenceNumber")
+                        .HasDatabaseName("IX_RuleConditionSequence");
+
+                    b.ToTable("SettlementRuleConditions", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsPublic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("TemplateConfiguration")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TimesUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("IX_SettlementTemplates_CreatedByUserId");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("IX_SettlementTemplates_IsActive");
+
+                    b.HasIndex("IsPublic")
+                        .HasDatabaseName("IX_SettlementTemplates_IsPublic");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("IX_SettlementTemplates_Name");
+
+                    b.ToTable("SettlementTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementTemplatePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GrantedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PermissionLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PermissionLevel")
+                        .HasDatabaseName("IX_SettlementTemplatePermissions_PermissionLevel");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_SettlementTemplatePermissions_UserId");
+
+                    b.HasIndex("TemplateId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SettlementTemplatePermissions_TemplateId_UserId");
+
+                    b.ToTable("SettlementTemplatePermissions", (string)null);
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementTemplateUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("AppliedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AppliedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("BLOB");
+
+                    b.Property<Guid>("SettlementId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppliedAt")
+                        .HasDatabaseName("IX_SettlementTemplateUsages_AppliedAt");
+
+                    b.HasIndex("SettlementId")
+                        .HasDatabaseName("IX_SettlementTemplateUsages_SettlementId");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("IX_SettlementTemplateUsages_TemplateId");
+
+                    b.ToTable("SettlementTemplateUsages", (string)null);
+                });
+
             modelBuilder.Entity("OilTrading.Core.Entities.ShippingOperation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3773,6 +4913,10 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DealReferenceId")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
@@ -3796,6 +4940,11 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsSplit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LoadPort")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
@@ -3811,6 +4960,9 @@ namespace OilTrading.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("NoticeOfReadinessDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ParentShippingOperationId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("PurchaseContractId")
@@ -3834,6 +4986,18 @@ namespace OilTrading.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("SplitReasonNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SplitReasonType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SplitSequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
@@ -3862,6 +5026,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_ShippingOperations_CreatedAt");
 
+                    b.HasIndex("DealReferenceId")
+                        .HasDatabaseName("IX_ShippingOperations_DealReferenceId");
+
+                    b.HasIndex("IsSplit")
+                        .HasDatabaseName("IX_ShippingOperations_IsSplit");
+
+                    b.HasIndex("ParentShippingOperationId")
+                        .HasDatabaseName("IX_ShippingOperations_ParentShippingOperationId");
+
                     b.HasIndex("PurchaseContractId");
 
                     b.HasIndex("SalesContractId");
@@ -3884,6 +5057,9 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("LoadPortETA", "DischargePortETA")
                         .HasDatabaseName("IX_ShippingOperations_Schedule");
+
+                    b.HasIndex("ParentShippingOperationId", "SplitSequence")
+                        .HasDatabaseName("IX_ShippingOperations_ParentId_SplitSequence");
 
                     b.HasIndex("VesselName", "Status")
                         .HasDatabaseName("IX_ShippingOperations_Vessel_Status");
@@ -5061,6 +6237,23 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Navigation("SalesContract");
                 });
 
+            modelBuilder.Entity("OilTrading.Core.Entities.ContractSettlement", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.ContractSettlement", "OriginalSettlement")
+                        .WithMany()
+                        .HasForeignKey("OriginalSettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("OilTrading.Core.Entities.ContractSettlement", "PreviousSettlement")
+                        .WithMany()
+                        .HasForeignKey("PreviousSettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("OriginalSettlement");
+
+                    b.Navigation("PreviousSettlement");
+                });
+
             modelBuilder.Entity("OilTrading.Core.Entities.ContractTag", b =>
                 {
                     b.HasOne("OilTrading.Core.Entities.PurchaseContract", null)
@@ -5506,18 +6699,6 @@ namespace OilTrading.Infrastructure.Migrations
 
             modelBuilder.Entity("OilTrading.Core.Entities.Payment", b =>
                 {
-                    b.HasOne("OilTrading.Core.Entities.Settlement", null)
-                        .WithMany("Payments")
-                        .HasForeignKey("SettlementId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OilTrading.Core.Entities.Settlement", "Settlement")
-                        .WithMany()
-                        .HasForeignKey("SettlementId1")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.OwnsOne("OilTrading.Core.ValueObjects.Money", "Amount", b1 =>
                         {
                             b1.Property<Guid>("PaymentId")
@@ -5670,8 +6851,17 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Navigation("PayeeAccount");
 
                     b.Navigation("PayerAccount");
+                });
 
-                    b.Navigation("Settlement");
+            modelBuilder.Entity("OilTrading.Core.Entities.PaymentRiskAlert", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.TradingPartner", "TradingPartner")
+                        .WithMany("PaymentRiskAlerts")
+                        .HasForeignKey("TradingPartnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TradingPartner");
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.PhysicalContract", b =>
@@ -6050,6 +7240,16 @@ namespace OilTrading.Infrastructure.Migrations
 
             modelBuilder.Entity("OilTrading.Core.Entities.PurchaseSettlement", b =>
                 {
+                    b.HasOne("OilTrading.Core.Entities.PurchaseSettlement", "OriginalSettlement")
+                        .WithMany()
+                        .HasForeignKey("OriginalSettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("OilTrading.Core.Entities.PurchaseSettlement", "PreviousSettlement")
+                        .WithMany()
+                        .HasForeignKey("PreviousSettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("OilTrading.Core.Entities.PurchaseContract", "PurchaseContract")
                         .WithMany("PurchaseSettlements")
                         .HasForeignKey("PurchaseContractId")
@@ -6057,7 +7257,79 @@ namespace OilTrading.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_PurchaseSettlements_PurchaseContracts");
 
+                    b.Navigation("OriginalSettlement");
+
+                    b.Navigation("PreviousSettlement");
+
                     b.Navigation("PurchaseContract");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportArchive", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.ReportExecution", "ReportExecution")
+                        .WithMany()
+                        .HasForeignKey("ExecutionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportExecution");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportConfiguration", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("OilTrading.Core.Entities.User", "UpdatedByUser")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportDistribution", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.ReportConfiguration", "ReportConfig")
+                        .WithMany("Distributions")
+                        .HasForeignKey("ReportConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportConfig");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportExecution", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.User", "ExecutedByUser")
+                        .WithMany()
+                        .HasForeignKey("ExecutedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("OilTrading.Core.Entities.ReportConfiguration", "ReportConfig")
+                        .WithMany("Executions")
+                        .HasForeignKey("ReportConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExecutedByUser");
+
+                    b.Navigation("ReportConfig");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportSchedule", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.ReportConfiguration", "ReportConfig")
+                        .WithMany("Schedules")
+                        .HasForeignKey("ReportConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportConfig");
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.RiskReportSection", b =>
@@ -6069,6 +7341,15 @@ namespace OilTrading.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("RiskReport");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.RuleExecutionRecord", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.SettlementAutomationRule", null)
+                        .WithMany("ExecutionHistory")
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.SalesContract", b =>
@@ -6441,6 +7722,16 @@ namespace OilTrading.Infrastructure.Migrations
 
             modelBuilder.Entity("OilTrading.Core.Entities.SalesSettlement", b =>
                 {
+                    b.HasOne("OilTrading.Core.Entities.SalesSettlement", "OriginalSettlement")
+                        .WithMany()
+                        .HasForeignKey("OriginalSettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("OilTrading.Core.Entities.SalesSettlement", "PreviousSettlement")
+                        .WithMany()
+                        .HasForeignKey("PreviousSettlementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("OilTrading.Core.Entities.SalesContract", "SalesContract")
                         .WithMany("SalesSettlements")
                         .HasForeignKey("SalesContractId")
@@ -6448,164 +7739,11 @@ namespace OilTrading.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_SalesSettlements_SalesContracts");
 
-                    b.Navigation("SalesContract");
-                });
+                    b.Navigation("OriginalSettlement");
 
-            modelBuilder.Entity("OilTrading.Core.Entities.Settlement", b =>
-                {
-                    b.HasOne("OilTrading.Core.Entities.TradingPartner", "PayeeParty")
-                        .WithMany()
-                        .HasForeignKey("PayeePartyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OilTrading.Core.Entities.TradingPartner", "PayerParty")
-                        .WithMany()
-                        .HasForeignKey("PayerPartyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OilTrading.Core.Entities.PurchaseContract", "PurchaseContract")
-                        .WithMany()
-                        .HasForeignKey("PurchaseContractId");
-
-                    b.HasOne("OilTrading.Core.Entities.SalesContract", "SalesContract")
-                        .WithMany()
-                        .HasForeignKey("SalesContractId");
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "Amount", b1 =>
-                        {
-                            b1.Property<Guid>("SettlementId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 6)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("Amount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .ValueGeneratedOnAdd()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasDefaultValue("USD")
-                                .HasColumnName("Currency");
-
-                            b1.HasKey("SettlementId");
-
-                            b1.ToTable("Settlements");
-
-                            b1.WithOwner()
-                                .HasForeignKey("SettlementId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.Entities.SettlementTerms", "Terms", b1 =>
-                        {
-                            b1.Property<Guid>("SettlementId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .ValueGeneratedOnAdd()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasDefaultValue("USD")
-                                .HasColumnName("TermsCurrency");
-
-                            b1.Property<decimal?>("DiscountRate")
-                                .HasPrecision(5, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("DiscountRate");
-
-                            b1.Property<int?>("EarlyPaymentDays")
-                                .HasColumnType("INTEGER")
-                                .HasColumnName("EarlyPaymentDays");
-
-                            b1.Property<bool>("EnableAutomaticProcessing")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("INTEGER")
-                                .HasDefaultValue(false)
-                                .HasColumnName("EnableAutomaticProcessing");
-
-                            b1.Property<decimal?>("LateFeeRate")
-                                .HasPrecision(5, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("LateFeeRate");
-
-                            b1.Property<int>("Method")
-                                .HasColumnType("INTEGER")
-                                .HasColumnName("SettlementMethod");
-
-                            b1.Property<int>("PaymentTerms")
-                                .HasColumnType("INTEGER")
-                                .HasColumnName("PaymentTerms");
-
-                            b1.HasKey("SettlementId");
-
-                            b1.ToTable("Settlements");
-
-                            b1.WithOwner()
-                                .HasForeignKey("SettlementId");
-                        });
-
-                    b.Navigation("Amount")
-                        .IsRequired();
-
-                    b.Navigation("PayeeParty");
-
-                    b.Navigation("PayerParty");
-
-                    b.Navigation("PurchaseContract");
+                    b.Navigation("PreviousSettlement");
 
                     b.Navigation("SalesContract");
-
-                    b.Navigation("Terms")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("OilTrading.Core.Entities.SettlementAdjustment", b =>
-                {
-                    b.HasOne("OilTrading.Core.Entities.User", "AdjusterUser")
-                        .WithMany()
-                        .HasForeignKey("AdjustedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OilTrading.Core.Entities.Settlement", null)
-                        .WithMany("Adjustments")
-                        .HasForeignKey("SettlementId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "Amount", b1 =>
-                        {
-                            b1.Property<Guid>("SettlementAdjustmentId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 6)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("Amount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .ValueGeneratedOnAdd()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasDefaultValue("USD")
-                                .HasColumnName("Currency");
-
-                            b1.HasKey("SettlementAdjustmentId");
-
-                            b1.ToTable("SettlementAdjustments");
-
-                            b1.WithOwner()
-                                .HasForeignKey("SettlementAdjustmentId");
-                        });
-
-                    b.Navigation("AdjusterUser");
-
-                    b.Navigation("Amount")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.SettlementCharge", b =>
@@ -6634,8 +7772,57 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Navigation("Settlement");
                 });
 
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementRuleAction", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.SettlementAutomationRule", "Rule")
+                        .WithMany("Actions")
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rule");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementRuleCondition", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.SettlementAutomationRule", "Rule")
+                        .WithMany("Conditions")
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rule");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementTemplatePermission", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.SettlementTemplate", "Template")
+                        .WithMany("Permissions")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementTemplateUsage", b =>
+                {
+                    b.HasOne("OilTrading.Core.Entities.SettlementTemplate", "Template")
+                        .WithMany("Usages")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
             modelBuilder.Entity("OilTrading.Core.Entities.ShippingOperation", b =>
                 {
+                    b.HasOne("OilTrading.Core.Entities.ShippingOperation", "ParentShippingOperation")
+                        .WithMany("SplitShipments")
+                        .HasForeignKey("ParentShippingOperationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("OilTrading.Core.Entities.PurchaseContract", "PurchaseContract")
                         .WithMany("ShippingOperations")
                         .HasForeignKey("PurchaseContractId");
@@ -6657,6 +7844,28 @@ namespace OilTrading.Infrastructure.Migrations
                                 .HasPrecision(18, 6)
                                 .HasColumnType("TEXT")
                                 .HasColumnName("ActualQuantity");
+
+                            b1.HasKey("ShippingOperationId");
+
+                            b1.ToTable("ShippingOperations");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ShippingOperationId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "OriginalPlannedQuantity", b1 =>
+                        {
+                            b1.Property<Guid>("ShippingOperationId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<int>("Unit")
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("OriginalPlannedQuantityUnit");
+
+                            b1.Property<decimal>("Value")
+                                .HasPrecision(18, 6)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("OriginalPlannedQuantity");
 
                             b1.HasKey("ShippingOperationId");
 
@@ -6689,6 +7898,10 @@ namespace OilTrading.Infrastructure.Migrations
                         });
 
                     b.Navigation("ActualQuantity");
+
+                    b.Navigation("OriginalPlannedQuantity");
+
+                    b.Navigation("ParentShippingOperation");
 
                     b.Navigation("PlannedQuantity")
                         .IsRequired();
@@ -7033,6 +8246,15 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Navigation("Charges");
                 });
 
+            modelBuilder.Entity("OilTrading.Core.Entities.ReportConfiguration", b =>
+                {
+                    b.Navigation("Distributions");
+
+                    b.Navigation("Executions");
+
+                    b.Navigation("Schedules");
+                });
+
             modelBuilder.Entity("OilTrading.Core.Entities.RiskReport", b =>
                 {
                     b.Navigation("Sections");
@@ -7056,16 +8278,27 @@ namespace OilTrading.Infrastructure.Migrations
                     b.Navigation("Charges");
                 });
 
-            modelBuilder.Entity("OilTrading.Core.Entities.Settlement", b =>
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementAutomationRule", b =>
                 {
-                    b.Navigation("Adjustments");
+                    b.Navigation("Actions");
 
-                    b.Navigation("Payments");
+                    b.Navigation("Conditions");
+
+                    b.Navigation("ExecutionHistory");
+                });
+
+            modelBuilder.Entity("OilTrading.Core.Entities.SettlementTemplate", b =>
+                {
+                    b.Navigation("Permissions");
+
+                    b.Navigation("Usages");
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.ShippingOperation", b =>
                 {
                     b.Navigation("PricingEvents");
+
+                    b.Navigation("SplitShipments");
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.Tag", b =>
@@ -7089,6 +8322,8 @@ namespace OilTrading.Infrastructure.Migrations
             modelBuilder.Entity("OilTrading.Core.Entities.TradingPartner", b =>
                 {
                     b.Navigation("FinancialReports");
+
+                    b.Navigation("PaymentRiskAlerts");
 
                     b.Navigation("PhysicalContracts");
 

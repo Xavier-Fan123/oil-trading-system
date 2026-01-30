@@ -41,7 +41,6 @@ import {
   ReportType,
   ReportFormat,
   ReportColumn,
-  ReportFilter,
   REPORT_TYPE_LABELS,
   REPORT_FORMAT_LABELS,
 } from '@/types/advancedReporting';
