@@ -252,7 +252,7 @@ export const ContractExecutionReportFilter: React.FC<ContractExecutionReportFilt
                   ? tradingPartners.find((p) => p.id === filters.tradingPartnerId) || null
                   : null
               }
-              onChange={(event, value) => handleTradingPartnerChange(value)}
+              onChange={(_event, value) => handleTradingPartnerChange(value)}
               loading={loadingData}
               renderInput={(params) => (
                 <TextField {...params} label="Trading Partner" />
@@ -272,7 +272,7 @@ export const ContractExecutionReportFilter: React.FC<ContractExecutionReportFilt
                   ? products.find((p) => p.id === filters.productId) || null
                   : null
               }
-              onChange={(event, value) => handleProductChange(value)}
+              onChange={(_event, value) => handleProductChange(value)}
               loading={loadingData}
               renderInput={(params) => (
                 <TextField {...params} label="Product" />

@@ -26,7 +26,7 @@ export const useTemplateManagement = (options: UseTemplateManagementOptions = {}
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<FetchOptions>({
+  const [_filters, setFilters] = useState<FetchOptions>({
     pageNumber: 1,
   });
 

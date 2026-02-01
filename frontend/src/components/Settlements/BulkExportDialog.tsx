@@ -18,7 +18,6 @@ import {
 } from '@mui/material';
 import {
   Download as DownloadIcon,
-  Description as ExcelIcon,
 } from '@mui/icons-material';
 
 export type ExportFormat = 'excel' | 'csv' | 'pdf';

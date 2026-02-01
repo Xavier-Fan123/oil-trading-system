@@ -26,7 +26,8 @@ import {
 } from '@mui/icons-material';
 import { SettlementTemplate } from '@/services/templateApi';
 import { SettlementTemplateConfig, DefaultChargeItem } from '@/types/templates';
-import { ChargeTypeLabels } from '@/types/settlement';
+
+
 import { formatDistanceToNow } from 'date-fns';
 
 interface TemplatePreviewProps {

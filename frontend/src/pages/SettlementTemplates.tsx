@@ -50,7 +50,7 @@ export const SettlementTemplatesPage: React.FC = () => {
     selectedTemplate,
     loading,
     error,
-    totalCount,
+    totalCount: _totalCount,
     currentPage,
     fetchTemplates,
     createTemplate,
@@ -59,7 +59,7 @@ export const SettlementTemplatesPage: React.FC = () => {
     getTemplate,
     setSelectedTemplate,
     clearError,
-    setCurrentPage,
+    setCurrentPage: _setCurrentPage,
   } = useTemplateManagement({ autoFetch: true, pageSize: 10 });
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');

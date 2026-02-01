@@ -11,17 +11,11 @@ import {
   Typography,
   Chip,
   LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Stack,
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { settlementApi, ContractSettlementDto } from '@/services/settlementApi';
+import { settlementApi } from '@/services/settlementApi';
 import { getSettlementStatusColor, ContractSettlementStatusLabels, ContractSettlementStatus } from '@/types/settlement';
 
 interface ExecutionStatusTabProps {

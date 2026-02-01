@@ -37,7 +37,7 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SettlementDashboardSummary | null>(null);
-  const [daysToAnalyze, setDaysToAnalyze] = useState(30);
+  const [daysToAnalyze, _setDaysToAnalyze] = useState(30);
   const [tabValue, setTabValue] = useState('overview');
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF6B6B', '#4ECDC4'];
@@ -95,7 +95,7 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tabValue} onChange={(e, value) => setTabValue(value)}>
+        <Tabs value={tabValue} onChange={(_e, value) => setTabValue(value)}>
           <Tab label="Overview" value="overview" />
           <Tab label="Daily Trends" value="trends" />
           <Tab label="Currency Analysis" value="currency" />
@@ -307,7 +307,7 @@ export const SettlementAnalyticsDashboard: React.FC = () => {
                         outerRadius={80}
                         label
                       >
-                        {analytics.currencyBreakdown.map((entry, index) => (
+                        {analytics.currencyBreakdown.map((_entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}

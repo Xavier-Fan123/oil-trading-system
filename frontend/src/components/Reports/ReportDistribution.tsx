@@ -85,14 +85,13 @@ const defaultChannelConfig: DistributionChannelFormData = {
 
 export const ReportDistribution: React.FC<ReportDistributionProps> = ({
   reportConfigId,
-  onCancel,
 }) => {
   const [distributions, setDistributions] = useState<ReportDistributionType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [testLoading, setTestLoading] = useState(false);
+  const [_testLoading, setTestLoading] = useState(false);
   const [testingChannelId, setTestingChannelId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{
     channelId: string;

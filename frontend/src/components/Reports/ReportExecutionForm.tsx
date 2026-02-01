@@ -16,7 +16,7 @@ import {
   LinearProgress,
 } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import reportingApi, { ReportConfiguration } from '@/services/reportingApi';
+import reportingApi from '@/services/reportingApi';
 
 interface ReportExecutionFormProps {
   open: boolean;

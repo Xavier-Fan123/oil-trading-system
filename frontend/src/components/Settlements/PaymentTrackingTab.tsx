@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { settlementPaymentApi, PaymentTrackingDto, PaymentDto } from '@/services/settlementApi';
+import { settlementPaymentApi } from '@/services/settlementApi';
 import { getPaymentStatusColor } from '@/types/settlement';
 
 interface PaymentTrackingTabProps {

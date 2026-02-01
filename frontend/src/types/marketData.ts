@@ -578,7 +578,6 @@ export const API_TO_DATABASE: Record<string, string> = {
   "MGO_RTDM": "MGO",        // Rotterdam MGO
   "MOPS_MGO": "MGO",        // Singapore MOPS MGO
   "MOPAG_MGO": "MGO",       // Arab Gulf MGO
-  "MGO": "MGO"
 };
 
 /**

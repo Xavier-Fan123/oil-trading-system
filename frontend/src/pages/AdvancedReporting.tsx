@@ -392,7 +392,7 @@ export const AdvancedReportingPage: React.FC = () => {
         )}
 
         <Paper>
-          <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+          <Tabs value={tabValue} onChange={(_e, newValue) => setTabValue(newValue)}>
             <Tab label="Scheduling" />
             <Tab label="Execution History" />
             <Tab label="Distribution" />

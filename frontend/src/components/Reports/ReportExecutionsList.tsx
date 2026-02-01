@@ -5,10 +5,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   Paper,
   Table,
@@ -25,10 +21,9 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon,
   PlayArrow as PlayArrowIcon,
-  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import reportingApi, { ReportExecution, ReportConfiguration } from '@/services/reportingApi';
+import reportingApi from '@/services/reportingApi';
 import ReportExecutionForm from './ReportExecutionForm';
 import { Alert } from '@mui/material';
 
@@ -38,10 +33,6 @@ const ReportExecutionsList: React.FC = () => {
   const [openForm, setOpenForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<{
-    [key: string]: number;
-  }>({});
-
   const queryClient = useQueryClient();
 
   // Fetch executions

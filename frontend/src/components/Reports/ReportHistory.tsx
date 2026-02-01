@@ -290,7 +290,7 @@ export const ReportHistory: React.FC<ReportHistoryProps> = ({
                 <Pagination
                   count={totalPages}
                   page={page}
-                  onChange={(e, newPage) => setPage(newPage)}
+                  onChange={(_e, newPage) => setPage(newPage)}
                 />
               </Box>
             )}

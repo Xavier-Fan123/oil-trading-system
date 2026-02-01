@@ -9,9 +9,7 @@ import {
   AdvancedExportOptions,
   PagedReportResult,
   ReportAnalytics,
-  ScheduleFrequency,
   ReportFormat,
-  ReportStatus,
 } from '@/types/advancedReporting';
 
 const api = axios.create({

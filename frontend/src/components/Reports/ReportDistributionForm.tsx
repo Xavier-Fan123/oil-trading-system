@@ -8,7 +8,6 @@ import {
   TextField,
   FormControlLabel,
   Checkbox,
-  Box,
   FormControl,
   InputLabel,
   Select,

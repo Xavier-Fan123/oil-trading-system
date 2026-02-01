@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { settlementHistoryApi, SettlementHistoryDto } from '@/services/settlementApi';
+import { settlementHistoryApi } from '@/services/settlementApi';
 
 interface SettlementHistoryTabProps {
   settlementId: string;

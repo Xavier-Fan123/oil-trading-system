@@ -27,7 +27,7 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import reportingApi, { ReportArchive } from '@/services/reportingApi';
+import reportingApi from '@/services/reportingApi';
 
 const ReportArchivesList: React.FC = () => {
   const [page, setPage] = useState(0);

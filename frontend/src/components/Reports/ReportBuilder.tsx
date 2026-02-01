@@ -320,7 +320,7 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
                 onChange={(e) =>
                   setConfig((prev) => ({
                     ...prev,
-                    filters: { ...prev.filters, contractType: e.target.value },
+                    filters: { ...prev.filters, contractType: e.target.value as "Purchase" | "Sales" },
                   }))
                 }
               />

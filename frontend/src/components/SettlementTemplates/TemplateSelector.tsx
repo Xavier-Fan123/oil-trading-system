@@ -68,8 +68,6 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
       setLoading(true);
       setError(null);
       try {
-        let data;
-
         switch (activeTab) {
           case 'recent': {
             const response = await templateApi.getRecentlyUsedTemplates(5);
@@ -162,7 +160,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
     onClose();
   };
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPageNumber(value);
   };
 
@@ -200,7 +198,7 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         {/* Tabs */}
         <Tabs
           value={activeTab}
-          onChange={(e, newValue) => {
+          onChange={(_e, newValue) => {
             setActiveTab(newValue);
             setPageNumber(1);
             setSelectedTemplate(null);

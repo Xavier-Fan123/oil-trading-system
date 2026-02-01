@@ -44,7 +44,6 @@ import { getSettlementWithFallback, settlementApi } from '@/services/settlementA
 import { ChargeManager } from './ChargeManager';
 import { SettlementTab } from './SettlementTab';
 import { PaymentTab } from './PaymentTab';
-import { ExecutionTab } from './ExecutionTab';
 import { SettlementHistoryTab } from './SettlementHistoryTab';
 import { PaymentTrackingTab } from './PaymentTrackingTab';
 import { ExecutionStatusTab } from './ExecutionStatusTab';

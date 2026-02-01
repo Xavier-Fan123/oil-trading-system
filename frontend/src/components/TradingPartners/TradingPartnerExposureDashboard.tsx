@@ -17,7 +17,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import tradingPartnerExposureApi, {
   TradingPartnerExposureDto,
-  PartnerSettlementSummaryDto,
 } from '@/services/tradingPartnerExposureApi';
 import ExposureCard from './ExposureCard';
 import SettlementDetailsDialog from './SettlementDetailsDialog';
@@ -86,7 +85,7 @@ export const TradingPartnerExposureDashboard: React.FC = () => {
     enabled: selectedPartner !== null && showSettlementDetails,
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setSelectedTab(newValue);
   };
 

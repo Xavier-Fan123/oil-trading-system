@@ -23,17 +23,6 @@ interface SettlementTabProps {
 }
 
 export const SettlementTab: React.FC<SettlementTabProps> = ({ settlement }) => {
-  const formatQuantity = (quantity: number, unit: string): string => {
-    return `${quantity.toLocaleString()} ${unit}`;
-  };
-
-  const getQuantityUnitLabel = (unit: number | string): string => {
-    if (typeof unit === 'number') {
-      return unit === 1 ? 'MT' : unit === 2 ? 'BBL' : unit === 3 ? 'GAL' : 'LOTS';
-    }
-    return unit;
-  };
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Quantities Section */}

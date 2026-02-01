@@ -33,10 +33,9 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   Save as SaveIcon,
-  Close as CloseIcon,
 } from '@mui/icons-material';
 import { SettlementTemplate } from '@/services/templateApi';
-import { SettlementTemplateConfig, DefaultChargeItem, defaultTemplateConfig } from '@/types/templates';
+import { SettlementTemplateConfig, defaultTemplateConfig } from '@/types/templates';
 import { ChargeTypeLabels, ChargeType } from '@/types/settlement';
 
 interface TemplateFormProps {
@@ -65,7 +64,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
   template,
   onSave,
   onCancel,
-  isLoading = false,
+  isLoading: _isLoading = false,
 }) => {
   const [name, setName] = useState(template?.name || '');
   const [description, setDescription] = useState(template?.description || '');

@@ -318,30 +318,13 @@ builder.Services.AddOpenTelemetry()
                 activity.SetTag("http.request.method", request.Method.ToString());
             };
         })
-        .AddEntityFrameworkCoreInstrumentation(options =>
-        {
-            options.SetDbStatementForText = true;
-            options.SetDbStatementForStoredProcedure = true;
-            options.EnrichWithIDbCommand = (activity, command) =>
-            {
-                activity.SetTag("db.command_timeout", command.CommandTimeout);
-            };
-        })
-        .AddSqlClientInstrumentation(options =>
-        {
-            options.SetDbStatementForText = true;
-            options.RecordException = true;
-        })
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddSqlClientInstrumentation()
         .AddRedisInstrumentation()
         .AddOtlpExporter(options =>
         {
             options.Endpoint = new Uri(builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317");
             options.Protocol = OtlpExportProtocol.Grpc;
-        })
-        .AddJaegerExporter(options =>
-        {
-            options.AgentHost = builder.Configuration["Jaeger:AgentHost"] ?? "localhost";
-            options.AgentPort = int.Parse(builder.Configuration["Jaeger:AgentPort"] ?? "6831");
         }))
     .WithMetrics(metrics => metrics
         .AddAspNetCoreInstrumentation()
