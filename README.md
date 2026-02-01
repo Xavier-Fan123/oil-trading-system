@@ -1,8 +1,8 @@
-# Oil Trading & Risk Management System v2.9.2
+# Oil Trading & Risk Management System v2.17.1
 
-An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, comprehensive settlement management, full shipping operation capabilities, and complete Phase P2/P3 feature implementation with zero compilation errors.
+An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, comprehensive settlement management, full shipping operation capabilities, data lineage tracking, market data region support, settlement automation rules, and trade group management.
 
-**Latest Update (Nov 4, 2025)**: Phase P2 & P3 Complete! v2.9.2 fixes all TypeScript compilation errors, implements advanced settlement enhancement and contract execution reporting features. Frontend builds successfully with zero errors. All 826 applicable tests passing (100% pass rate). System ready for production deployment.
+**Latest Update (Feb 1, 2026)**: v2.17.1 resolves 9 GitHub security alerts (CVE-2026-22029, CVE-2025-13465, OpenTelemetry upgrades) and fixes 58 TypeScript compilation errors. v2.17.0 (Jan 30, 2026) added Data Lineage Enhancement, Market Data Region with 4-tier hierarchical UI, Paper Contracts hedge designation, Settlement Automation Rules engine, and Trade Groups with VaR aggregation. Frontend and backend build with zero errors. System production-ready.
 
 ## 🚀 Quick Start
 
@@ -439,34 +439,47 @@ For support and questions:
 
 ## 🔄 Recent Updates & Roadmap
 
+### ✅ Completed (February 2026)
+
+- [x] **Security Vulnerability Fixes (v2.17.1)** - Resolved 9/10 GitHub Dependabot alerts
+  - Fixed CVE-2026-22029 (react-router-dom XSS) and CVE-2025-13465 (lodash prototype pollution)
+  - Upgraded OpenTelemetry to 1.15.0, removed deprecated Jaeger exporter
+  - Fixed 58 TypeScript compilation errors across 23 files
+  - Frontend and backend build with zero errors
+
+### ✅ Completed (January 2026)
+
+- [x] **Data Lineage Enhancement (v2.17.0)** - DealReferenceId and PricingStatus tracking across contract lifecycle
+- [x] **Market Data Region (v2.17.0)** - 4-tier hierarchical selection UI with regional spot price differentiation (Singapore, Dubai)
+- [x] **Paper Contracts (v2.17.0)** - Hedge designation and P&L tracking
+- [x] **Settlement Automation Rules (v2.17.0)** - Trigger-condition-action engine for automated settlement processing
+- [x] **Trade Groups (v2.17.0)** - Multi-leg strategy support with VaR aggregation
+- [x] **New Services (v2.17.0)** - PricingService, ShippingOperationSplitService, ProductCodeResolver
+
 ### ✅ Completed (November 2025)
 
-- [x] **Phase P2 & P3 Compilation Errors Fixed (v2.9.2)** - All TypeScript compilation errors resolved, frontend builds with zero errors ✨
-  - Fixed ContractExecutionReportFilter.tsx import path (TS2614)
-  - Fixed ReportExportDialog.tsx parameter signature (TS2554) using world-class institution patterns
-  - All 826 applicable tests passing (100% pass rate)
-- [x] **Settlement Retrieval Fix (v2.9.1)** - End-to-end settlement workflow (Create → Retrieve) fully functional
-- [x] **Database Seeding (v2.8.1)** - Auto-populated with 4 products, 7 partners, sample contracts
-- [x] **Settlement Workflow Integration (v2.9.0)** - 6-step settlement creation form with pricing calculations
-- [x] **Contract Execution Reports (v2.9.2)** - Advanced filtering, pagination, multi-format export (CSV/Excel/PDF)
-- [x] **Settlement Enhancement (v2.9.0)** - Payment tracking, history timeline, execution status visualization
+- [x] **Market Data Upload Fix (v2.16.1)** - FormData parameter case mismatch resolved
+- [x] **Settlement Quantity Persistence Fix (v2.16.1)** - Critical fix for settlement data persistence
+- [x] **Settlement Automation & Analytics (v2.15.0)** - Complete automation and analytics implementation
+- [x] **OWASP Security Hardening (v2.15.0)** - Security headers implementation
+- [x] **Health Checks & Monitoring (v2.14.0)** - Complete health check and monitoring system
+- [x] **Rate Limiting (v2.13.1)** - Request throttling implementation
+- [x] **RBAC Implementation (v2.13.0)** - Role-Based Access Control
+- [x] **Reporting System (v2.10.1-v2.12.0)** - Backend and frontend reporting with API controllers
+- [x] **Settlement Architecture (v2.10.0)** - Type-safe specialized Purchase/Sales settlement repositories
+- [x] **Phase P2 & P3 (v2.9.2)** - All TypeScript compilation errors resolved
+- [x] **Settlement Retrieval Fix (v2.9.1)** - End-to-end settlement workflow fully functional
+- [x] **Settlement Module (v2.8.0-v2.9.0)** - Complete CQRS implementation with 6-step creation form
 
 ### ✅ Completed (October 2025)
 
-- [x] **Settlement Module Redesign (v2.8.0)** - Complete CQRS implementation with dual controllers, separate services, and comprehensive validation
-- [x] **Position Module Fix (v2.7.1)** - Payment terms validation and position display rendering fully functional
+- [x] **External Contract Resolution (v2.7.0)** - Complete system for resolving external contract numbers
 - [x] **Risk Override Auto-Retry (v2.7.2)** - Automatic header-based retry for concentration limit overrides
-- [x] **External Contract Resolution (v2.7.0)** - Complete system for resolving external contract numbers with GUID mapping
-- [x] **API Routing Fix (v2.6.1)** - Fixed mixed API versioning, all endpoints working ✨
+- [x] **Position Module Fix (v2.7.1)** - Payment terms validation and position display
 - [x] **100% Test Pass Rate (v2.6.0)** - 842/842 unit tests passing, 85.1% coverage
 - [x] **Contract Matching System (v2.3)** - Manual matching for natural hedging
 - [x] **Frontend-Backend Alignment (v2.4)** - Perfect DTO and API alignment
-- [x] **TradeGroup Management System** - Complete multi-strategy trading group management
-- [x] **Futures-Spot Integration** - Advanced futures-physical position integration
-- [x] **Tag System Redesign** - Trading strategy classification and risk management tags
 - [x] **Frontend Architecture** - Migrated from Next.js to React 18 + Vite + MUI
-- [x] **API Error Handling** - Robust error handling with standardized responses
-- [x] **TypeScript Enhancement** - Improved type safety and enum handling
 
 ### 🚧 In Progress
 
@@ -475,13 +488,7 @@ For support and questions:
 
 ### 🎯 Future Roadmap
 
-- [ ] User authentication and authorization with JWT
-- [ ] Real-time market data integration APIs
-- [ ] Advanced risk analytics dashboard with charts
 - [ ] Automated contract matching algorithms
 - [ ] Mobile application development
 - [ ] Integration with external trading platforms
-- [ ] Advanced reporting and analytics
-- [ ] Audit logging and compliance features
-- [ ] Performance optimization and caching
 - [ ] Multi-language support
