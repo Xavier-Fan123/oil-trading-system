@@ -17,7 +17,7 @@ import {
 import { useTradingMetrics } from '@/hooks/useDashboard'
 
 export const TradingMetrics: React.FC = () => {
-  const { data: _data, isLoading, error } = useTradingMetrics()
+  const { data, isLoading, error } = useTradingMetrics()
 
   if (error) {
     return (
@@ -29,15 +29,35 @@ export const TradingMetrics: React.FC = () => {
     )
   }
 
+  const totalVolume = data?.totalVolume || 0
+  const tradeFrequency = data?.tradeFrequency || 0
+  const avgTradeSize = data?.averageTradeSize || 0
+
+  const productEntries = data?.productBreakdown
+    ? Object.entries(data.productBreakdown).map(([product, volume]) => ({
+        product,
+        volume,
+        percentage: totalVolume > 0 ? (volume / totalVolume) * 100 : 0,
+      })).sort((a, b) => b.volume - a.volume)
+    : []
+
+  const counterpartyEntries = data?.counterpartyBreakdown
+    ? Object.entries(data.counterpartyBreakdown).map(([name, volume]) => ({
+        name,
+        volume,
+        percentage: totalVolume > 0 ? (volume / totalVolume) * 100 : 0,
+      })).sort((a, b) => b.volume - a.volume)
+    : []
+
   return (
     <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>
           Trading Metrics
         </Typography>
-        
+
         {isLoading && <LinearProgress sx={{ mb: 2 }} />}
-        
+
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle1" gutterBottom>
@@ -48,29 +68,38 @@ export const TradingMetrics: React.FC = () => {
                 Total Volume
               </Typography>
               <Typography variant="h4">
-                0 MT
+                {totalVolume.toLocaleString()} MT
               </Typography>
             </Box>
-            
+
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Trading Frequency
               </Typography>
               <Typography variant="h4">
-                0 deals/month
+                {tradeFrequency.toFixed(1)} deals/month
               </Typography>
             </Box>
-            
+
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Average Deal Size
               </Typography>
               <Typography variant="h4">
-                $0K
+                {avgTradeSize.toLocaleString()} MT
+              </Typography>
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Total Trades
+              </Typography>
+              <Typography variant="h4">
+                {data?.totalTrades || 0}
               </Typography>
             </Box>
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
             <Typography variant="subtitle1" gutterBottom>
               Product Distribution
@@ -80,37 +109,36 @@ export const TradingMetrics: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Product</TableCell>
-                    <TableCell align="right">Volume %</TableCell>
-                    <TableCell align="right">P&L Contrib.</TableCell>
+                    <TableCell align="right">Volume</TableCell>
+                    <TableCell align="right">Share %</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[]?.map((product: any, index: number) => (
+                  {productEntries.map((entry, index) => (
                     <TableRow key={index}>
                       <TableCell>
-                        <Chip 
-                          label={product.productType} 
-                          size="small" 
-                          variant="outlined"
-                        />
+                        <Chip label={entry.product} size="small" variant="outlined" />
                       </TableCell>
                       <TableCell align="right">
-                        {product.volumePercentage.toFixed(1)}%
+                        {entry.volume.toLocaleString()}
                       </TableCell>
                       <TableCell align="right">
-                        <Typography
-                          color={product.pnlContribution >= 0 ? 'success.main' : 'error.main'}
-                        >
-                          ${product.pnlContribution.toLocaleString()}K
-                        </Typography>
+                        {entry.percentage.toFixed(1)}%
                       </TableCell>
                     </TableRow>
-                  )) || []}
+                  ))}
+                  {productEntries.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary">No product data</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Grid>
-          
+
           <Grid item xs={12}>
             <Typography variant="subtitle1" gutterBottom>
               Counterparty Concentration
@@ -120,57 +148,45 @@ export const TradingMetrics: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Counterparty</TableCell>
+                    <TableCell align="right">Volume</TableCell>
                     <TableCell align="right">Exposure %</TableCell>
-                    <TableCell align="center">Credit Rating</TableCell>
                     <TableCell align="right">Risk Level</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[]?.map((cp: any, index: number) => {
-                    const getRiskColor = (exposure: number, rating: string) => {
-                      if (exposure > 20 || rating.includes('C')) return 'error'
-                      if (exposure > 10 || rating.includes('B')) return 'warning'
-                      return 'success'
-                    }
-                    
+                  {counterpartyEntries.map((cp, index) => {
+                    const riskColor = cp.percentage > 20 ? 'error' : cp.percentage > 10 ? 'warning' : 'success'
                     return (
                       <TableRow key={index}>
-                        <TableCell>{cp.counterpartyName}</TableCell>
-                        <TableCell align="right">
-                          {cp.exposurePercentage.toFixed(1)}%
-                        </TableCell>
-                        <TableCell align="center">
-                          <Chip 
-                            label={cp.creditRating} 
-                            size="small"
-                            color={cp.creditRating.includes('A') ? 'success' : 'warning'}
-                          />
-                        </TableCell>
+                        <TableCell>{cp.name}</TableCell>
+                        <TableCell align="right">{cp.volume.toLocaleString()}</TableCell>
+                        <TableCell align="right">{cp.percentage.toFixed(1)}%</TableCell>
                         <TableCell align="right">
                           <Chip
-                            label={
-                              getRiskColor(cp.exposurePercentage, cp.creditRating) === 'error' 
-                                ? 'High' 
-                                : getRiskColor(cp.exposurePercentage, cp.creditRating) === 'warning'
-                                ? 'Medium'
-                                : 'Low'
-                            }
+                            label={riskColor === 'error' ? 'High' : riskColor === 'warning' ? 'Medium' : 'Low'}
                             size="small"
-                            color={getRiskColor(cp.exposurePercentage, cp.creditRating)}
+                            color={riskColor}
                           />
                         </TableCell>
                       </TableRow>
                     )
-                  }) || []}
+                  })}
+                  {counterpartyEntries.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <Typography variant="body2" color="text.secondary">No counterparty data</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Grid>
         </Grid>
-        
+
         <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
           <Typography variant="caption" color="text.secondary">
-            Last Updated: N/A
+            Period: {data?.period || 'N/A'} | Last Updated: {data?.calculatedAt ? new Date(data.calculatedAt).toLocaleString() : 'N/A'}
           </Typography>
         </Box>
       </CardContent>

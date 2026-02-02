@@ -1,67 +1,126 @@
+// ============================================================================
+// Dashboard Types - Matching Backend C# DTOs (camelCase JSON serialization)
+// ============================================================================
+
 export interface DashboardOverview {
-  totalPosition: number
-  totalPositionCurrency: string
+  totalPositions: number
+  totalExposure: number
+  netExposure: number
+  longPositions: number
+  shortPositions: number
+  flatPositions: number
   dailyPnL: number
-  dailyPnLCurrency: string
-  var95: number
-  var95Currency: string
   unrealizedPnL: number
-  unrealizedPnLCurrency: string
-  realizationRatio: number
-  activeContracts: number
-  pendingShipments: number
-  lastUpdated: string
+  vaR95: number
+  vaR99: number
+  portfolioVolatility: number
+  activePurchaseContracts: number
+  activeSalesContracts: number
+  pendingContracts: number
+  marketDataPoints: number
+  lastMarketUpdate: string
+  alertCount: number
+  calculatedAt: string
 }
 
 export interface TradingMetrics {
+  period: string
+  totalTrades: number
   totalVolume: number
-  volumeUnit: string
-  tradingFrequency: number
-  avgDealSize: number
-  avgDealSizeCurrency: string
-  productDistribution: ProductDistribution[]
-  counterpartyConcentration: CounterpartyConcentration[]
-  lastUpdated: string
+  averageTradeSize: number
+  purchaseVolume: number
+  salesVolume: number
+  paperVolume: number
+  longPaperVolume: number
+  shortPaperVolume: number
+  productBreakdown: Record<string, number>
+  counterpartyBreakdown: Record<string, number>
+  tradeFrequency: number
+  volumeByProduct: Record<string, number>
+  calculatedAt: string
 }
 
+// Legacy alias kept for backward compatibility
 export interface ProductDistribution {
   productType: string
   volumePercentage: number
   pnlContribution: number
 }
 
+// Legacy alias kept for backward compatibility
 export interface CounterpartyConcentration {
   counterpartyName: string
   exposurePercentage: number
   creditRating: string
 }
 
+export interface DailyPnLEntry {
+  date: string
+  dailyPnL: number
+  cumulativePnL: number
+}
+
+export interface ProductPerformanceEntry {
+  product: string
+  exposure: number
+  pnL: number
+  return: number
+}
+
 export interface PerformanceAnalytics {
-  monthlyPnL: MonthlyPnL[]
+  period: string
+  totalPnL: number
+  realizedPnL: number
+  unrealizedPnL: number
+  bestPerformingProduct: string
+  worstPerformingProduct: string
+  totalReturn: number
+  annualizedReturn: number
   sharpeRatio: number
   maxDrawdown: number
   winRate: number
-  avgWinSize: number
-  avgLossSize: number
-  volatility: number
-  lastUpdated: string
+  profitFactor: number
+  vaRUtilization: number
+  volatilityAdjustedReturn: number
+  dailyPnLHistory: DailyPnLEntry[]
+  productPerformance: ProductPerformanceEntry[]
+  calculatedAt: string
 }
 
+// Legacy alias kept for backward compatibility
 export interface MonthlyPnL {
   month: string
   pnl: number
   cumulativePnL: number
 }
 
-export interface MarketInsights {
-  benchmarkPrices: BenchmarkPrice[]
-  volatility: MarketVolatility[]
-  correlations: MarketCorrelation[]
-  marketSentiment: string
-  riskFactors: string[]
-  lastUpdated: string
+export interface KeyPriceEntry {
+  product: string
+  price: number
+  change: number
+  changePercent: number
+  lastUpdate: string
 }
 
+export interface MarketTrendEntry {
+  product: string
+  trend: string
+  strength: number
+}
+
+export interface MarketInsights {
+  marketDataCount: number
+  lastUpdate: string
+  keyPrices: KeyPriceEntry[]
+  volatilityIndicators: Record<string, number>
+  correlationMatrix: Record<string, Record<string, number>>
+  technicalIndicators: Record<string, number>
+  marketTrends: MarketTrendEntry[]
+  sentimentIndicators: Record<string, number>
+  calculatedAt: string
+}
+
+// Legacy alias kept for backward compatibility
 export interface BenchmarkPrice {
   benchmark: string
   currentPrice: number
@@ -70,6 +129,7 @@ export interface BenchmarkPrice {
   currency: string
 }
 
+// Legacy alias kept for backward compatibility
 export interface MarketVolatility {
   product: string
   impliedVolatility: number
@@ -77,6 +137,7 @@ export interface MarketVolatility {
   volatilityTrend: string
 }
 
+// Legacy alias kept for backward compatibility
 export interface MarketCorrelation {
   product1: string
   product2: string
@@ -84,16 +145,36 @@ export interface MarketCorrelation {
   trend: string
 }
 
-export interface OperationalStatus {
-  activeContracts: number
-  pendingContracts: number
-  completedContractsThisMonth: number
-  shipmentStatus: ShipmentStatus[]
-  riskAlerts: RiskAlert[]
-  upcomingDeliveries: UpcomingDelivery[]
-  lastUpdated: string
+export interface SystemHealth {
+  databaseStatus: string
+  cacheStatus: string
+  marketDataStatus: string
+  overallStatus: string
 }
 
+export interface UpcomingLaycan {
+  contractNumber: string
+  contractType: string
+  laycanStart: string
+  laycanEnd: string
+  product: string
+  quantity: number
+}
+
+export interface OperationalStatus {
+  activeShipments: number
+  pendingDeliveries: number
+  completedDeliveries: number
+  contractsAwaitingExecution: number
+  contractsInLaycan: number
+  upcomingLaycans: UpcomingLaycan[]
+  systemHealth: SystemHealth
+  cacheHitRatio: number
+  lastDataRefresh: string
+  calculatedAt: string
+}
+
+// Legacy alias kept for backward compatibility
 export interface ShipmentStatus {
   shipmentId: string
   status: string
@@ -106,12 +187,13 @@ export interface ShipmentStatus {
 }
 
 export interface RiskAlert {
-  alertType: string
-  severity: 'High' | 'Medium' | 'Low'
+  type: string
+  severity: string
   message: string
   timestamp: string
 }
 
+// Legacy alias kept for backward compatibility
 export interface UpcomingDelivery {
   contractNumber: string
   counterparty: string
@@ -120,6 +202,16 @@ export interface UpcomingDelivery {
   unit: string
   product: string
   status: string
+}
+
+export interface KpiSummary {
+  totalExposure: number
+  dailyPnL: number
+  vaR95: number
+  portfolioCount: number
+  exposureUtilization: number
+  riskUtilization: number
+  calculatedAt: string
 }
 
 // Legacy ApiError interface (deprecated)

@@ -16,8 +16,8 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
 
   const sortedAlerts = alerts
     .sort((a, b) => {
-      const severityOrder = { High: 3, Medium: 2, Low: 1 }
-      return severityOrder[b.severity] - severityOrder[a.severity]
+      const severityOrder: Record<string, number> = { High: 3, Medium: 2, Low: 1 }
+      return (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0)
     })
     .slice(0, maxDisplay)
 
@@ -53,7 +53,7 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
           sx={{ mb: 1 }}
           action={
             <Chip
-              label={alert.alertType}
+              label={alert.type}
               size="small"
               variant="outlined"
               color={getSeverityColor(alert.severity) as any}

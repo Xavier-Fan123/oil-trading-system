@@ -33,6 +33,20 @@ export const PerformanceChart: React.FC = () => {
     )
   }
 
+  // Transform daily P&L history for the chart
+  const chartData = (data?.dailyPnLHistory || []).map(entry => ({
+    date: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    pnl: Math.round(entry.dailyPnL / 1000 * 10) / 10,
+    cumulativePnL: Math.round(entry.cumulativePnL / 1000 * 10) / 10,
+  }))
+
+  const sharpeRatio = data?.sharpeRatio || 0
+  const maxDrawdown = data?.maxDrawdown || 0
+  const winRate = data?.winRate || 0
+  const profitFactor = data?.profitFactor || 0
+  const totalReturn = data?.totalReturn || 0
+  const varUtilization = (data?.vaRUtilization || 0) * 100
+
   const formatTooltipValue = (value: number) => {
     return `$${value.toLocaleString()}K`
   }
@@ -43,24 +57,24 @@ export const PerformanceChart: React.FC = () => {
         <Typography variant="h6" gutterBottom>
           Performance Analytics
         </Typography>
-        
+
         {isLoading && <LinearProgress sx={{ mb: 2 }} />}
-        
+
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
             <Typography variant="subtitle1" gutterBottom>
-              Monthly P&L Trend
+              Daily P&L Trend
             </Typography>
             <Box sx={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={[]}>
+                <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="date"
                     stroke="#b0b0b0"
                     tick={{ fill: '#b0b0b0' }}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#b0b0b0"
                     tick={{ fill: '#b0b0b0' }}
                     tickFormatter={(value) => `$${value}K`}
@@ -74,7 +88,7 @@ export const PerformanceChart: React.FC = () => {
                     }}
                     formatter={(value: number, name: string) => [
                       formatTooltipValue(value),
-                      name === 'pnl' ? 'Monthly P&L' : 'Cumulative P&L'
+                      name === 'pnl' ? 'Daily P&L' : 'Cumulative P&L'
                     ]}
                   />
                   <Legend />
@@ -84,7 +98,7 @@ export const PerformanceChart: React.FC = () => {
                     stroke="#2196f3"
                     strokeWidth={2}
                     dot={{ fill: '#2196f3', strokeWidth: 2 }}
-                    name="Monthly P&L"
+                    name="Daily P&L"
                   />
                   <Line
                     type="monotone"
@@ -98,7 +112,7 @@ export const PerformanceChart: React.FC = () => {
               </ResponsiveContainer>
             </Box>
           </Grid>
-          
+
           <Grid item xs={12} md={4}>
             <Typography variant="subtitle1" gutterBottom>
               Key Metrics
@@ -107,70 +121,68 @@ export const PerformanceChart: React.FC = () => {
               <Grid item xs={12}>
                 <KPICard
                   title="Sharpe Ratio"
-                  value={0}
+                  value={sharpeRatio.toFixed(2)}
                   isLoading={isLoading}
                   color="primary"
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
                 <KPICard
                   title="Max Drawdown"
-                  value={0}
-                  suffix="%"
+                  value={Math.round(maxDrawdown / 1000)}
+                  prefix="$"
+                  suffix="K"
                   isLoading={isLoading}
                   color="error"
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
                 <KPICard
                   title="Win Rate"
-                  value={0}
+                  value={winRate.toFixed(1)}
                   suffix="%"
                   isLoading={isLoading}
                   color="success"
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
                 <KPICard
-                  title="Avg Win Size"
-                  value={0}
-                  prefix="$"
-                  suffix="K"
+                  title="Profit Factor"
+                  value={profitFactor.toFixed(2)}
                   isLoading={isLoading}
                   color="success"
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
                 <KPICard
-                  title="Avg Loss Size"
-                  value={0}
-                  prefix="$"
-                  suffix="K"
-                  isLoading={isLoading}
-                  color="error"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <KPICard
-                  title="Volatility"
-                  value={data?.volatility?.toFixed(1) || 0}
+                  title="Total Return"
+                  value={totalReturn.toFixed(1)}
                   suffix="%"
                   isLoading={isLoading}
-                  color="warning"
+                  color={totalReturn >= 0 ? 'success' : 'error'}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <KPICard
+                  title="VaR Utilization"
+                  value={varUtilization.toFixed(1)}
+                  suffix="%"
+                  isLoading={isLoading}
+                  color={varUtilization > 80 ? 'error' : varUtilization > 60 ? 'warning' : 'success'}
                 />
               </Grid>
             </Grid>
           </Grid>
         </Grid>
-        
+
         <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
           <Typography variant="caption" color="text.secondary">
-            Last Updated: N/A
+            Period: {data?.period || 'N/A'} | Last Updated: {data?.calculatedAt ? new Date(data.calculatedAt).toLocaleString() : 'N/A'}
           </Typography>
         </Box>
       </CardContent>

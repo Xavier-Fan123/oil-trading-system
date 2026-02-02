@@ -39,7 +39,11 @@ export const Dashboard: React.FC = () => {
   }
 
   // Transform data for charts with fallbacks
-  const pnlData = performanceData?.performanceData || []
+  const pnlData = (performanceData?.dailyPnLHistory || []).map(entry => ({
+    ...entry,
+    unrealizedPnL: 0,
+    volume: 0,
+  }))
   const varData = riskData ? [
     { 
       period: 'Current', 
@@ -51,9 +55,19 @@ export const Dashboard: React.FC = () => {
     }
   ] : []
   
-  const positionChartData: any[] = []  // Mock data - positions endpoint needs updating
-  
-  const totalExposure = positionsData?.totalValue || 0
+  // Build position chart data from product performance
+  const productPerf = performanceData?.productPerformance || []
+  const totalProductExposure = productPerf.reduce((sum, p) => sum + Math.abs(p.exposure), 0)
+  const positionChartData = productPerf.map(pp => ({
+    productType: pp.product,
+    exposure: pp.exposure / 1_000_000,
+    percentage: totalProductExposure > 0 ? (Math.abs(pp.exposure) / totalProductExposure) * 100 : 0,
+    pnlContribution: pp.pnL / 1_000,
+    contracts: 0,
+    avgPrice: 0,
+  }))
+
+  const totalExposure = positionsData?.totalValue || totalProductExposure
 
   const getCurrentTime = () => {
     return new Date().toLocaleString('en-US', {

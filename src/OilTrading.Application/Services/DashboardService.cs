@@ -132,32 +132,34 @@ public class DashboardService : IDashboardService
         var pnlData = await _netPositionService.CalculatePnLAsync(end, cancellationToken);
         var exposures = await _netPositionService.CalculateExposureByProductAsync(cancellationToken);
         
+        var dailyHistory = await GetDailyPnLHistory(start, end, cancellationToken);
+
         var analytics = new PerformanceAnalyticsDto
         {
             Period = $"{start:MMM dd} - {end:MMM dd}",
-            
+
             TotalPnL = pnlData.Sum(p => p.UnrealizedPnL),
             RealizedPnL = 0, // Would need additional tracking
             UnrealizedPnL = pnlData.Sum(p => p.UnrealizedPnL),
-            
+
             BestPerformingProduct = exposures.OrderByDescending(e => e.TotalExposure).FirstOrDefault()?.Category ?? "N/A",
             WorstPerformingProduct = exposures.OrderBy(e => e.TotalExposure).FirstOrDefault()?.Category ?? "N/A",
-            
+
             TotalReturn = await CalculateTotalReturn(pnlData),
             AnnualizedReturn = await CalculateAnnualizedReturn(start, end, pnlData),
-            
+
             SharpeRatio = await CalculateSharpeRatio(pnlData),
-            MaxDrawdown = await CalculateMaxDrawdown(start, end, cancellationToken),
-            
+            MaxDrawdown = CalculateMaxDrawdownFromHistory(dailyHistory),
+
             WinRate = await CalculateWinRate(pnlData),
             ProfitFactor = await CalculateProfitFactor(pnlData),
-            
+
             VaRUtilization = await CalculateVaRUtilization(cancellationToken),
             VolatilityAdjustedReturn = await CalculateVolatilityAdjustedReturn(pnlData),
-            
-            DailyPnLHistory = await GetDailyPnLHistory(start, end, cancellationToken),
+
+            DailyPnLHistory = dailyHistory,
             ProductPerformance = await GetProductPerformance(exposures),
-            
+
             CalculatedAt = DateTime.UtcNow
         };
 
@@ -389,8 +391,13 @@ public class DashboardService : IDashboardService
 
     private async Task<decimal> CalculateTradeFrequency(DateTime start, DateTime end, CancellationToken cancellationToken)
     {
-        var days = (end - start).Days;
-        return days > 0 ? 30m / days : 0; // Simplified calculation
+        var purchaseContracts = await _purchaseContractRepository.GetActiveContractsAsync(cancellationToken);
+        var salesContracts = await _salesContractRepository.GetActiveContractsAsync(cancellationToken);
+
+        var totalTrades = purchaseContracts.Count() + salesContracts.Count();
+        var days = Math.Max(1, (end - start).Days);
+        var monthlyRate = (decimal)totalTrades / days * 30;
+        return Math.Round(monthlyRate, 1);
     }
 
     private async Task<Dictionary<string, decimal>> CalculateVolumeByProduct(
@@ -424,10 +431,18 @@ public class DashboardService : IDashboardService
         return stdDev > 0 ? (decimal)(avgReturn / (decimal)stdDev) : 0;
     }
 
-    private async Task<decimal> CalculateMaxDrawdown(DateTime start, DateTime end, CancellationToken cancellationToken)
+    private decimal CalculateMaxDrawdownFromHistory(List<DailyPnLDto> history)
     {
-        // Simplified - would need historical P&L data
-        return -100000m;
+        if (!history.Any()) return 0;
+        decimal peak = 0;
+        decimal maxDrawdown = 0;
+        foreach (var day in history)
+        {
+            if (day.CumulativePnL > peak) peak = day.CumulativePnL;
+            var dd = day.CumulativePnL - peak;
+            if (dd < maxDrawdown) maxDrawdown = dd;
+        }
+        return maxDrawdown;
     }
 
     private async Task<decimal> CalculateWinRate(IEnumerable<PnLDto> pnlData)
@@ -473,12 +488,13 @@ public class DashboardService : IDashboardService
 
     private async Task<List<ProductPerformanceDto>> GetProductPerformance(IEnumerable<ExposureDto> exposures)
     {
+        var totalExposure = exposures.Sum(e => e.TotalExposure);
         return exposures.Select(e => new ProductPerformanceDto
         {
             Product = e.Category,
             Exposure = e.TotalExposure,
-            PnL = e.TotalExposure * 0.05m, // Simplified
-            Return = 5.0m // Simplified
+            PnL = 0, // Needs per-product P&L tracking
+            Return = totalExposure != 0 ? Math.Round((e.TotalExposure / totalExposure) * 100, 2) : 0
         }).ToList();
     }
 
@@ -500,49 +516,205 @@ public class DashboardService : IDashboardService
 
     private async Task<Dictionary<string, decimal>> CalculateVolatilityIndicators(IEnumerable<MarketPrice> marketPrices)
     {
-        return new Dictionary<string, decimal>
+        var result = new Dictionary<string, decimal>();
+        var grouped = marketPrices.GroupBy(p => p.ProductName);
+
+        foreach (var group in grouped)
         {
-            ["OverallVolatility"] = 15.5m,
-            ["BrentVolatility"] = 18.2m,
-            ["WTIVolatility"] = 17.8m
-        };
+            var prices = group.OrderBy(p => p.PriceDate).Select(p => p.Price).ToList();
+            if (prices.Count >= 2)
+            {
+                var returns = new List<double>();
+                for (int i = 1; i < prices.Count; i++)
+                {
+                    if (prices[i - 1] != 0)
+                        returns.Add((double)((prices[i] - prices[i - 1]) / prices[i - 1]));
+                }
+                if (returns.Count > 0)
+                {
+                    var avg = returns.Average();
+                    var variance = returns.Select(r => Math.Pow(r - avg, 2)).Average();
+                    var dailyVol = Math.Sqrt(variance);
+                    var annualizedVol = dailyVol * Math.Sqrt(252) * 100;
+                    result[group.Key] = (decimal)annualizedVol;
+                }
+            }
+        }
+
+        if (!result.Any())
+        {
+            result["NoData"] = 0;
+        }
+
+        return result;
     }
 
     private async Task<Dictionary<string, Dictionary<string, decimal>>> CalculateCorrelationMatrix(CancellationToken cancellationToken)
     {
-        return new Dictionary<string, Dictionary<string, decimal>>
+        var result = new Dictionary<string, Dictionary<string, decimal>>();
+        var products = new[] { "BRENT", "WTI", "GASOIL", "MGO" };
+        var productReturns = new Dictionary<string, List<double>>();
+
+        foreach (var product in products)
         {
-            ["BRENT"] = new Dictionary<string, decimal> { ["WTI"] = 0.85m, ["GASOIL"] = 0.75m },
-            ["WTI"] = new Dictionary<string, decimal> { ["BRENT"] = 0.85m, ["GASOIL"] = 0.70m }
-        };
+            var history = await _marketDataRepository.GetHistoricalPricesAsync(
+                product, DateTime.UtcNow.AddDays(-60), DateTime.UtcNow, cancellationToken);
+            var prices = history.OrderBy(p => p.PriceDate).Select(p => p.Price).ToList();
+
+            if (prices.Count >= 2)
+            {
+                var returns = new List<double>();
+                for (int i = 1; i < prices.Count; i++)
+                {
+                    if (prices[i - 1] != 0)
+                        returns.Add((double)((prices[i] - prices[i - 1]) / prices[i - 1]));
+                }
+                if (returns.Count > 0)
+                    productReturns[product] = returns;
+            }
+        }
+
+        foreach (var p1 in productReturns.Keys)
+        {
+            result[p1] = new Dictionary<string, decimal>();
+            foreach (var p2 in productReturns.Keys)
+            {
+                if (p1 == p2) { result[p1][p2] = 1.0m; continue; }
+                var r1 = productReturns[p1];
+                var r2 = productReturns[p2];
+                var minLen = Math.Min(r1.Count, r2.Count);
+                if (minLen < 2) { result[p1][p2] = 0; continue; }
+
+                var list1 = r1.TakeLast(minLen).ToList();
+                var list2 = r2.TakeLast(minLen).ToList();
+                var avg1 = list1.Average();
+                var avg2 = list2.Average();
+                var cov = list1.Zip(list2, (a, b) => (a - avg1) * (b - avg2)).Average();
+                var std1 = Math.Sqrt(list1.Select(x => Math.Pow(x - avg1, 2)).Average());
+                var std2 = Math.Sqrt(list2.Select(x => Math.Pow(x - avg2, 2)).Average());
+                var corr = (std1 > 0 && std2 > 0) ? cov / (std1 * std2) : 0;
+                result[p1][p2] = (decimal)Math.Round(corr, 4);
+            }
+        }
+
+        return result;
     }
 
     private async Task<Dictionary<string, decimal>> CalculateTechnicalIndicators(IEnumerable<MarketPrice> priceHistory)
     {
-        return new Dictionary<string, decimal>
+        var result = new Dictionary<string, decimal>();
+        var prices = priceHistory.OrderBy(p => p.PriceDate).Select(p => p.Price).ToList();
+
+        if (prices.Count == 0) return result;
+
+        // Simple Moving Average (20-day)
+        if (prices.Count >= 20)
+            result["SMA20"] = prices.TakeLast(20).Average();
+
+        // Simple Moving Average (50-day)
+        if (prices.Count >= 50)
+            result["SMA50"] = prices.TakeLast(50).Average();
+        else if (prices.Count >= 5)
+            result["SMA50"] = prices.Average();
+
+        // RSI (14-period)
+        if (prices.Count >= 15)
         {
-            ["RSI"] = 45.5m,
-            ["MovingAverage"] = 82.5m,
-            ["MACD"] = 1.2m
-        };
+            var gains = new List<decimal>();
+            var losses = new List<decimal>();
+            var lookback = Math.Min(14, prices.Count - 1);
+            for (int i = prices.Count - lookback; i < prices.Count; i++)
+            {
+                var change = prices[i] - prices[i - 1];
+                if (change > 0) { gains.Add(change); losses.Add(0); }
+                else { gains.Add(0); losses.Add(Math.Abs(change)); }
+            }
+            var avgGain = gains.Average();
+            var avgLoss = losses.Average();
+            var rs = avgLoss > 0 ? avgGain / avgLoss : 100;
+            result["RSI"] = Math.Round(100 - (100 / (1 + rs)), 2);
+        }
+
+        // MACD (simplified: 12-day EMA - 26-day EMA approximation)
+        if (prices.Count >= 12)
+        {
+            var short12 = prices.TakeLast(12).Average();
+            var long26 = prices.TakeLast(Math.Min(26, prices.Count)).Average();
+            result["MACD"] = Math.Round(short12 - long26, 4);
+        }
+
+        // Latest price
+        result["LatestPrice"] = prices.Last();
+
+        return result;
     }
 
     private async Task<List<MarketTrendDto>> AnalyzeMarketTrends(IEnumerable<MarketPrice> priceHistory)
     {
-        return new List<MarketTrendDto>
+        var trends = new List<MarketTrendDto>();
+        var grouped = priceHistory.GroupBy(p => p.ProductName);
+
+        foreach (var group in grouped)
         {
-            new MarketTrendDto { Product = "BRENT", Trend = "Bullish", Strength = 7.5m },
-            new MarketTrendDto { Product = "WTI", Trend = "Neutral", Strength = 5.0m }
-        };
+            var prices = group.OrderBy(p => p.PriceDate).Select(p => p.Price).ToList();
+            if (prices.Count < 2) continue;
+
+            var recentAvg = prices.TakeLast(Math.Min(5, prices.Count)).Average();
+            var olderAvg = prices.Take(Math.Max(1, prices.Count / 2)).Average();
+
+            var changePct = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
+
+            string trend;
+            decimal strength;
+            if (changePct > 2)
+            {
+                trend = "Bullish";
+                strength = Math.Min(10, Math.Abs(changePct));
+            }
+            else if (changePct < -2)
+            {
+                trend = "Bearish";
+                strength = Math.Min(10, Math.Abs(changePct));
+            }
+            else
+            {
+                trend = "Neutral";
+                strength = Math.Abs(changePct);
+            }
+
+            trends.Add(new MarketTrendDto { Product = group.Key, Trend = trend, Strength = strength });
+        }
+
+        return trends;
     }
 
     private async Task<Dictionary<string, decimal>> CalculateSentimentIndicators()
     {
+        var marketPrices = await _marketDataRepository.GetLatestPricesAsync(default);
+        var priceHistory = await _marketDataRepository.GetHistoricalPricesAsync("BRENT", DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, default);
+
+        var bullish = 0;
+        var bearish = 0;
+        var total = 0;
+
+        var grouped = priceHistory.GroupBy(p => p.ProductName);
+        foreach (var group in grouped)
+        {
+            var prices = group.OrderBy(p => p.PriceDate).Select(p => p.Price).ToList();
+            if (prices.Count >= 2)
+            {
+                total++;
+                if (prices.Last() > prices.First()) bullish++;
+                else bearish++;
+            }
+        }
+
+        var totalSentiment = Math.Max(1, total);
         return new Dictionary<string, decimal>
         {
-            ["BullishSentiment"] = 65m,
-            ["BearishSentiment"] = 35m,
-            ["NeutralSentiment"] = 45m
+            ["BullishSentiment"] = Math.Round((decimal)bullish / totalSentiment * 100, 1),
+            ["BearishSentiment"] = Math.Round((decimal)bearish / totalSentiment * 100, 1),
+            ["NeutralSentiment"] = Math.Round((decimal)(totalSentiment - bullish - bearish) / totalSentiment * 100, 1)
         };
     }
 
@@ -584,12 +756,52 @@ public class DashboardService : IDashboardService
 
     private async Task<SystemHealthDto> CheckSystemHealth(CancellationToken cancellationToken)
     {
+        var dbStatus = "Healthy";
+        var cacheStatus = "Healthy";
+        var marketStatus = "Healthy";
+
+        try
+        {
+            await _purchaseContractRepository.GetActiveContractsAsync(cancellationToken);
+        }
+        catch
+        {
+            dbStatus = "Unhealthy";
+        }
+
+        try
+        {
+            var cacheRatio = await _cacheService.GetCacheHitRatioAsync(cancellationToken);
+            if (cacheRatio < 0) cacheStatus = "Degraded";
+        }
+        catch
+        {
+            cacheStatus = "Unavailable";
+        }
+
+        try
+        {
+            var prices = await _marketDataRepository.GetLatestPricesAsync(cancellationToken);
+            if (!prices.Any())
+                marketStatus = "NoData";
+            else if (prices.Max(p => p.PriceDate) < DateTime.UtcNow.AddHours(-24))
+                marketStatus = "Stale";
+        }
+        catch
+        {
+            marketStatus = "Unhealthy";
+        }
+
+        var overallStatus = (dbStatus == "Healthy" && cacheStatus == "Healthy" && marketStatus == "Healthy")
+            ? "Healthy"
+            : (dbStatus == "Unhealthy" ? "Critical" : "Degraded");
+
         return new SystemHealthDto
         {
-            DatabaseStatus = "Healthy",
-            CacheStatus = "Healthy",
-            MarketDataStatus = "Healthy",
-            OverallStatus = "Healthy"
+            DatabaseStatus = dbStatus,
+            CacheStatus = cacheStatus,
+            MarketDataStatus = marketStatus,
+            OverallStatus = overallStatus
         };
     }
 }

@@ -9,150 +9,151 @@ const dashboardApiInstance = axios.create({
   },
 });
 
-// Dashboard API Response Types
+// ============================================================================
+// Dashboard API Response Types - Matching Backend C# DTOs (camelCase JSON)
+// ============================================================================
+
 export interface DashboardOverviewDto {
-  totalContracts: number;
-  totalValue: number;
-  totalQuantity: number;
-  averageMargin: number;
-  activeContracts: number;
-  pendingApproval: number;
-  completedToday: number;
-  riskExposure: number;
-  topProducts: Array<{
-    productType: string;
-    value: number;
-    quantity: number;
-    contracts: number;
-  }>;
-  monthlyTrends: Array<{
-    month: string;
-    contractCount: number;
-    totalValue: number;
-    averageMargin: number;
-  }>;
+  totalPositions: number;
+  totalExposure: number;
+  netExposure: number;
+  longPositions: number;
+  shortPositions: number;
+  flatPositions: number;
+  dailyPnL: number;
+  unrealizedPnL: number;
+  vaR95: number;
+  vaR99: number;
+  portfolioVolatility: number;
+  activePurchaseContracts: number;
+  activeSalesContracts: number;
+  pendingContracts: number;
+  marketDataPoints: number;
+  lastMarketUpdate: string;
+  alertCount: number;
+  calculatedAt: string;
 }
 
 export interface TradingMetricsDto {
+  period: string;
   totalTrades: number;
   totalVolume: number;
-  avgTradeSize: number;
-  winRate: number;
-  avgHoldingPeriod: number;
-  sharpeRatio: number;
-  maxDrawdown: number;
-  profitFactor: number;
-  dailyMetrics: Array<{
-    date: string;
-    trades: number;
-    volume: number;
-    pnl: number;
-    winRate: number;
-  }>;
+  averageTradeSize: number;
+  purchaseVolume: number;
+  salesVolume: number;
+  paperVolume: number;
+  longPaperVolume: number;
+  shortPaperVolume: number;
+  productBreakdown: Record<string, number>;
+  counterpartyBreakdown: Record<string, number>;
+  tradeFrequency: number;
+  volumeByProduct: Record<string, number>;
+  calculatedAt: string;
+}
+
+export interface DailyPnLEntry {
+  date: string;
+  dailyPnL: number;
+  cumulativePnL: number;
+}
+
+export interface ProductPerformanceEntry {
+  product: string;
+  exposure: number;
+  pnL: number;
+  return: number;
 }
 
 export interface PerformanceAnalyticsDto {
+  period: string;
   totalPnL: number;
-  unrealizedPnL: number;
   realizedPnL: number;
-  roi: number;
-  volatility: number;
-  var95: number;
-  var99: number;
-  performanceData: Array<{
-    date: string;
-    dailyPnL: number;
-    cumulativePnL: number;
-    unrealizedPnL: number;
-    volume: number;
-  }>;
-  monthlyBreakdown: Array<{
-    month: string;
-    pnl: number;
-    roi: number;
-    trades: number;
-  }>;
+  unrealizedPnL: number;
+  bestPerformingProduct: string;
+  worstPerformingProduct: string;
+  totalReturn: number;
+  annualizedReturn: number;
+  sharpeRatio: number;
+  maxDrawdown: number;
+  winRate: number;
+  profitFactor: number;
+  vaRUtilization: number;
+  volatilityAdjustedReturn: number;
+  dailyPnLHistory: DailyPnLEntry[];
+  productPerformance: ProductPerformanceEntry[];
+  calculatedAt: string;
+}
+
+export interface KeyPriceEntry {
+  product: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  lastUpdate: string;
+}
+
+export interface MarketTrendEntry {
+  product: string;
+  trend: string;
+  strength: number;
 }
 
 export interface MarketInsightsDto {
-  volatilityIndex: number;
-  marketTrend: 'Bullish' | 'Bearish' | 'Sideways';
+  marketDataCount: number;
+  lastUpdate: string;
+  keyPrices: KeyPriceEntry[];
+  volatilityIndicators: Record<string, number>;
   correlationMatrix: Record<string, Record<string, number>>;
-  priceMovements: Array<{
-    product: string;
-    current: number;
-    change: number;
-    changePercent: number;
-    volume: number;
-  }>;
-  technicalIndicators: Array<{
-    product: string;
-    rsi: number;
-    sma20: number;
-    sma50: number;
-    bollinger: {
-      upper: number;
-      middle: number;
-      lower: number;
-    };
-  }>;
+  technicalIndicators: Record<string, number>;
+  marketTrends: MarketTrendEntry[];
+  sentimentIndicators: Record<string, number>;
+  calculatedAt: string;
+}
+
+export interface SystemHealthDto {
+  databaseStatus: string;
+  cacheStatus: string;
+  marketDataStatus: string;
+  overallStatus: string;
+}
+
+export interface UpcomingLaycanEntry {
+  contractNumber: string;
+  contractType: string;
+  laycanStart: string;
+  laycanEnd: string;
+  product: string;
+  quantity: number;
 }
 
 export interface OperationalStatusDto {
-  systemHealth: 'Healthy' | 'Warning' | 'Critical';
-  services: Array<{
-    name: string;
-    status: 'Online' | 'Offline' | 'Degraded';
-    responseTime: number;
-    lastChecked: string;
-  }>;
-  dataFreshness: Array<{
-    dataType: string;
-    lastUpdate: string;
-    status: 'Fresh' | 'Stale' | 'Missing';
-  }>;
-  alertsSummary: {
-    critical: number;
-    warning: number;
-    info: number;
-  };
+  activeShipments: number;
+  pendingDeliveries: number;
+  completedDeliveries: number;
+  contractsAwaitingExecution: number;
+  contractsInLaycan: number;
+  upcomingLaycans: UpcomingLaycanEntry[];
+  systemHealth: SystemHealthDto;
+  cacheHitRatio: number;
+  lastDataRefresh: string;
+  calculatedAt: string;
 }
 
 export interface AlertDto {
-  id: string;
-  type: 'Critical' | 'Warning' | 'Info';
-  title: string;
+  type: string;
+  severity: string;
   message: string;
   timestamp: string;
-  isRead: boolean;
-  source: string;
 }
 
 export interface KpiSummaryDto {
-  revenue: {
-    current: number;
-    target: number;
-    variance: number;
-    trend: 'Up' | 'Down' | 'Stable';
-  };
-  volume: {
-    current: number;
-    target: number;
-    variance: number;
-    trend: 'Up' | 'Down' | 'Stable';
-  };
-  margin: {
-    current: number;
-    target: number;
-    variance: number;
-    trend: 'Up' | 'Down' | 'Stable';
-  };
-  riskUtilization: {
-    current: number;
-    limit: number;
-    percentage: number;
-    status: 'Safe' | 'Warning' | 'Critical';
-  };
+  totalExposure: number;
+  dailyPnL: number;
+  vaR95: number;
+  portfolioCount: number;
+  exposureUtilization: number;
+  riskUtilization: number;
+  calculatedAt: string;
 }
 
 // Dashboard API Service
@@ -168,7 +169,7 @@ export const dashboardApi = {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    
+
     const response = await dashboardApiInstance.get(`/dashboard/trading-metrics?${params.toString()}`);
     return response.data;
   },
@@ -178,7 +179,7 @@ export const dashboardApi = {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    
+
     const response = await dashboardApiInstance.get(`/dashboard/performance?${params.toString()}`);
     return response.data;
   },

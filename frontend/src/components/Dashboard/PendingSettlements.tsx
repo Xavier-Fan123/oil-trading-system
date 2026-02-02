@@ -24,6 +24,8 @@ import {
   PlayArrow as StartIcon
 } from '@mui/icons-material';
 import { ContractSettlementListDto, SettlementSearchFilters } from '@/types/settlement';
+import { ContractStatus } from '@/types/contracts';
+import { purchaseContractsApi } from '@/services/contractsApi';
 import { useSettlementSearch } from '@/hooks/useSettlements';
 import { useNavigate } from 'react-router-dom';
 
@@ -62,33 +64,47 @@ export const PendingSettlements: React.FC<PendingSettlementsProps> = ({ height =
   };
 
   const loadContractsAwaitingSettlement = async () => {
-    // This would typically load from a contracts API endpoint
-    // For now, we'll use mock data representing contracts that need settlement
-    const mockAwaitingContracts = [
-      {
-        id: 'contract-1',
-        contractNumber: 'PC-2024-003',
-        externalContractNumber: 'EXT-003',
-        supplierName: 'Nordic Oil Supply',
-        productName: 'Brent Crude',
-        quantity: 15000,
-        quantityUnit: 'MT',
-        laycanEnd: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-        urgencyLevel: 'high'
-      },
-      {
-        id: 'contract-2',
-        contractNumber: 'PC-2024-004',
-        externalContractNumber: 'EXT-004',
-        supplierName: 'Mediterranean Trading',
-        productName: 'WTI Crude',
-        quantity: 20000,
-        quantityUnit: 'MT',
-        laycanEnd: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-        urgencyLevel: 'medium'
-      }
-    ];
-    setAwaitingSettlements(mockAwaitingContracts);
+    try {
+      // Fetch active purchase contracts from the real API
+      const result = await purchaseContractsApi.getAll({
+        status: ContractStatus.Active,
+        pageNumber: 1,
+        pageSize: 20,
+      });
+
+      const contracts = result?.items || [];
+      const now = new Date();
+
+      // Filter for contracts where laycan has ended (awaiting settlement)
+      const awaiting = contracts
+        .filter(c => {
+          const laycanEnd = new Date(c.laycanEnd);
+          return laycanEnd < now;
+        })
+        .map(c => {
+          const laycanEnd = new Date(c.laycanEnd);
+          const daysPast = Math.floor((now.getTime() - laycanEnd.getTime()) / (1000 * 60 * 60 * 24));
+          const urgencyLevel = daysPast > 7 ? 'high' : daysPast > 3 ? 'medium' : 'low';
+
+          return {
+            id: c.id,
+            contractNumber: c.contractNumber,
+            externalContractNumber: c.externalContractNumber || '',
+            supplierName: c.supplierName,
+            productName: c.productName,
+            quantity: c.quantity,
+            quantityUnit: typeof c.quantityUnit === 'string' ? c.quantityUnit : 'MT',
+            laycanEnd,
+            urgencyLevel,
+          };
+        })
+        .sort((a, b) => a.laycanEnd.getTime() - b.laycanEnd.getTime()); // oldest first (most urgent)
+
+      setAwaitingSettlements(awaiting);
+    } catch (err) {
+      console.error('Error loading contracts awaiting settlement:', err);
+      setAwaitingSettlements([]);
+    }
   };
 
   const formatDate = (date: Date | string) => {

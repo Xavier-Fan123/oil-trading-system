@@ -9,175 +9,174 @@ import type {
 
 // Mock data for testing frontend components
 const mockOverviewData: DashboardOverview = {
-  totalPosition: 158.9,
-  totalPositionCurrency: 'USD',
-  dailyPnL: 125.3,
-  dailyPnLCurrency: 'USD',
-  var95: 2.1,
-  var95Currency: 'USD',
-  unrealizedPnL: 89.7,
-  unrealizedPnLCurrency: 'USD',
-  realizationRatio: 78.5,
-  activeContracts: 24,
-  pendingShipments: 8,
-  lastUpdated: new Date().toISOString()
+  totalPositions: 42,
+  totalExposure: 158900000,
+  netExposure: 45200000,
+  longPositions: 24,
+  shortPositions: 15,
+  flatPositions: 3,
+  dailyPnL: 125300,
+  unrealizedPnL: 89700,
+  vaR95: 2100000,
+  vaR99: 3500000,
+  portfolioVolatility: 18.7,
+  activePurchaseContracts: 15,
+  activeSalesContracts: 9,
+  pendingContracts: 8,
+  marketDataPoints: 1250,
+  lastMarketUpdate: new Date().toISOString(),
+  alertCount: 3,
+  calculatedAt: new Date().toISOString()
 }
 
 const mockTradingMetrics: TradingMetrics = {
+  period: '2025-01',
+  totalTrades: 28,
   totalVolume: 125000,
-  volumeUnit: 'MT',
-  tradingFrequency: 28,
-  avgDealSize: 4200,
-  avgDealSizeCurrency: 'USD',
-  productDistribution: [
-    { productType: 'Brent', volumePercentage: 35.5, pnlContribution: 285 },
-    { productType: 'WTI', volumePercentage: 25.2, pnlContribution: 180 },
-    { productType: 'MGO', volumePercentage: 18.8, pnlContribution: 125 },
-    { productType: 'Gasoil', volumePercentage: 12.3, pnlContribution: 95 },
-    { productType: 'Fuel Oil', volumePercentage: 8.2, pnlContribution: 65 }
-  ],
-  counterpartyConcentration: [
-    { counterpartyName: 'Shell Trading', exposurePercentage: 22.5, creditRating: 'AA-' },
-    { counterpartyName: 'BP Oil', exposurePercentage: 18.3, creditRating: 'A+' },
-    { counterpartyName: 'Total Energy', exposurePercentage: 15.7, creditRating: 'A' },
-    { counterpartyName: 'Exxon Mobil', exposurePercentage: 12.9, creditRating: 'AA' },
-    { counterpartyName: 'Other Partners', exposurePercentage: 30.6, creditRating: 'A-' }
-  ],
-  lastUpdated: new Date().toISOString()
+  averageTradeSize: 4464.3,
+  purchaseVolume: 75000,
+  salesVolume: 50000,
+  paperVolume: 0,
+  longPaperVolume: 0,
+  shortPaperVolume: 0,
+  productBreakdown: {
+    'Brent': 35.5,
+    'WTI': 25.2,
+    'MGO': 18.8,
+    'Gasoil': 12.3,
+    'Fuel Oil': 8.2
+  },
+  counterpartyBreakdown: {
+    'Shell Trading': 22.5,
+    'BP Oil': 18.3,
+    'Total Energy': 15.7,
+    'Exxon Mobil': 12.9,
+    'Other Partners': 30.6
+  },
+  tradeFrequency: 1.4,
+  volumeByProduct: {
+    'Brent': 44375,
+    'WTI': 31500,
+    'MGO': 23500,
+    'Gasoil': 15375,
+    'Fuel Oil': 10250
+  },
+  calculatedAt: new Date().toISOString()
 }
 
 const mockPerformanceAnalytics: PerformanceAnalytics = {
-  monthlyPnL: [
-    { month: '2024-07', pnl: 450, cumulativePnL: 450 },
-    { month: '2024-08', pnl: -180, cumulativePnL: 270 },
-    { month: '2024-09', pnl: 320, cumulativePnL: 590 },
-    { month: '2024-10', pnl: 275, cumulativePnL: 865 },
-    { month: '2024-11', pnl: -95, cumulativePnL: 770 },
-    { month: '2024-12', pnl: 185, cumulativePnL: 955 },
-    { month: '2025-01', pnl: 125, cumulativePnL: 1080 }
-  ],
+  period: '2025-01',
+  totalPnL: 1080000,
+  realizedPnL: 955000,
+  unrealizedPnL: 125000,
+  bestPerformingProduct: 'Brent',
+  worstPerformingProduct: 'Fuel Oil',
+  totalReturn: 12.5,
+  annualizedReturn: 15.8,
   sharpeRatio: 1.85,
   maxDrawdown: -12.3,
   winRate: 68.5,
-  avgWinSize: 245,
-  avgLossSize: -135,
-  volatility: 18.7,
-  lastUpdated: new Date().toISOString()
+  profitFactor: 2.1,
+  vaRUtilization: 0.62,
+  volatilityAdjustedReturn: 0.87,
+  dailyPnLHistory: [
+    { date: '2025-01-20', dailyPnL: 45000, cumulativePnL: 955000 },
+    { date: '2025-01-21', dailyPnL: -18000, cumulativePnL: 937000 },
+    { date: '2025-01-22', dailyPnL: 32000, cumulativePnL: 969000 },
+    { date: '2025-01-23', dailyPnL: 27500, cumulativePnL: 996500 },
+    { date: '2025-01-24', dailyPnL: -9500, cumulativePnL: 987000 },
+    { date: '2025-01-27', dailyPnL: 18500, cumulativePnL: 1005500 },
+    { date: '2025-01-28', dailyPnL: 12500, cumulativePnL: 1018000 }
+  ],
+  productPerformance: [
+    { product: 'Brent', exposure: 44375000, pnL: 285000, return: 0.64 },
+    { product: 'WTI', exposure: 31500000, pnL: 180000, return: 0.57 },
+    { product: 'MGO', exposure: 23500000, pnL: 125000, return: 0.53 },
+    { product: 'Gasoil', exposure: 15375000, pnL: 95000, return: 0.62 },
+    { product: 'Fuel Oil', exposure: 10250000, pnL: 65000, return: 0.63 }
+  ],
+  calculatedAt: new Date().toISOString()
 }
 
 const mockMarketInsights: MarketInsights = {
-  benchmarkPrices: [
-    { benchmark: 'Brent', currentPrice: 82.45, change24h: 1.25, changePercent24h: 1.54, currency: 'USD' },
-    { benchmark: 'WTI', currentPrice: 78.92, change24h: 0.87, changePercent24h: 1.11, currency: 'USD' },
-    { benchmark: 'Dubai', currentPrice: 81.33, change24h: -0.45, changePercent24h: -0.55, currency: 'USD' },
-    { benchmark: 'Urals', currentPrice: 76.18, change24h: 0.32, changePercent24h: 0.42, currency: 'USD' }
+  marketDataCount: 1250,
+  lastUpdate: new Date().toISOString(),
+  keyPrices: [
+    { product: 'Brent', price: 82.45, change: 1.25, changePercent: 1.54, lastUpdate: new Date().toISOString() },
+    { product: 'WTI', price: 78.92, change: 0.87, changePercent: 1.11, lastUpdate: new Date().toISOString() },
+    { product: 'Dubai', price: 81.33, change: -0.45, changePercent: -0.55, lastUpdate: new Date().toISOString() },
+    { product: 'MGO', price: 850.00, change: 5.20, changePercent: 0.62, lastUpdate: new Date().toISOString() }
   ],
-  volatility: [
-    { product: 'Brent', impliedVolatility: 24.5, historicalVolatility: 22.8, volatilityTrend: 'Rising' },
-    { product: 'WTI', impliedVolatility: 26.2, historicalVolatility: 24.1, volatilityTrend: 'Stable' },
-    { product: 'MGO', impliedVolatility: 18.7, historicalVolatility: 19.3, volatilityTrend: 'Falling' }
+  volatilityIndicators: {
+    'Brent': 24.5,
+    'WTI': 26.2,
+    'MGO': 18.7
+  },
+  correlationMatrix: {
+    'Brent': { 'Brent': 1.0, 'WTI': 0.87, 'MGO': 0.65 },
+    'WTI': { 'Brent': 0.87, 'WTI': 1.0, 'MGO': 0.73 },
+    'MGO': { 'Brent': 0.65, 'WTI': 0.73, 'MGO': 1.0 }
+  },
+  technicalIndicators: {
+    'RSI_Brent': 58.3,
+    'RSI_WTI': 55.1,
+    'SMA20_Brent': 81.20,
+    'SMA50_Brent': 79.85
+  },
+  marketTrends: [
+    { product: 'Brent', trend: 'Bullish', strength: 0.72 },
+    { product: 'WTI', trend: 'Bullish', strength: 0.65 },
+    { product: 'MGO', trend: 'Sideways', strength: 0.45 }
   ],
-  correlations: [
-    { product1: 'Brent', product2: 'WTI', correlation: 0.87, trend: 'Stable' },
-    { product1: 'Brent', product2: 'MGO', correlation: 0.65, trend: 'Rising' },
-    { product1: 'WTI', product2: 'Gasoil', correlation: 0.73, trend: 'Falling' }
-  ],
-  marketSentiment: 'Bullish',
-  riskFactors: [
-    'Geopolitical tensions in Middle East',
-    'OPEC+ production cuts',
-    'Global economic slowdown concerns',
-    'USD strength impact on commodities'
-  ],
-  lastUpdated: new Date().toISOString()
+  sentimentIndicators: {
+    'overallSentiment': 0.65,
+    'bullishRatio': 0.72,
+    'bearishRatio': 0.28
+  },
+  calculatedAt: new Date().toISOString()
 }
 
 const mockOperationalStatus: OperationalStatus = {
-  activeContracts: 24,
-  pendingContracts: 8,
-  completedContractsThisMonth: 15,
-  shipmentStatus: [
-    { 
-      shipmentId: 'SH001', 
-      status: 'in_transit', 
-      vessel: 'Nordic Star', 
-      origin: 'Rotterdam', 
-      destination: 'Singapore', 
-      eta: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      quantity: 50000, 
-      unit: 'MT' 
+  activeShipments: 3,
+  pendingDeliveries: 5,
+  completedDeliveries: 15,
+  contractsAwaitingExecution: 8,
+  contractsInLaycan: 4,
+  upcomingLaycans: [
+    {
+      contractNumber: 'PC-2025-001',
+      contractType: 'Purchase',
+      laycanStart: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      laycanEnd: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      product: 'Brent',
+      quantity: 25000
     },
-    { 
-      shipmentId: 'SH002', 
-      status: 'loading', 
-      vessel: 'Pacific Glory', 
-      origin: 'Houston', 
-      destination: 'Tokyo', 
-      eta: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(),
-      quantity: 75000, 
-      unit: 'MT' 
+    {
+      contractNumber: 'PC-2025-002',
+      contractType: 'Purchase',
+      laycanStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      laycanEnd: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString(),
+      product: 'WTI',
+      quantity: 35000
     },
-    { 
-      shipmentId: 'SH003', 
-      status: 'completed', 
-      vessel: 'Atlantic Pearl', 
-      origin: 'Fujairah', 
-      destination: 'Mumbai', 
-      eta: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      quantity: 45000, 
-      unit: 'MT' 
+    {
+      contractNumber: 'SC-2025-003',
+      contractType: 'Sales',
+      laycanStart: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+      laycanEnd: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(),
+      product: 'MGO',
+      quantity: 20000
     }
   ],
-  riskAlerts: [
-    { 
-      alertType: 'Credit Risk', 
-      severity: 'High', 
-      message: 'Counterparty exposure exceeds 25% limit', 
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    { 
-      alertType: 'Market Risk', 
-      severity: 'Medium', 
-      message: 'Oil price volatility increased 15%', 
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
-    },
-    { 
-      alertType: 'Operational', 
-      severity: 'Low', 
-      message: 'Delayed shipment notification', 
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-    }
-  ],
-  upcomingDeliveries: [
-    { 
-      contractNumber: 'PC-2025-001', 
-      counterparty: 'Shell Trading', 
-      deliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      quantity: 25000, 
-      unit: 'MT', 
-      product: 'Brent', 
-      status: 'Confirmed' 
-    },
-    { 
-      contractNumber: 'PC-2025-002', 
-      counterparty: 'BP Oil', 
-      deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      quantity: 35000, 
-      unit: 'MT', 
-      product: 'WTI', 
-      status: 'Pending' 
-    },
-    { 
-      contractNumber: 'SC-2025-003', 
-      counterparty: 'Total Energy', 
-      deliveryDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-      quantity: 20000, 
-      unit: 'MT', 
-      product: 'MGO', 
-      status: 'Confirmed' 
-    }
-  ],
-  lastUpdated: new Date().toISOString()
+  systemHealth: {
+    databaseStatus: 'Healthy',
+    cacheStatus: 'Healthy',
+    marketDataStatus: 'Healthy',
+    overallStatus: 'Healthy'
+  },
+  cacheHitRatio: 0.92,
+  lastDataRefresh: new Date().toISOString(),
+  calculatedAt: new Date().toISOString()
 }
 
 // Mock async request

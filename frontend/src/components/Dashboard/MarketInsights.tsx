@@ -13,13 +13,12 @@ import {
   Chip,
   Box,
   LinearProgress,
-  Alert,
 } from '@mui/material'
 import { TrendingUp, TrendingDown } from '@mui/icons-material'
 import { useMarketInsights } from '@/hooks/useDashboard'
 
 export const MarketInsights: React.FC = () => {
-  const { data: _data, isLoading, error } = useMarketInsights()
+  const { data, isLoading, error } = useMarketInsights()
 
   if (error) {
     return (
@@ -35,17 +34,56 @@ export const MarketInsights: React.FC = () => {
     return `$${price.toFixed(2)}`
   }
 
-  const getVolatilityColor = (vol: number) => {
+  const getVolatilityColor = (vol: number): 'error' | 'warning' | 'success' => {
     if (vol > 30) return 'error'
     if (vol > 20) return 'warning'
     return 'success'
   }
 
-  const getCorrelationColor = (corr: number) => {
+  const getCorrelationColor = (corr: number): 'error' | 'warning' | 'success' => {
     if (Math.abs(corr) > 0.7) return 'error'
     if (Math.abs(corr) > 0.4) return 'warning'
     return 'success'
   }
+
+  // Transform key prices from API
+  const keyPrices = data?.keyPrices || []
+
+  // Transform volatility indicators (Record<string, number>) to array
+  const volatilityEntries = data?.volatilityIndicators
+    ? Object.entries(data.volatilityIndicators).map(([product, value]) => ({
+        product,
+        volatility: value,
+      }))
+    : []
+
+  // Transform correlation matrix to unique pairs (upper triangle only)
+  const correlationPairs: { product1: string; product2: string; correlation: number }[] = []
+  if (data?.correlationMatrix) {
+    const products = Object.keys(data.correlationMatrix)
+    for (let i = 0; i < products.length; i++) {
+      for (let j = i + 1; j < products.length; j++) {
+        const corr = data.correlationMatrix[products[i]]?.[products[j]]
+        if (corr !== undefined) {
+          correlationPairs.push({
+            product1: products[i],
+            product2: products[j],
+            correlation: corr,
+          })
+        }
+      }
+    }
+  }
+
+  // Sentiment analysis from API
+  const sentimentIndicators = data?.sentimentIndicators || {}
+  const overallSentiment = sentimentIndicators['overallSentiment'] || 0
+  const sentimentLabel = overallSentiment > 0.6 ? 'Bullish' : overallSentiment < 0.4 ? 'Bearish' : 'Neutral'
+  const sentimentColor: 'success' | 'error' | 'info' =
+    overallSentiment > 0.6 ? 'success' : overallSentiment < 0.4 ? 'error' : 'info'
+
+  // Market trends from API
+  const marketTrends = data?.marketTrends || []
 
   return (
     <Card>
@@ -53,9 +91,9 @@ export const MarketInsights: React.FC = () => {
         <Typography variant="h6" gutterBottom>
           Market Insights
         </Typography>
-        
+
         {isLoading && <LinearProgress sx={{ mb: 2 }} />}
-        
+
         <Grid container spacing={3}>
           <Grid item xs={12} lg={6}>
             <Typography variant="subtitle1" gutterBottom>
@@ -67,49 +105,56 @@ export const MarketInsights: React.FC = () => {
                   <TableRow>
                     <TableCell>Benchmark</TableCell>
                     <TableCell align="right">Price</TableCell>
-                    <TableCell align="right">24h Change</TableCell>
+                    <TableCell align="right">Change</TableCell>
                     <TableCell align="right">% Change</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[]?.map((price: any, index: number) => (
+                  {keyPrices.map((price, index) => (
                     <TableRow key={index}>
                       <TableCell>
                         <Typography fontWeight="medium">
-                          {price.benchmark}
+                          {price.product}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        {formatPrice(price.currentPrice)}
+                        {formatPrice(price.price)}
                       </TableCell>
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          {price.change24h >= 0 ? (
+                          {price.change >= 0 ? (
                             <TrendingUp sx={{ color: 'success.main', mr: 0.5, fontSize: 16 }} />
                           ) : (
                             <TrendingDown sx={{ color: 'error.main', mr: 0.5, fontSize: 16 }} />
                           )}
                           <Typography
-                            color={price.change24h >= 0 ? 'success.main' : 'error.main'}
+                            color={price.change >= 0 ? 'success.main' : 'error.main'}
                           >
-                            {formatPrice(price.change24h)}
+                            {price.change >= 0 ? '+' : ''}{formatPrice(Math.abs(price.change))}
                           </Typography>
                         </Box>
                       </TableCell>
                       <TableCell align="right">
                         <Typography
-                          color={price.changePercent24h >= 0 ? 'success.main' : 'error.main'}
+                          color={price.changePercent >= 0 ? 'success.main' : 'error.main'}
                         >
-                          {price.changePercent24h >= 0 ? '+' : ''}{price.changePercent24h.toFixed(2)}%
+                          {price.changePercent >= 0 ? '+' : ''}{price.changePercent.toFixed(2)}%
                         </Typography>
                       </TableCell>
                     </TableRow>
-                  )) || []}
+                  ))}
+                  {keyPrices.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <Typography variant="body2" color="text.secondary">No price data available</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Grid>
-          
+
           <Grid item xs={12} lg={6}>
             <Typography variant="subtitle1" gutterBottom>
               Volatility Analysis
@@ -119,44 +164,43 @@ export const MarketInsights: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Product</TableCell>
-                    <TableCell align="right">Implied Vol</TableCell>
-                    <TableCell align="right">Historical Vol</TableCell>
-                    <TableCell align="center">Trend</TableCell>
+                    <TableCell align="right">Annualized Vol</TableCell>
+                    <TableCell align="center">Level</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[]?.map((vol: any, index: number) => (
+                  {volatilityEntries.map((entry, index) => (
                     <TableRow key={index}>
-                      <TableCell>{vol.product}</TableCell>
+                      <TableCell>{entry.product}</TableCell>
                       <TableCell align="right">
                         <Chip
-                          label={`${vol.impliedVolatility.toFixed(1)}%`}
+                          label={`${entry.volatility.toFixed(1)}%`}
                           size="small"
-                          color={getVolatilityColor(vol.impliedVolatility)}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Chip
-                          label={`${vol.historicalVolatility.toFixed(1)}%`}
-                          size="small"
-                          color={getVolatilityColor(vol.historicalVolatility)}
+                          color={getVolatilityColor(entry.volatility)}
                         />
                       </TableCell>
                       <TableCell align="center">
                         <Chip
-                          label={vol.volatilityTrend}
+                          label={entry.volatility > 30 ? 'High' : entry.volatility > 20 ? 'Medium' : 'Low'}
                           size="small"
                           variant="outlined"
-                          color={vol.volatilityTrend === 'Rising' ? 'error' : 'success'}
+                          color={getVolatilityColor(entry.volatility)}
                         />
                       </TableCell>
                     </TableRow>
-                  )) || []}
+                  ))}
+                  {volatilityEntries.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary">No volatility data</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Grid>
-          
+
           <Grid item xs={12} lg={6}>
             <Typography variant="subtitle1" gutterBottom>
               Correlation Matrix
@@ -167,12 +211,11 @@ export const MarketInsights: React.FC = () => {
                   <TableRow>
                     <TableCell>Product Pair</TableCell>
                     <TableCell align="right">Correlation</TableCell>
-                    <TableCell align="center">Trend</TableCell>
                     <TableCell align="center">Risk Level</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[]?.map((corr: any, index: number) => (
+                  {correlationPairs.map((corr, index) => (
                     <TableRow key={index}>
                       <TableCell>
                         <Typography variant="body2">
@@ -181,13 +224,6 @@ export const MarketInsights: React.FC = () => {
                       </TableCell>
                       <TableCell align="right">
                         {corr.correlation.toFixed(3)}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip
-                          label={corr.trend}
-                          size="small"
-                          variant="outlined"
-                        />
                       </TableCell>
                       <TableCell align="center">
                         <Chip
@@ -200,46 +236,88 @@ export const MarketInsights: React.FC = () => {
                         />
                       </TableCell>
                     </TableRow>
-                  )) || []}
+                  ))}
+                  {correlationPairs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary">No correlation data</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Grid>
-          
+
           <Grid item xs={12} lg={6}>
             <Typography variant="subtitle1" gutterBottom>
-              Market Sentiment & Risk Factors
+              Market Sentiment & Trends
             </Typography>
-            
+
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Current Sentiment
+                Overall Sentiment
               </Typography>
-              <Chip
-                label={'Neutral'}
-                size="medium"
-                color={
-                  'info'
-                }
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip
+                  label={sentimentLabel}
+                  size="medium"
+                  color={sentimentColor}
+                />
+                {sentimentIndicators['bullishRatio'] !== undefined && (
+                  <Typography variant="caption" color="text.secondary">
+                    Bull: {((sentimentIndicators['bullishRatio'] || 0) * 100).toFixed(0)}% /
+                    Bear: {((sentimentIndicators['bearishRatio'] || 0) * 100).toFixed(0)}%
+                  </Typography>
+                )}
+              </Box>
             </Box>
-            
+
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Key Risk Factors
+              Market Trends
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {[]?.map((factor: any, index: number) => (
-                <Alert key={index} severity="warning" variant="outlined">
-                  {factor}
-                </Alert>
-              )) || []}
-            </Box>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product</TableCell>
+                    <TableCell align="center">Trend</TableCell>
+                    <TableCell align="right">Strength</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {marketTrends.map((trend, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{trend.product}</TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={trend.trend}
+                          size="small"
+                          color={trend.trend === 'Bullish' ? 'success' : trend.trend === 'Bearish' ? 'error' : 'info'}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell align="right">
+                        {(trend.strength * 100).toFixed(0)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {marketTrends.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary">No trend data</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Grid>
         </Grid>
-        
+
         <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
           <Typography variant="caption" color="text.secondary">
-            Last Updated: N/A
+            Market Data Points: {data?.marketDataCount || 0} | Last Updated: {data?.calculatedAt ? new Date(data.calculatedAt).toLocaleString() : 'N/A'}
           </Typography>
         </Box>
       </CardContent>
