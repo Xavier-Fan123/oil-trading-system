@@ -1,8 +1,8 @@
-# Oil Trading & Risk Management System v2.17.1
+# Oil Trading & Risk Management System v2.17.2
 
 An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, comprehensive settlement management, full shipping operation capabilities, data lineage tracking, market data region support, settlement automation rules, and trade group management.
 
-**Latest Update (Feb 1, 2026)**: v2.17.1 resolves 9 GitHub security alerts (CVE-2026-22029, CVE-2025-13465, OpenTelemetry upgrades) and fixes 58 TypeScript compilation errors. v2.17.0 (Jan 30, 2026) added Data Lineage Enhancement, Market Data Region with 4-tier hierarchical UI, Paper Contracts hedge designation, Settlement Automation Rules engine, and Trade Groups with VaR aggregation. Frontend and backend build with zero errors. System production-ready.
+**Latest Update (Feb 2, 2026)**: v2.17.2 fixes a critical dashboard data disconnect where all 7 dashboard components called real backend APIs but discarded responses, showing hardcoded zeros and empty tables. All components now wired to real data, TypeScript DTOs aligned with backend, and 9 hardcoded backend calculations replaced with real computations (volatility, correlation, RSI, trends, etc.). 13 files modified, zero compilation errors. Previous: v2.17.1 (Feb 1) resolved 9 security alerts and 58 TypeScript errors.
 
 ## 🚀 Quick Start
 
@@ -441,6 +441,11 @@ For support and questions:
 
 ### ✅ Completed (February 2026)
 
+- [x] **Dashboard Data Disconnect Fix (v2.17.2)** - All 7 dashboard components wired to real API data
+  - Fixed OverviewCard, TradingMetrics, PerformanceChart, MarketInsights, OperationalStatus showing hardcoded zeros
+  - Aligned TypeScript DTOs with backend response structures
+  - Replaced 9 hardcoded backend calculations with real computations (volatility, correlation, RSI, trends, sentiment)
+  - 13 files modified, zero compilation errors
 - [x] **Security Vulnerability Fixes (v2.17.1)** - Resolved 9/10 GitHub Dependabot alerts
   - Fixed CVE-2026-22029 (react-router-dom XSS) and CVE-2025-13465 (lodash prototype pollution)
   - Upgraded OpenTelemetry to 1.15.0, removed deprecated Jaeger exporter
