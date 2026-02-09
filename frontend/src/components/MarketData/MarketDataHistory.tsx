@@ -42,7 +42,7 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import { usePriceHistory, useLatestPrices } from '@/hooks/useMarketData';
+import { usePriceHistory, useLatestPrices, useBasisAnalysis } from '@/hooks/useMarketData';
 import {
   BaseProduct,
   extractBaseProductCode,
@@ -312,6 +312,16 @@ export const MarketDataHistory: React.FC<MarketDataHistoryProps> = ({ onTabChang
     !!actualProductCode
   );
 
+  // Basis analysis data for spread view (spot vs futures comparison)
+  const { data: basisData, isLoading: isBasisLoading } = useBasisAnalysis(
+    actualProductCode,
+    selectedContractMonth || '',
+    startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Default to 30 days ago
+    endDate || new Date(),
+    // Only fetch when spread view is selected with futures and contract month
+    visualizationType === 'spread' && priceType !== 'Spot' && !!selectedContractMonth && !!actualProductCode
+  );
+
   // ========== EVENT HANDLERS ==========
   const handleBaseProductChange = (newBaseProduct: string | null) => {
     setSelectedBaseProduct(newBaseProduct || '');
@@ -475,46 +485,7 @@ export const MarketDataHistory: React.FC<MarketDataHistoryProps> = ({ onTabChang
         </CardContent>
       </Card>
 
-      {/* ========== TIER 2: REGION SELECTION (Conditional - Spot Only) ========== */}
-      {selectedBaseProduct && priceType === 'Spot' && availableRegions.length > 0 && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'secondary.main' }}>
-              TIER 2: Region Selection (Spot Prices)
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Select Region</InputLabel>
-                  <Select
-                    value={selectedRegion}
-                    label="Select Region"
-                    onChange={(e) => setSelectedRegion(e.target.value)}
-                  >
-                    <MenuItem value="">
-                      <em>All Regions</em>
-                    </MenuItem>
-                    {availableRegions.map((region) => (
-                      <MenuItem key={region} value={region}>
-                        {region}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              {selectedRegion && (
-                <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Chip
-                    label={`Region: ${selectedRegion}`}
-                    color="secondary"
-                    variant="outlined"
-                  />
-                </Grid>
-              )}
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
+      {/* TIER 2: REGION SELECTION - REMOVED (X-group data has no regional differentiation) */}
 
       {/* ========== TIER 3: PRICE TYPE & VISUALIZATION ========== */}
       {selectedBaseProduct && (
@@ -844,49 +815,123 @@ export const MarketDataHistory: React.FC<MarketDataHistoryProps> = ({ onTabChang
               </Box>
             )}
 
-            {/* SPREAD VIEW: Calendar Spread Analysis */}
-            {visualizationType === 'spread' && priceType !== 'Spot' && availableContractMonths.length >= 2 && (
+            {/* SPREAD VIEW: Basis Analysis (Spot vs Futures) */}
+            {visualizationType === 'spread' && priceType !== 'Spot' && selectedContractMonth && (
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Calendar spreads show the price difference between two contract months. A positive spread indicates contango (futures premium), while negative indicates backwardation.
+                  Basis analysis compares spot prices vs futures settlement prices. The basis (futures - spot) indicates market expectations: positive = contango, negative = backwardation.
                 </Typography>
-                <Box sx={{ height: 400 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 12 }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(value) => `$${value.toFixed(2)}`}
-                      />
-                      <Tooltip
-                        formatter={formatTooltipValue}
-                        labelFormatter={(label) => `Date: ${label}`}
-                        contentStyle={{
-                          backgroundColor: '#1a1d29',
-                          border: '1px solid #2a2d3a',
-                          borderRadius: '8px',
-                          color: '#ffffff',
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="price"
-                        stroke="#9c27b0"
-                        strokeWidth={2}
-                        dot={{ fill: '#9c27b0', strokeWidth: 2, r: 3 }}
-                        name={`${selectedContractMonth ? selectedContractMonth + ' Spread' : 'Calendar Spread'}`}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Box>
+
+                {/* Basis Statistics Summary */}
+                {basisData && (
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                          <Typography variant="caption" color="text.secondary">Current Basis</Typography>
+                          <Typography variant="h6" color={basisData.currentBasis >= 0 ? 'success.main' : 'error.main'}>
+                            {basisData.currentBasis >= 0 ? '+' : ''}{basisData.currentBasis?.toFixed(2) || 'N/A'}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                          <Typography variant="caption" color="text.secondary">Average Basis</Typography>
+                          <Typography variant="h6">
+                            {basisData.averageBasis?.toFixed(2) || 'N/A'}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                          <Typography variant="caption" color="text.secondary">Min / Max</Typography>
+                          <Typography variant="h6">
+                            {basisData.minBasis?.toFixed(2) || 'N/A'} / {basisData.maxBasis?.toFixed(2) || 'N/A'}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                          <Typography variant="caption" color="text.secondary">Data Points</Typography>
+                          <Typography variant="h6">
+                            {basisData.dataPoints || 0}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                )}
+
+                {/* Loading state */}
+                {isBasisLoading && <LinearProgress sx={{ mb: 2 }} />}
+
+                {/* Dual-line chart: Spot vs Futures */}
+                {basisData?.basisHistory && basisData.basisHistory.length > 0 ? (
+                  <Box sx={{ height: 400 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={basisData.basisHistory.map((point: { date: string | Date; spotPrice: number; settlementPrice: number; basis: number }) => ({
+                          date: new Date(point.date).toLocaleDateString(),
+                          spotPrice: point.spotPrice,
+                          futuresPrice: point.settlementPrice,
+                          basis: point.basis,
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => `$${value.toFixed(2)}`}
+                        />
+                        <Tooltip
+                          formatter={(value: number, name: string) => [`$${value?.toFixed(2) || 'N/A'}`, name]}
+                          labelFormatter={(label) => `Date: ${label}`}
+                          contentStyle={{
+                            backgroundColor: '#1a1d29',
+                            border: '1px solid #2a2d3a',
+                            borderRadius: '8px',
+                            color: '#ffffff',
+                          }}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="spotPrice"
+                          stroke="#2196f3"
+                          strokeWidth={2}
+                          dot={{ fill: '#2196f3', strokeWidth: 2, r: 3 }}
+                          name="Spot Price"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="futuresPrice"
+                          stroke="#ff9800"
+                          strokeWidth={2}
+                          dot={{ fill: '#ff9800', strokeWidth: 2, r: 3 }}
+                          name={`Futures (${selectedContractMonth})`}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Box>
+                ) : (
+                  !isBasisLoading && (
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      No basis data available. Ensure both spot and futures prices exist for the selected product and date range.
+                    </Alert>
+                  )
+                )}
               </Box>
             )}
 
@@ -897,9 +942,9 @@ export const MarketDataHistory: React.FC<MarketDataHistoryProps> = ({ onTabChang
               </Alert>
             )}
 
-            {visualizationType === 'spread' && (priceType === 'Spot' || availableContractMonths.length < 2) && (
+            {visualizationType === 'spread' && (priceType === 'Spot' || !selectedContractMonth) && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                Calendar spread analysis requires futures prices with at least 2 contract months. Select a futures price type first.
+                Basis analysis requires a futures price type and a specific contract month. Select a futures price type and contract month first.
               </Alert>
             )}
           </CardContent>

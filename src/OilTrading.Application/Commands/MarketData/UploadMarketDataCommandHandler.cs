@@ -1,6 +1,7 @@
 using MediatR;
 using ClosedXML.Excel;
 using OilTrading.Application.DTOs;
+using OilTrading.Application.Services;
 using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
 using Microsoft.Extensions.Logging;
@@ -105,6 +106,10 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
                 else if (request.FileType == "Futures")
                 {
                     result = await ProcessICESettlement(workbook, request.UploadedBy, cancellationToken);
+                }
+                else if (request.FileType == "XGroup")
+                {
+                    result = await ProcessXGroupFormat(workbook, request.UploadedBy, cancellationToken);
                 }
             }
             
@@ -1253,5 +1258,253 @@ public class UploadMarketDataCommandHandler : IRequestHandler<UploadMarketDataCo
         var monthNames = new[] { "", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
         var yy = year % 100;
         return $"{monthNames[month]}{yy:D2}";
+    }
+
+    /// <summary>
+    /// Process X-group format Excel file (Merged_Futures_Spot_Data.xlsx).
+    /// 7-column format: 合约细则ID, 合约细则描述, 报价日期, 结算价, 现货价格, 报价单位, 报价货币
+    /// </summary>
+    private async Task<MarketDataUploadResultDto> ProcessXGroupFormat(
+        IXLWorkbook workbook,
+        string uploadedBy,
+        CancellationToken cancellationToken)
+    {
+        var result = new MarketDataUploadResultDto();
+
+        // Find worksheet (usually Sheet1 or first worksheet)
+        var worksheet = workbook.Worksheets.FirstOrDefault();
+        if (worksheet == null)
+        {
+            result.Errors.Add("No worksheet found in the workbook");
+            return result;
+        }
+
+        _logger.LogInformation("Processing X-group format from worksheet: {WorksheetName}", worksheet.Name);
+
+        // Validate headers (row 1)
+        var headers = new List<string>();
+        for (int col = 1; col <= 7; col++)
+        {
+            headers.Add(worksheet.Cell(1, col).GetString().Trim());
+        }
+
+        // Check if this is X-group format
+        if (!XGroupDataParser.IsXGroupFormat(headers))
+        {
+            result.Errors.Add($"Invalid X-group format. Expected columns: 合约细则ID, 合约细则描述, 报价日期, 结算价, 现货价格, 报价单位, 报价货币. Found: {string.Join(", ", headers)}");
+            return result;
+        }
+
+        // Find data range
+        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+        var startRow = 2; // Data starts from row 2
+
+        if (lastRow < startRow)
+        {
+            result.Messages.Add("No data rows found in the worksheet");
+            return result;
+        }
+
+        _logger.LogInformation("Processing {RowCount} rows of X-group market data", lastRow - startRow + 1);
+
+        // Process rows
+        var recordsToAdd = new List<MarketPrice>();
+        var processedKeys = new HashSet<string>(); // Track duplicates within same upload
+        var importedAt = DateTime.UtcNow;
+        var errorCount = 0;
+
+        for (int row = startRow; row <= lastRow && errorCount < MAX_ERRORS; row++)
+        {
+            try
+            {
+                // Read row data
+                var contractSpecId = worksheet.Cell(row, XGroupDataParser.ColumnIndex.ContractSpecificationId + 1).GetString().Trim();
+                var contractDescription = worksheet.Cell(row, XGroupDataParser.ColumnIndex.ContractDescription + 1).GetString().Trim();
+                var priceDateCell = worksheet.Cell(row, XGroupDataParser.ColumnIndex.PriceDate + 1);
+                var settlementPriceCell = worksheet.Cell(row, XGroupDataParser.ColumnIndex.SettlementPrice + 1);
+                var spotPriceCell = worksheet.Cell(row, XGroupDataParser.ColumnIndex.SpotPrice + 1);
+                var unitStr = worksheet.Cell(row, XGroupDataParser.ColumnIndex.Unit + 1).GetString().Trim();
+                var currency = worksheet.Cell(row, XGroupDataParser.ColumnIndex.Currency + 1).GetString().Trim();
+
+                // Skip empty rows
+                if (string.IsNullOrEmpty(contractSpecId))
+                    continue;
+
+                // Parse date
+                DateTime priceDate;
+                if (priceDateCell.DataType == XLDataType.DateTime)
+                {
+                    priceDate = priceDateCell.GetDateTime();
+                }
+                else if (!DateTime.TryParse(priceDateCell.GetString(), out priceDate))
+                {
+                    _logger.LogWarning("Row {Row}: Invalid date format", row);
+                    result.RecordsSkipped++;
+                    continue;
+                }
+
+                // Parse prices
+                decimal? settlementPrice = null;
+                decimal? spotPrice = null;
+
+                if (!settlementPriceCell.IsEmpty())
+                {
+                    if (settlementPriceCell.DataType == XLDataType.Number)
+                        settlementPrice = (decimal)settlementPriceCell.GetDouble();
+                    else if (decimal.TryParse(settlementPriceCell.GetString(), out var parsed))
+                        settlementPrice = parsed;
+                }
+
+                if (!spotPriceCell.IsEmpty())
+                {
+                    if (spotPriceCell.DataType == XLDataType.Number)
+                        spotPrice = (decimal)spotPriceCell.GetDouble();
+                    else if (decimal.TryParse(spotPriceCell.GetString(), out var parsed))
+                        spotPrice = parsed;
+                }
+
+                // Validate at least one price
+                if (!settlementPrice.HasValue && !spotPrice.HasValue)
+                {
+                    _logger.LogWarning("Row {Row}: No valid price found", row);
+                    result.RecordsSkipped++;
+                    continue;
+                }
+
+                // Parse contract specification ID
+                var parsedId = XGroupDataParser.ParseContractSpecificationId(contractSpecId);
+                var unit = XGroupDataParser.ParseUnit(unitStr);
+
+                // Determine price type and effective price
+                MarketPriceType priceType;
+                decimal effectivePrice;
+
+                if (parsedId.IsFutures && settlementPrice.HasValue)
+                {
+                    priceType = MarketPriceType.FuturesSettlement;
+                    effectivePrice = settlementPrice.Value;
+                }
+                else if (!parsedId.IsFutures && spotPrice.HasValue)
+                {
+                    priceType = MarketPriceType.Spot;
+                    effectivePrice = spotPrice.Value;
+                }
+                else if (settlementPrice.HasValue)
+                {
+                    priceType = MarketPriceType.FuturesSettlement;
+                    effectivePrice = settlementPrice.Value;
+                }
+                else
+                {
+                    priceType = MarketPriceType.Spot;
+                    effectivePrice = spotPrice!.Value;
+                }
+
+                // Create unique key for deduplication: ProductCode|ContractMonth|Date|PriceType
+                var contractMonth = parsedId.ContractMonth ?? "";
+                var uniqueKey = $"{parsedId.ProductCode}|{contractMonth}|{priceDate:yyyy-MM-dd}|{(int)priceType}";
+
+                // Skip if already processed in this batch
+                if (processedKeys.Contains(uniqueKey))
+                {
+                    _logger.LogDebug("Row {Row}: Duplicate key {Key}, skipping", row, uniqueKey);
+                    result.RecordsSkipped++;
+                    continue;
+                }
+                processedKeys.Add(uniqueKey);
+
+                // Check for existing record in database
+                MarketPrice? existingPrice;
+                if (priceType == MarketPriceType.Spot)
+                {
+                    existingPrice = await _marketDataRepository.GetSpotPriceAsync(
+                        parsedId.ProductCode, priceDate, cancellationToken);
+                }
+                else
+                {
+                    existingPrice = await _marketDataRepository.GetByProductCodeAndContractMonthAsync(
+                        parsedId.ProductCode, contractMonth, priceDate, priceType, cancellationToken);
+                }
+
+                if (existingPrice != null)
+                {
+                    // Update existing record if price changed
+                    if (Math.Abs(existingPrice.Price - effectivePrice) > 0.0001m)
+                    {
+                        existingPrice.Price = effectivePrice;
+                        existingPrice.SettlementPrice = settlementPrice;
+                        existingPrice.SpotPrice = spotPrice;
+                        existingPrice.ContractSpecificationId = contractSpecId;
+                        existingPrice.SetUpdatedBy(uploadedBy);
+                        await _marketDataRepository.UpdateAsync(existingPrice, cancellationToken);
+                        result.RecordsUpdated++;
+                        _logger.LogDebug("Row {Row}: Updated existing price for {Key}", row, uniqueKey);
+                    }
+                    else
+                    {
+                        result.RecordsSkipped++;
+                        _logger.LogDebug("Row {Row}: Price unchanged for {Key}, skipping", row, uniqueKey);
+                    }
+                }
+                else
+                {
+                    // Create new MarketPrice entity
+                    var marketPrice = MarketPrice.Create(
+                        priceDate: priceDate,
+                        productCode: parsedId.ProductCode,
+                        productName: string.IsNullOrEmpty(contractDescription)
+                            ? XGroupDataParser.GetProductDisplayName(parsedId.ProductCode)
+                            : contractDescription,
+                        priceType: priceType,
+                        price: effectivePrice,
+                        currency: string.IsNullOrEmpty(currency) ? "USD" : currency,
+                        source: "XGroup",
+                        dataSource: "XGroup Import",
+                        isSettlement: priceType == MarketPriceType.FuturesSettlement,
+                        importedAt: importedAt,
+                        importedBy: uploadedBy,
+                        contractMonth: parsedId.ContractMonth,
+                        region: parsedId.IsFutures ? null : "Singapore",
+                        contractSpecificationId: contractSpecId,
+                        settlementPrice: settlementPrice,
+                        spotPrice: spotPrice
+                    );
+
+                    recordsToAdd.Add(marketPrice);
+                    result.RecordsCreated++;
+                }
+
+                result.RecordsProcessed++;
+
+                // Batch insert new records
+                if (recordsToAdd.Count >= BATCH_SIZE)
+                {
+                    await _marketDataRepository.AddRangeAsync(recordsToAdd, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    recordsToAdd.Clear();
+                    _logger.LogDebug("Batch committed: {Count} records", BATCH_SIZE);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error processing row {Row}", row);
+                result.Errors.Add($"Row {row}: {ex.Message}");
+                errorCount++;
+                result.RecordsSkipped++;
+            }
+        }
+
+        // Insert remaining records
+        if (recordsToAdd.Count > 0)
+        {
+            await _marketDataRepository.AddRangeAsync(recordsToAdd, cancellationToken);
+            _logger.LogDebug("Final batch committed: {Count} records", recordsToAdd.Count);
+        }
+
+        result.Messages.Add($"X-group import completed: {result.RecordsProcessed} processed, {result.RecordsCreated} created, {result.RecordsUpdated} updated, {result.RecordsSkipped} skipped");
+        _logger.LogInformation("X-group import completed: {Processed} processed, {Created} created, {Updated} updated, {Skipped} skipped",
+            result.RecordsProcessed, result.RecordsCreated, result.RecordsUpdated, result.RecordsSkipped);
+
+        return result;
     }
 }

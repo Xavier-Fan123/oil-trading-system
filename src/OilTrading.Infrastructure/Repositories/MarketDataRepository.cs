@@ -149,6 +149,15 @@ public class MarketDataRepository : Repository<MarketPrice>, IMarketDataReposito
     // Note: AddAsync is inherited from Repository<T> base class which now includes
     // systemic BaseEntity property tracking fix that applies to all entities
 
+    /// <summary>
+    /// Add multiple market prices in batch for efficient bulk inserts.
+    /// Used by X-group format upload for performance optimization.
+    /// </summary>
+    public async Task AddRangeAsync(IEnumerable<MarketPrice> marketPrices, CancellationToken cancellationToken = default)
+    {
+        await _dbSet.AddRangeAsync(marketPrices, cancellationToken);
+    }
+
     public override async Task UpdateAsync(MarketPrice marketPrice, CancellationToken cancellationToken = default)
     {
         _dbSet.Update(marketPrice);

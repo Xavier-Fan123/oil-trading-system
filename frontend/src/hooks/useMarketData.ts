@@ -184,3 +184,21 @@ export const useAvailableContractMonths = (
     retry: 1,
   });
 };
+
+// Get basis analysis data (spot vs futures comparison)
+// Returns both spot and futures prices for the same product over time
+export const useBasisAnalysis = (
+  productCode: string,
+  contractMonth: string,
+  startDate: string | Date,
+  endDate: string | Date,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ['basis-analysis', productCode, contractMonth, startDate, endDate],
+    queryFn: () => marketDataApi.getBasisAnalysis(productCode, contractMonth, startDate, endDate),
+    enabled: enabled && !!productCode && !!contractMonth && !!startDate && !!endDate,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+  });
+};

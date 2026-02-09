@@ -69,6 +69,19 @@ public class MarketPriceConfiguration : IEntityTypeConfiguration<MarketPrice>
         builder.Property(e => e.Region)
                .HasMaxLength(50);  // "Singapore", "Dubai", etc.
 
+        // ===== X-group format support fields =====
+        // ContractSpecificationId: "SG380 Apr26" (futures) or "SG380" (spot)
+        builder.Property(e => e.ContractSpecificationId)
+               .HasMaxLength(100);
+
+        // SettlementPrice: Futures settlement price (null for spot rows)
+        builder.Property(e => e.SettlementPrice)
+               .HasPrecision(18, 4);
+
+        // SpotPrice: Spot market price (null for futures rows)
+        builder.Property(e => e.SpotPrice)
+               .HasPrecision(18, 4);
+
         // Audit fields
         builder.Property(e => e.CreatedAt).IsRequired();
         builder.Property(e => e.UpdatedAt);
@@ -116,7 +129,11 @@ public class MarketPriceConfiguration : IEntityTypeConfiguration<MarketPrice>
                
         builder.HasIndex(e => e.DataSource)
                .HasDatabaseName("IX_MarketPrices_DataSource");
-               
+
+        // X-group format index for ContractSpecificationId
+        builder.HasIndex(e => new { e.ContractSpecificationId, e.PriceDate })
+               .HasDatabaseName("IX_MarketPrices_ContractSpecId_PriceDate");
+
         builder.ToTable("MarketPrices");
 
         // ===== REMOVED: Foreign Key Relationship with Product =====

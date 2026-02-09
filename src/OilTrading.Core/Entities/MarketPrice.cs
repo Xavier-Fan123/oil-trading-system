@@ -22,6 +22,11 @@ public class MarketPrice : BaseEntity
     public string? ExchangeName { get; set; }   // ICE, NYMEX, etc.
     public string? Region { get; set; }  // "Singapore", "Dubai", null for futures
 
+    // ===== X-group format support fields =====
+    public string? ContractSpecificationId { get; set; }  // "SG380 Apr26" (futures) or "SG380" (spot)
+    public decimal? SettlementPrice { get; set; }         // Futures settlement price (null for spot rows)
+    public decimal? SpotPrice { get; set; }               // Spot market price (null for futures rows)
+
     // ===== REMOVED: ProductId and Product navigation =====
     // These were causing "no such column: m0.ProductId" errors
     // Using ProductCode as natural key instead
@@ -66,7 +71,10 @@ public class MarketPrice : BaseEntity
         DateTime importedAt,
         string? importedBy,
         string? contractMonth = null,
-        string? region = null)
+        string? region = null,
+        string? contractSpecificationId = null,
+        decimal? settlementPrice = null,
+        decimal? spotPrice = null)
     {
         var now = DateTime.UtcNow;
         var marketPrice = new MarketPrice
@@ -84,7 +92,11 @@ public class MarketPrice : BaseEntity
             IsSettlement = isSettlement,
             ImportedAt = importedAt,
             ImportedBy = importedBy,
-            Region = region
+            Region = region,
+            // X-group format fields
+            ContractSpecificationId = contractSpecificationId,
+            SettlementPrice = settlementPrice,
+            SpotPrice = spotPrice
         };
 
         // CRITICAL: Initialize BaseEntity audit fields through explicit method calls

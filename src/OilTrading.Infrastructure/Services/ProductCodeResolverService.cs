@@ -222,6 +222,106 @@ public class ProductCodeResolverService : IProductCodeResolverService
                 SulfurContent = 3.5
             },
             Unit = "MT"
+        },
+
+        // ===== X-GROUP PRODUCTS =====
+        // Products from X-group Excel format (Merged_Futures_Spot_Data.xlsx)
+        ["SG380"] = new ProductMapping
+        {
+            DatabaseCode = "SG380",
+            DisplayName = "MOPS FO 380cst FOB Sg",
+            AssetClass = "Heavy Residuals",
+            Category = "High Sulfur Fuel Oil",
+            SpotMarkets = new List<SpotMarket>
+            {
+                new() { ProductCode = "SG380", Region = "Singapore", Source = "MOPS", AssessmentType = "FO 380cst FOB Sg" }
+            },
+            FuturesMarket = new FuturesMarket
+            {
+                ProductCode = "SG380",
+                Exchange = "MOPS",
+                ContractSize = "100 MT"
+            },
+            Specifications = new ProductSpecs { Viscosity = "380 CST @ 50°C", SulfurContent = 3.5 },
+            Unit = "MT"
+        },
+
+        ["SG180"] = new ProductMapping
+        {
+            DatabaseCode = "SG180",
+            DisplayName = "MOPS FO 180cst FOB Sg",
+            AssetClass = "Heavy Residuals",
+            Category = "High Sulfur Fuel Oil",
+            SpotMarkets = new List<SpotMarket>
+            {
+                new() { ProductCode = "SG180", Region = "Singapore", Source = "MOPS", AssessmentType = "FO 180cst FOB Sg" }
+            },
+            FuturesMarket = new FuturesMarket
+            {
+                ProductCode = "SG180",
+                Exchange = "MOPS",
+                ContractSize = "100 MT"
+            },
+            Specifications = new ProductSpecs { Viscosity = "180 CST @ 50°C", SulfurContent = 3.5 },
+            Unit = "MT"
+        },
+
+        ["MF 0.5"] = new ProductMapping
+        {
+            DatabaseCode = "MF 0.5",
+            DisplayName = "MOPS Marine Fuel 0.5%",
+            AssetClass = "Heavy Residuals",
+            Category = "Low Sulfur Fuel Oil",
+            SpotMarkets = new List<SpotMarket>
+            {
+                new() { ProductCode = "MF 0.5", Region = "Singapore", Source = "MOPS", AssessmentType = "Marine Fuel 0.5% S" }
+            },
+            FuturesMarket = new FuturesMarket
+            {
+                ProductCode = "MF 0.5",
+                Exchange = "MOPS",
+                ContractSize = "100 MT"
+            },
+            Specifications = new ProductSpecs { SulfurContent = 0.5 },
+            Unit = "MT"
+        },
+
+        ["GO 10ppm"] = new ProductMapping
+        {
+            DatabaseCode = "GO 10ppm",
+            DisplayName = "Gas oil 10ppm",
+            AssetClass = "Middle Distillates",
+            Category = "Ultra Low Sulfur Diesel",
+            SpotMarkets = new List<SpotMarket>
+            {
+                new() { ProductCode = "GO 10ppm", Region = "Singapore", Source = "MOPS", AssessmentType = "Gasoil 10ppm S" }
+            },
+            FuturesMarket = new FuturesMarket
+            {
+                ProductCode = "GO 10ppm",
+                Exchange = "ICE",
+                ContractSize = "100 MT"
+            },
+            Specifications = new ProductSpecs { SulfurContent = 0.001, CetaneIndex = 51 },
+            Unit = "BBL"
+        },
+
+        ["Brt Fut"] = new ProductMapping
+        {
+            DatabaseCode = "Brt Fut",
+            DisplayName = "ICE Brent Future",
+            AssetClass = "Crude Oil",
+            Category = "Light Sweet Crude",
+            SpotMarkets = new List<SpotMarket>(),
+            FuturesMarket = new FuturesMarket
+            {
+                ProductCode = "Brt Fut",
+                Exchange = "ICE",
+                ContractSize = "1000 BBL",
+                TickSize = "$0.01/BBL"
+            },
+            Specifications = new ProductSpecs { ApiGravity = 38.0, SulfurContent = 0.37 },
+            Unit = "BBL"
         }
     };
 
@@ -249,7 +349,16 @@ public class ProductCodeResolverService : IProductCodeResolverService
         ["BUNKER_SPORE"] = "HFO380",
         ["BUNKER_HK"] = "HFO380",
         ["FUEL_OIL_35_RTDM"] = "HFO380",
-        ["HSFO"] = "HFO380"
+        ["HSFO"] = "HFO380",
+
+        // ===== X-GROUP PRODUCT CODES (Passthrough) =====
+        // X-group data uses these codes directly in the database
+        // They need passthrough mapping to work with ProductCodeResolver
+        ["SG380"] = "SG380",       // MOPS FO 380cst FOB Sg
+        ["SG180"] = "SG180",       // MOPS FO 180cst FOB Sg
+        ["MF 0.5"] = "MF 0.5",     // MOPS Marine Fuel 0.5%
+        ["GO 10ppm"] = "GO 10ppm", // Gas oil 10ppm
+        ["Brt Fut"] = "Brt Fut"    // ICE Brent Future
     };
 
     public string? ResolveToAPICode(string databaseCode, string marketType, string? region = null)

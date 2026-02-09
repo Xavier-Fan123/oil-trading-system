@@ -283,6 +283,7 @@ public static class DependencyInjection
         services.AddScoped<IPriceValidationService, PriceValidationService>();
         services.AddScoped<INetPositionService, NetPositionService>();
         services.AddScoped<ITradeGroupRiskCalculationService, TradeGroupRiskCalculationService>();
+        services.AddScoped<IVaRCalculationService, VaRCalculationService>();  // X-group VaR calculation service
 
         // ====================================================================
         // 6. SETTLEMENT SERVICES (Accounts Payable & Accounts Receivable)

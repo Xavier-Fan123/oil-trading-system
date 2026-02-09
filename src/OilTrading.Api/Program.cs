@@ -537,6 +537,9 @@ using (var scope = app.Services.CreateScope())
                     // If query succeeds, table exists but may not have DEFAULT on RowVersion
                     // SQLite doesn't support ALTER COLUMN, so we'll let entity factory method set it
                     logger.LogInformation("MarketPrices table verified");
+
+                    // Add X-group format columns if they don't exist (migration fix)
+                    await AddXGroupColumnsIfMissingAsync(context, logger);
                 }
                 catch
                 {
@@ -546,6 +549,9 @@ using (var scope = app.Services.CreateScope())
             else
             {
                 logger.LogInformation("Database already exists");
+
+                // Add X-group format columns if they don't exist (migration fix for existing databases)
+                await AddXGroupColumnsIfMissingAsync(context, logger);
             }
 
             logger.LogInformation("Database initialization complete");
@@ -1295,6 +1301,70 @@ static async Task SeedProductionReferenceDataAsync(ApplicationDbContext context,
     else
     {
         logger.LogInformation("Production database already contains reference data");
+    }
+}
+
+// Helper method to add X-group format columns to MarketPrices table if missing
+static async Task AddXGroupColumnsIfMissingAsync(ApplicationDbContext context, ILogger logger)
+{
+    try
+    {
+        // Check existing columns in MarketPrices table
+        var columnCheckSql = "PRAGMA table_info(MarketPrices);";
+        var connection = context.Database.GetDbConnection();
+        await connection.OpenAsync();
+
+        var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = columnCheckSql;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                existingColumns.Add(reader.GetString(1)); // Column name is at index 1
+            }
+        }
+
+        // Add ContractSpecificationId if missing
+        if (!existingColumns.Contains("ContractSpecificationId"))
+        {
+            logger.LogInformation("Adding ContractSpecificationId column to MarketPrices table");
+            await context.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE MarketPrices ADD COLUMN ContractSpecificationId TEXT NULL;");
+        }
+
+        // Add SettlementPrice if missing
+        if (!existingColumns.Contains("SettlementPrice"))
+        {
+            logger.LogInformation("Adding SettlementPrice column to MarketPrices table");
+            await context.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE MarketPrices ADD COLUMN SettlementPrice TEXT NULL;");
+        }
+
+        // Add SpotPrice if missing
+        if (!existingColumns.Contains("SpotPrice"))
+        {
+            logger.LogInformation("Adding SpotPrice column to MarketPrices table");
+            await context.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE MarketPrices ADD COLUMN SpotPrice TEXT NULL;");
+        }
+
+        // Create index for ContractSpecificationId queries (ignore if already exists)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                "CREATE INDEX IF NOT EXISTS IX_MarketPrices_ContractSpecId_PriceDate ON MarketPrices(ContractSpecificationId, PriceDate);");
+        }
+        catch
+        {
+            // Index may already exist, ignore error
+        }
+
+        logger.LogInformation("X-group format columns verified/added successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Could not verify/add X-group columns - may already exist or table structure differs");
     }
 }
 

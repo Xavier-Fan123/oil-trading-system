@@ -3,6 +3,7 @@ using MediatR;
 using OilTrading.Application.Commands.MarketData;
 using OilTrading.Application.Queries.MarketData;
 using OilTrading.Application.DTOs;
+using OilTrading.Application.Services;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Entities;
 
@@ -14,11 +15,16 @@ public class MarketDataController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<MarketDataController> _logger;
+    private readonly IVaRCalculationService _varService;
 
-    public MarketDataController(IMediator mediator, ILogger<MarketDataController> logger)
+    public MarketDataController(
+        IMediator mediator,
+        ILogger<MarketDataController> logger,
+        IVaRCalculationService varService)
     {
         _mediator = mediator;
         _logger = logger;
+        _varService = varService;
     }
 
     private string GetCurrentUserName()
@@ -57,10 +63,16 @@ public class MarketDataController : ControllerBase
             return BadRequest(new { error = "No file uploaded" });
         }
 
-        if (string.IsNullOrEmpty(fileType) || (fileType != "Spot" && fileType != "Futures"))
+        // Default to XGroup if no file type specified (X-Group unified format is the standard)
+        if (string.IsNullOrEmpty(fileType))
         {
-            _logger.LogWarning("Invalid file type: {FileType}", fileType);
-            return BadRequest(new { error = "Invalid file type. Must be 'Spot' or 'Futures'" });
+            fileType = "XGroup";
+            _logger.LogInformation("No file type specified, defaulting to XGroup");
+        }
+        else if (fileType != "XGroup")
+        {
+            _logger.LogWarning("Invalid file type: {FileType}. Only XGroup format is supported.", fileType);
+            return BadRequest(new { error = "Only 'XGroup' file type is supported. Please use the X-Group unified format (7-column Excel file)." });
         }
 
         // Check file extension
@@ -318,7 +330,7 @@ public class MarketDataController : ControllerBase
     /// <param name="priceType">Price type: 0=Spot, 1=FuturesSettlement, 2=ForwardCurve</param>
     /// <returns>Price statistics including min, max, average, standard deviation</returns>
     [HttpGet("statistics/{productCode}/{contractMonth}")]
-    [ProducesResponseType(typeof(PriceStatistics), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OilTrading.Core.ValueObjects.PriceStatistics), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPriceStatistics(
@@ -456,6 +468,50 @@ public class MarketDataController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving contract months for ProductCode={ProductCode}, PriceType={PriceType}", productCode, priceType ?? "All");
             return BadRequest(new { error = "Error retrieving contract months", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Calculate VaR metrics for a specific product
+    /// </summary>
+    /// <param name="productCode">Product code (e.g., "SG380", "MF 0.5")</param>
+    /// <param name="days">Lookback period in days (default 252 = 1 year)</param>
+    /// <returns>VaR metrics including 1-day and 10-day VaR at 95% and 99% confidence</returns>
+    [HttpGet("var-metrics/{productCode}")]
+    [ProducesResponseType(typeof(VaRMetricsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetVaRMetrics(
+        string productCode,
+        [FromQuery] int days = 252)
+    {
+        if (string.IsNullOrWhiteSpace(productCode))
+            return BadRequest(new { error = "Product code is required" });
+
+        if (days < 30 || days > 1000)
+            return BadRequest(new { error = "Days must be between 30 and 1000" });
+
+        try
+        {
+            _logger.LogInformation("Calculating VaR metrics for {ProductCode} with {Days} day lookback", productCode, days);
+
+            var result = await _varService.CalculateVaRAsync(productCode, days);
+
+            _logger.LogInformation(
+                "VaR calculated for {ProductCode}: 1D-95%={Var1Day95:F2}, AnnualVol={AnnualVol:P2}",
+                productCode, result.Var1Day95, result.AnnualizedVolatility);
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Insufficient data for VaR calculation: {ProductCode}", productCode);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating VaR for {ProductCode}", productCode);
+            return StatusCode(500, new { error = "Error calculating VaR metrics", details = ex.Message });
         }
     }
 }

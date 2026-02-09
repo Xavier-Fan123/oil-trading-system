@@ -67,7 +67,7 @@ export interface MarketPriceDto {
 
 export interface MarketDataUploadRequest {
   file: File;
-  fileType: 'Spot' | 'Futures';
+  fileType: 'Spot' | 'Futures' | 'XGroup';
   overwriteExisting?: boolean;
 }
 
@@ -105,10 +105,10 @@ export interface DeleteMarketDataResultDto {
   errors: string[];
 }
 
-// File type options for upload - simplified to only Spot and Futures
+// File type options for upload - X-Group unified format only
+// The X-Group format combines spot and futures prices in a single 7-column Excel file
 export const FILE_TYPES = [
-  { value: 'Spot', label: 'Spot Prices', description: 'Physical market spot prices' },
-  { value: 'Futures', label: 'Futures Prices', description: 'Futures contract prices' },
+  { value: 'XGroup', label: 'X-Group Unified', description: 'Combined spot & futures data (7-column format: 合约细则ID, 合约细则描述, 报价日期, 结算价, 现货价格, 报价单位, 报价货币)' },
 ] as const;
 
 export type FileType = typeof FILE_TYPES[number]['value'];
@@ -555,9 +555,10 @@ export const API_TO_DATABASE: Record<string, string> = {
   "GO_10PPM": "GASOIL",
 
   // ICE Singapore Fuel Oil Futures (Outright Contracts)
-  "SG380": "HFO380",  // HSFO 380 CST Futures
+  // CRITICAL FIX: X-group data uses these codes directly - passthrough mapping
+  "SG380": "SG380",   // MOPS FO 380cst FOB Sg (X-group format)
   "SG05": "VLSFO",    // VLSFO 0.5% S Futures
-  "SG180": "HFO180",  // HSFO 180 CST Futures (if supported)
+  "SG180": "SG180",   // MOPS FO 180cst FOB Sg (X-group format)
 
   // Spread Contracts (Price Differentials - NOT outright futures)
   "0.5_EW": "VLSFO",   // VLSFO Europe-Asia spread
@@ -578,6 +579,12 @@ export const API_TO_DATABASE: Record<string, string> = {
   "MGO_RTDM": "MGO",        // Rotterdam MGO
   "MOPS_MGO": "MGO",        // Singapore MOPS MGO
   "MOPAG_MGO": "MGO",       // Arab Gulf MGO
+
+  // ===== X-GROUP PRODUCT CODES (Passthrough) =====
+  // X-group data uses these codes directly in the database
+  "MF 0.5": "MF 0.5",       // MOPS Marine Fuel 0.5%
+  "GO 10ppm": "GO 10ppm",   // Gas oil 10ppm
+  "Brt Fut": "Brt Fut",     // ICE Brent Future
 };
 
 /**
@@ -807,4 +814,98 @@ export function getProductRegion(productCode: string): string | null {
   if (directRegions.length > 0) return directRegions[0];
 
   return null;
+}
+
+// ===== X-GROUP FORMAT TYPES =====
+
+/**
+ * X-group product codes
+ */
+export const XGROUP_PRODUCTS = [
+  { code: 'Brt Fut', name: 'ICE Brent Future (USD/BBLS)', unit: 'BBLS' },
+  { code: 'GO 10ppm', name: 'Gas oil 10ppm (USD/BBLS)', unit: 'BBLS' },
+  { code: 'MF 0.5', name: 'MOPS Marine Fuel 0.5% (USD/MT)', unit: 'MT' },
+  { code: 'SG180', name: 'MOPS FO 180cst FOB Sg (USD/MT)', unit: 'MT' },
+  { code: 'SG380', name: 'MOPS FO 380cst FOB Sg (USD/MT)', unit: 'MT' },
+] as const;
+
+export type XGroupProductCode = typeof XGROUP_PRODUCTS[number]['code'];
+
+/**
+ * X-group market data row
+ */
+export interface XGroupMarketData {
+  contractSpecificationId: string;  // "SG380 Apr26" or "SG380"
+  contractDescription: string;
+  priceDate: Date;
+  settlementPrice?: number;
+  spotPrice?: number;
+  unit: 'MT' | 'BBLS';
+  currency: string;
+}
+
+/**
+ * Benchmark pricing result
+ */
+export interface BenchmarkPriceResult {
+  method: 'DateRangeAverage' | 'ContractMonth' | 'SpotPlusPremium';
+  productCode: string;
+  contractMonth?: string;
+  startDate?: Date;
+  endDate?: Date;
+  priceDate?: Date;
+  spotPrice?: number;
+  premium?: number;
+  isPremiumPercentage?: boolean;
+  calculatedPrice: number;
+  dataPoints: number;
+  minPrice?: number;
+  maxPrice?: number;
+  currency: string;
+  calculatedAt: Date;
+}
+
+/**
+ * Basis analysis result
+ */
+export interface BasisAnalysisResult {
+  productCode: string;
+  contractMonth: string;
+  startDate: Date;
+  endDate: Date;
+  currentBasis?: number;
+  averageBasis?: number;
+  minBasis?: number;
+  maxBasis?: number;
+  dataPoints: number;
+  basisHistory: BasisDataPoint[];
+  calculatedAt: Date;
+}
+
+export interface BasisDataPoint {
+  date: Date;
+  settlementPrice: number;
+  spotPrice: number;
+  basis: number;
+  basisPercent: number;
+}
+
+/**
+ * VaR metrics
+ */
+export interface VaRMetrics {
+  productCode: string;
+  latestPrice: number;
+  currency: string;
+  dailyVolatility: number;
+  annualizedVolatility: number;
+  var1Day95: number;
+  var1Day99: number;
+  var10Day95: number;
+  var10Day99: number;
+  dataPoints: number;
+  returnDataPoints: number;
+  calculationDate: Date;
+  startDate: Date;
+  endDate: Date;
 }

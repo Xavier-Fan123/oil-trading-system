@@ -249,5 +249,103 @@ export const marketDataApi = {
     const response = await api.get(`/market-data/contract-months/${productCode}${query}`);
 
     return response.data;
+  },
+
+  // ===== X-GROUP & BENCHMARK PRICING APIs =====
+
+  // Get VaR metrics for a product
+  getVaRMetrics: async (productCode: string, days: number = 252) => {
+    const response = await api.get(`/market-data/var-metrics/${productCode}?days=${days}`);
+    return response.data;
+  },
+
+  // Get X-group product codes
+  getXGroupProductCodes: async () => {
+    const response = await api.get('/benchmark-pricing/product-codes');
+    return response.data;
+  },
+
+  // Get date range average price
+  getBenchmarkDateRangeAverage: async (
+    productCode: string,
+    startDate: string | Date,
+    endDate: string | Date,
+    contractMonth?: string,
+    priceType?: string
+  ) => {
+    const params = new URLSearchParams();
+    params.append('productCode', productCode);
+    const formattedStartDate = typeof startDate === 'string' ? startDate : formatApiDate(startDate);
+    const formattedEndDate = typeof endDate === 'string' ? endDate : formatApiDate(endDate);
+    if (formattedStartDate) params.append('startDate', formattedStartDate);
+    if (formattedEndDate) params.append('endDate', formattedEndDate);
+    if (contractMonth) params.append('contractMonth', contractMonth);
+    if (priceType) params.append('priceType', priceType);
+
+    const response = await api.get(`/benchmark-pricing/date-range-average?${params.toString()}`);
+    return response.data;
+  },
+
+  // Get contract month price
+  getBenchmarkContractMonthPrice: async (
+    productCode: string,
+    contractMonth: string,
+    priceDate?: string | Date
+  ) => {
+    const params = new URLSearchParams();
+    params.append('productCode', productCode);
+    params.append('contractMonth', contractMonth);
+    if (priceDate) {
+      const formattedDate = typeof priceDate === 'string' ? priceDate : formatApiDate(priceDate);
+      if (formattedDate) params.append('priceDate', formattedDate);
+    }
+
+    const response = await api.get(`/benchmark-pricing/contract-month-price?${params.toString()}`);
+    return response.data;
+  },
+
+  // Get spot plus premium price
+  getBenchmarkSpotPlusPremium: async (
+    productCode: string,
+    premium: number,
+    isPercentage: boolean = false,
+    priceDate?: string | Date
+  ) => {
+    const params = new URLSearchParams();
+    params.append('productCode', productCode);
+    params.append('premium', premium.toString());
+    params.append('isPercentage', isPercentage.toString());
+    if (priceDate) {
+      const formattedDate = typeof priceDate === 'string' ? priceDate : formatApiDate(priceDate);
+      if (formattedDate) params.append('priceDate', formattedDate);
+    }
+
+    const response = await api.get(`/benchmark-pricing/spot-plus-premium?${params.toString()}`);
+    return response.data;
+  },
+
+  // Get basis analysis
+  getBasisAnalysis: async (
+    productCode: string,
+    contractMonth: string,
+    startDate: string | Date,
+    endDate: string | Date
+  ) => {
+    const params = new URLSearchParams();
+    params.append('productCode', productCode);
+    params.append('contractMonth', contractMonth);
+    const formattedStartDate = typeof startDate === 'string' ? startDate : formatApiDate(startDate);
+    const formattedEndDate = typeof endDate === 'string' ? endDate : formatApiDate(endDate);
+    if (formattedStartDate) params.append('startDate', formattedStartDate);
+    if (formattedEndDate) params.append('endDate', formattedEndDate);
+
+    const response = await api.get(`/benchmark-pricing/basis-analysis?${params.toString()}`);
+    return response.data;
+  },
+
+  // Get available contract months for benchmark pricing
+  getBenchmarkContractMonths: async (productCode: string) => {
+    const response = await api.get(`/benchmark-pricing/available-contract-months/${productCode}`);
+    return response.data;
   }
 };

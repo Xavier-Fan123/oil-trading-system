@@ -24,7 +24,7 @@ public class UploadMarketDataCommandValidator : AbstractValidator<UploadMarketDa
         RuleFor(x => x.FileType)
             .NotEmpty()
             .Must(BeValidFileType)
-            .WithMessage("File type must be 'Spot' or 'Futures'");
+            .WithMessage("File type must be 'Spot', 'Futures', or 'XGroup'");
 
         RuleFor(x => x.FileContent)
             .NotEmpty()
@@ -37,6 +37,6 @@ public class UploadMarketDataCommandValidator : AbstractValidator<UploadMarketDa
 
     private static bool BeValidFileType(string fileType)
     {
-        return new[] { "Spot", "Futures" }.Contains(fileType);
+        return new[] { "Spot", "Futures", "XGroup" }.Contains(fileType);
     }
 }

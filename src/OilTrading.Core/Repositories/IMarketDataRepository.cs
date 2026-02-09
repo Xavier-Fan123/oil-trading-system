@@ -37,6 +37,7 @@ public interface IMarketDataRepository
     Task<List<MarketPrice>> GetHistoricalPricesAsync(string productCode, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     Task<IEnumerable<Core.Entities.TimeSeries.MarketData>> GetHistoricalDataAsync(string symbol, DateTime startDate, DateTime endDate);
     Task<MarketPrice> AddAsync(MarketPrice marketPrice, CancellationToken cancellationToken = default);
+    Task AddRangeAsync(IEnumerable<MarketPrice> marketPrices, CancellationToken cancellationToken = default);
     Task UpdateAsync(MarketPrice marketPrice, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task DeleteAllAsync(CancellationToken cancellationToken = default);

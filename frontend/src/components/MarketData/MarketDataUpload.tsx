@@ -65,7 +65,7 @@ interface FileWithPreview extends File {
 
 export const MarketDataUpload: React.FC<MarketDataUploadProps> = ({ onTabChange }) => {
   const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
-  const [fileType, setFileType] = useState<FileType>('Spot');
+  const [fileType, setFileType] = useState<FileType>('XGroup');
   const [uploadResults, setUploadResults] = useState<any[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
@@ -292,33 +292,15 @@ export const MarketDataUpload: React.FC<MarketDataUploadProps> = ({ onTabChange 
         <Grid item xs={12} lg={8}>
           <Card>
             <CardContent>
-              <Box sx={{ mb: 3 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="file-type-label">File Type</InputLabel>
-                  <Select
-                    labelId="file-type-label"
-                    id="file-type-select"
-                    value={fileType}
-                    label="File Type"
-                    onChange={(e) => setFileType(e.target.value as FileType)}
-                    aria-describedby="file-type-helper-text"
-                  >
-                    {FILE_TYPES.map((type) => (
-                      <MenuItem key={type.value} value={type.value}>
-                        <Box component="span">
-                          <Box component="span" fontSize="1rem" display="block">{type.label}</Box>
-                          <Box component="span" fontSize="0.75rem" color="text.secondary" display="block">
-                            {type.description}
-                          </Box>
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <Box id="file-type-helper-text" sx={{ mt: 1, fontSize: '0.75rem', color: 'text.secondary' }}>
-                    Select the type of market data file you want to upload
-                  </Box>
-                </FormControl>
-              </Box>
+              {/* X-Group Format Info */}
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  X-Group Unified Format
+                </Typography>
+                <Typography variant="body2">
+                  Upload Excel files with 7 columns: 合约细则ID, 合约细则描述, 报价日期, 结算价, 现货价格, 报价单位, 报价货币
+                </Typography>
+              </Alert>
 
               {/* Overwrite Option */}
               <Box sx={{ mb: 2 }}>

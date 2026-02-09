@@ -198,7 +198,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ContractExecutionReports");
+                    b.ToTable("ContractExecutionReports", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.ContractMatching", b =>
@@ -259,7 +259,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("SalesContractId");
 
-                    b.ToTable("ContractMatchings");
+                    b.ToTable("ContractMatchings", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.ContractPricingEvent", b =>
@@ -1563,7 +1563,7 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("ProductCode", "LocationCode", "Status")
                         .HasDatabaseName("IX_InventoryReservations_Product_Location_Status");
 
-                    b.ToTable("InventoryReservations");
+                    b.ToTable("InventoryReservations", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.MarketPrice", b =>
@@ -2057,7 +2057,7 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_Payments_Status");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.PaymentRiskAlert", b =>
@@ -2155,7 +2155,7 @@ namespace OilTrading.Infrastructure.Migrations
                     b.HasIndex("TradingPartnerId", "IsResolved")
                         .HasDatabaseName("IX_PaymentRiskAlerts_TradingPartnerId_IsResolved");
 
-                    b.ToTable("PaymentRiskAlerts");
+                    b.ToTable("PaymentRiskAlerts", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.PhysicalContract", b =>
@@ -3643,7 +3643,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("RiskReports");
+                    b.ToTable("RiskReports", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.RiskReportSection", b =>
@@ -3707,7 +3707,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                     b.HasIndex("RiskReportId1");
 
-                    b.ToTable("RiskReportSection");
+                    b.ToTable("RiskReportSection", (string)null);
                 });
 
             modelBuilder.Entity("OilTrading.Core.Entities.RuleExecutionRecord", b =>
@@ -6328,7 +6328,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryLocationId");
 
-                            b1.ToTable("InventoryLocations");
+                            b1.ToTable("InventoryLocations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryLocationId");
@@ -6350,7 +6350,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryLocationId");
 
-                            b1.ToTable("InventoryLocations");
+                            b1.ToTable("InventoryLocations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryLocationId");
@@ -6372,7 +6372,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryLocationId");
 
-                            b1.ToTable("InventoryLocations");
+                            b1.ToTable("InventoryLocations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryLocationId");
@@ -6451,7 +6451,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryMovementId");
 
-                            b1.ToTable("InventoryMovements");
+                            b1.ToTable("InventoryMovements", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryMovementId");
@@ -6473,7 +6473,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryMovementId");
 
-                            b1.ToTable("InventoryMovements");
+                            b1.ToTable("InventoryMovements", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryMovementId");
@@ -6497,7 +6497,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryMovementId");
 
-                            b1.ToTable("InventoryMovements");
+                            b1.ToTable("InventoryMovements", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryMovementId");
@@ -6521,7 +6521,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryMovementId");
 
-                            b1.ToTable("InventoryMovements");
+                            b1.ToTable("InventoryMovements", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryMovementId");
@@ -6581,7 +6581,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryPositionId");
 
-                            b1.ToTable("InventoryPositions");
+                            b1.ToTable("InventoryPositions", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryPositionId");
@@ -6603,7 +6603,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryPositionId");
 
-                            b1.ToTable("InventoryPositions");
+                            b1.ToTable("InventoryPositions", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryPositionId");
@@ -6648,7 +6648,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryReservationId");
 
-                            b1.ToTable("InventoryReservations");
+                            b1.ToTable("InventoryReservations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryReservationId");
@@ -6670,7 +6670,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("InventoryReservationId");
 
-                            b1.ToTable("InventoryReservations");
+                            b1.ToTable("InventoryReservations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InventoryReservationId");
@@ -6717,7 +6717,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PaymentId");
 
-                            b1.ToTable("Payments");
+                            b1.ToTable("Payments", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PaymentId");
@@ -6778,7 +6778,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PaymentId");
 
-                            b1.ToTable("Payments");
+                            b1.ToTable("Payments", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PaymentId");
@@ -6839,7 +6839,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PaymentId");
 
-                            b1.ToTable("Payments");
+                            b1.ToTable("Payments", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PaymentId");
@@ -6961,7 +6961,7 @@ namespace OilTrading.Infrastructure.Migrations
                                 .IsUnique()
                                 .HasDatabaseName("IX_PurchaseContracts_ContractNumber");
 
-                            b1.ToTable("PurchaseContracts");
+                            b1.ToTable("PurchaseContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PurchaseContractId");
@@ -6983,7 +6983,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PurchaseContractId");
 
-                            b1.ToTable("PurchaseContracts");
+                            b1.ToTable("PurchaseContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PurchaseContractId");
@@ -7007,7 +7007,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PurchaseContractId");
 
-                            b1.ToTable("PurchaseContracts");
+                            b1.ToTable("PurchaseContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PurchaseContractId");
@@ -7031,7 +7031,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PurchaseContractId");
 
-                            b1.ToTable("PurchaseContracts");
+                            b1.ToTable("PurchaseContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PurchaseContractId");
@@ -7055,7 +7055,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PurchaseContractId");
 
-                            b1.ToTable("PurchaseContracts");
+                            b1.ToTable("PurchaseContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PurchaseContractId");
@@ -7127,7 +7127,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("PurchaseContractId");
 
-                            b1.ToTable("PurchaseContracts");
+                            b1.ToTable("PurchaseContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PurchaseContractId");
@@ -7150,7 +7150,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                                     b2.HasKey("PriceFormulaPurchaseContractId");
 
-                                    b2.ToTable("PurchaseContracts");
+                                    b2.ToTable("PurchaseContracts", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("PriceFormulaPurchaseContractId");
@@ -7174,7 +7174,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                                     b2.HasKey("PriceFormulaPurchaseContractId");
 
-                                    b2.ToTable("PurchaseContracts");
+                                    b2.ToTable("PurchaseContracts", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("PriceFormulaPurchaseContractId");
@@ -7198,7 +7198,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                                     b2.HasKey("PriceFormulaPurchaseContractId");
 
-                                    b2.ToTable("PurchaseContracts");
+                                    b2.ToTable("PurchaseContracts", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("PriceFormulaPurchaseContractId");
@@ -7417,7 +7417,7 @@ namespace OilTrading.Infrastructure.Migrations
                                 .IsUnique()
                                 .HasDatabaseName("IX_SalesContracts_ContractNumber");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7439,7 +7439,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("SalesContractId");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7463,7 +7463,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("SalesContractId");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7487,7 +7487,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("SalesContractId");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7511,7 +7511,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("SalesContractId");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7583,7 +7583,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("SalesContractId");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7606,7 +7606,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                                     b2.HasKey("PriceFormulaSalesContractId");
 
-                                    b2.ToTable("SalesContracts");
+                                    b2.ToTable("SalesContracts", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("PriceFormulaSalesContractId");
@@ -7630,7 +7630,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                                     b2.HasKey("PriceFormulaSalesContractId");
 
-                                    b2.ToTable("SalesContracts");
+                                    b2.ToTable("SalesContracts", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("PriceFormulaSalesContractId");
@@ -7654,7 +7654,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                                     b2.HasKey("PriceFormulaSalesContractId");
 
-                                    b2.ToTable("SalesContracts");
+                                    b2.ToTable("SalesContracts", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("PriceFormulaSalesContractId");
@@ -7685,7 +7685,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("SalesContractId");
 
-                            b1.ToTable("SalesContracts");
+                            b1.ToTable("SalesContracts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("SalesContractId");
@@ -7847,7 +7847,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("ShippingOperationId");
 
-                            b1.ToTable("ShippingOperations");
+                            b1.ToTable("ShippingOperations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ShippingOperationId");
@@ -7869,7 +7869,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("ShippingOperationId");
 
-                            b1.ToTable("ShippingOperations");
+                            b1.ToTable("ShippingOperations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ShippingOperationId");
@@ -7891,7 +7891,7 @@ namespace OilTrading.Infrastructure.Migrations
 
                             b1.HasKey("ShippingOperationId");
 
-                            b1.ToTable("ShippingOperations");
+                            b1.ToTable("ShippingOperations", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("ShippingOperationId");
@@ -7913,171 +7913,6 @@ namespace OilTrading.Infrastructure.Migrations
 
             modelBuilder.Entity("OilTrading.Core.Entities.TradeChain", b =>
                 {
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "PurchaseQuantity", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<int>("Unit")
-                                .HasMaxLength(10)
-                                .HasColumnType("INTEGER")
-                                .HasColumnName("PurchaseQuantityUnit");
-
-                            b1.Property<decimal>("Value")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("PurchaseQuantityValue");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "PurchaseValue", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("PurchaseAmount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("PurchaseCurrency");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "RealizedPnL", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("RealizedPnLAmount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("RealizedPnLCurrency");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "RemainingQuantity", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<int>("Unit")
-                                .HasMaxLength(10)
-                                .HasColumnType("INTEGER")
-                                .HasColumnName("RemainingQuantityUnit");
-
-                            b1.Property<decimal>("Value")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("RemainingQuantityValue");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "SalesQuantity", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<int>("Unit")
-                                .HasMaxLength(10)
-                                .HasColumnType("INTEGER")
-                                .HasColumnName("SalesQuantityUnit");
-
-                            b1.Property<decimal>("Value")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("SalesQuantityValue");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "SalesValue", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("SalesAmount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("SalesCurrency");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
-                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "UnrealizedPnL", b1 =>
-                        {
-                            b1.Property<Guid>("TradeChainId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 4)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("UnrealizedPnLAmount");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("UnrealizedPnLCurrency");
-
-                            b1.HasKey("TradeChainId");
-
-                            b1.ToTable("TradingChains");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TradeChainId");
-                        });
-
                     b.OwnsMany("OilTrading.Core.Entities.TradeChainEvent", "Events", b1 =>
                         {
                             b1.Property<Guid>("Id")
@@ -8148,6 +7983,171 @@ namespace OilTrading.Infrastructure.Migrations
                             b1.HasIndex("TradeChainId");
 
                             b1.ToTable("TradeChainOperations", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "PurchaseQuantity", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<int>("Unit")
+                                .HasMaxLength(10)
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("PurchaseQuantityUnit");
+
+                            b1.Property<decimal>("Value")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("PurchaseQuantityValue");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "PurchaseValue", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("PurchaseAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("PurchaseCurrency");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "RealizedPnL", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("RealizedPnLAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("RealizedPnLCurrency");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "RemainingQuantity", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<int>("Unit")
+                                .HasMaxLength(10)
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("RemainingQuantityUnit");
+
+                            b1.Property<decimal>("Value")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("RemainingQuantityValue");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Quantity", "SalesQuantity", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<int>("Unit")
+                                .HasMaxLength(10)
+                                .HasColumnType("INTEGER")
+                                .HasColumnName("SalesQuantityUnit");
+
+                            b1.Property<decimal>("Value")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("SalesQuantityValue");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "SalesValue", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("SalesAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("SalesCurrency");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("TradeChainId");
+                        });
+
+                    b.OwnsOne("OilTrading.Core.ValueObjects.Money", "UnrealizedPnL", b1 =>
+                        {
+                            b1.Property<Guid>("TradeChainId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("UnrealizedPnLAmount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("UnrealizedPnLCurrency");
+
+                            b1.HasKey("TradeChainId");
+
+                            b1.ToTable("TradingChains", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TradeChainId");
