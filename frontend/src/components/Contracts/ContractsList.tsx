@@ -211,6 +211,30 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
         </Box>
       </Box>
 
+      {/* Status Quick Filters */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+        {[
+          { status: undefined, label: 'All', color: 'default' as const },
+          { status: ContractStatus.Draft, label: 'Draft', color: 'default' as const },
+          { status: ContractStatus.PendingApproval, label: 'Pending', color: 'warning' as const },
+          { status: ContractStatus.Active, label: 'Active', color: 'success' as const },
+          { status: ContractStatus.Completed, label: 'Completed', color: 'info' as const },
+          { status: ContractStatus.Cancelled, label: 'Cancelled', color: 'error' as const },
+        ].map((item) => (
+          <Chip
+            key={item.label}
+            label={item.label}
+            color={item.color}
+            size="small"
+            variant={filters.status === item.status ? 'filled' : 'outlined'}
+            onClick={() => {
+              handleFilterChange('status', item.status);
+            }}
+            sx={{ cursor: 'pointer', fontWeight: filters.status === item.status ? 'bold' : 'normal' }}
+          />
+        ))}
+      </Box>
+
       {/* Filters */}
       {showFilters && (
         <Card sx={{ mb: 3 }}>
@@ -336,13 +360,13 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>System Contract #</TableCell>
-              <TableCell>External Contract #</TableCell>
+              <TableCell>Contract #</TableCell>
+              <TableCell>External #</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Supplier</TableCell>
               <TableCell>Product</TableCell>
               <TableCell align="right">Quantity</TableCell>
-              <TableCell>Tags</TableCell>
+              <TableCell align="right">Price / Value</TableCell>
               <TableCell>Laycan</TableCell>
               <TableCell>Created</TableCell>
               <TableCell align="center">Actions</TableCell>
@@ -350,7 +374,12 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
           </TableHead>
           <TableBody>
             {contracts.map((contract: PurchaseContractListDto) => (
-              <TableRow key={contract.id} hover>
+              <TableRow
+                key={contract.id}
+                hover
+                onClick={() => onView(contract.id)}
+                sx={{ cursor: 'pointer' }}
+              >
                 <TableCell>
                   <Typography variant="body2" fontWeight="medium">
                     {contract.contractNumber}
@@ -375,13 +404,29 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
                     {contract.quantity.toLocaleString()} {getQuantityUnitLabel(contract.quantityUnit)}
                   </Typography>
                 </TableCell>
-                <TableCell>
-                  <Box display="flex" flexWrap="wrap" gap={0.5}>
-                    {/* Tags will be fetched and displayed here - placeholder for now */}
-                    <Typography variant="caption" color="text.secondary">
-                      No tags
-                    </Typography>
-                  </Box>
+                <TableCell align="right">
+                  {contract.contractValue ? (
+                    <Box>
+                      <Typography variant="body2" fontWeight="medium">
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: contract.contractValueCurrency || 'USD', maximumFractionDigits: 0 }).format(contract.contractValue)}
+                      </Typography>
+                      <Chip
+                        label={contract.pricingStatus || 'Unpriced'}
+                        size="small"
+                        variant="outlined"
+                        color={contract.pricingStatus === 'FullyPriced' ? 'success' : contract.pricingStatus === 'PartiallyPriced' ? 'warning' : 'default'}
+                        sx={{ fontSize: '0.65rem', height: 18 }}
+                      />
+                    </Box>
+                  ) : (
+                    <Chip
+                      label={contract.pricingStatus || 'Unpriced'}
+                      size="small"
+                      variant="outlined"
+                      color="default"
+                      sx={{ fontSize: '0.65rem', height: 18 }}
+                    />
+                  )}
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -393,14 +438,15 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
                     {format(new Date(contract.createdAt), 'MMM dd, yyyy')}
                   </Typography>
                 </TableCell>
-                <TableCell align="center">
+                <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                   <Tooltip title="View Details">
                     <IconButton size="small" onClick={() => onView(contract.id)}>
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
                   {(normalizeStatus(contract.status) === ContractStatus.Draft ||
-                    normalizeStatus(contract.status) === ContractStatus.PendingApproval) && (
+                    normalizeStatus(contract.status) === ContractStatus.PendingApproval ||
+                    normalizeStatus(contract.status) === ContractStatus.Active) && (
                     <Tooltip title="Edit Contract">
                       <IconButton size="small" onClick={() => onEdit(contract.id)}>
                         <EditIcon />
@@ -424,7 +470,7 @@ export const ContractsList: React.FC<ContractsListProps> = ({ onEdit, onView, on
             ))}
             {contracts.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={10} align="center">
                   <Typography variant="body1" color="textSecondary" py={4}>
                     No contracts found
                   </Typography>

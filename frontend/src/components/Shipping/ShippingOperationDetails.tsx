@@ -23,8 +23,10 @@ import {
   Schedule as ScheduleIcon,
   LocalShipping as LoadingIcon,
   LocationOn as DischargeIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Receipt as SettlementIcon
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useShippingOperation } from '@/hooks/useShipping';
 
 interface ShippingOperationDetailsProps {
@@ -40,6 +42,7 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
   operationId,
   onEdit
 }) => {
+  const navigate = useNavigate();
   const { data: operation, isLoading, error, refetch } = useShippingOperation(
     operationId || '',
     !!operationId && open
@@ -344,6 +347,20 @@ export const ShippingOperationDetails: React.FC<ShippingOperationDetailsProps> =
 
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
+        {/* Create Settlement from shipping B/L data */}
+        {operation && ['loaded', 'discharging', 'completed'].includes(operation.status?.toLowerCase()) && (
+          <Button
+            variant="outlined"
+            color="success"
+            startIcon={<SettlementIcon />}
+            onClick={() => {
+              onClose();
+              navigate(`/settlements?contractId=${operation.contractId}`);
+            }}
+          >
+            Create Settlement
+          </Button>
+        )}
         {onEdit && (
           <Button variant="contained" onClick={() => onEdit(operationId)}>
             Edit Operation

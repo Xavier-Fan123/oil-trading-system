@@ -1,9 +1,11 @@
 import React from 'react'
 import { Grid, Typography, Box } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 import { KPICard } from '@/components/Common/KPICard'
 import { useDashboardOverview } from '@/hooks/useDashboard'
 
 export const OverviewCard: React.FC = () => {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useDashboardOverview()
 
   if (error) {
@@ -44,6 +46,7 @@ export const OverviewCard: React.FC = () => {
             suffix="M"
             isLoading={isLoading}
             color="primary"
+            onClick={() => navigate('/positions')}
           />
         </Grid>
 
@@ -66,6 +69,7 @@ export const OverviewCard: React.FC = () => {
             suffix="M"
             isLoading={isLoading}
             color="warning"
+            onClick={() => navigate('/risk')}
           />
         </Grid>
 
@@ -96,6 +100,7 @@ export const OverviewCard: React.FC = () => {
             value={activeContracts}
             isLoading={isLoading}
             color="secondary"
+            onClick={() => navigate('/contracts')}
           />
         </Grid>
 
@@ -105,6 +110,7 @@ export const OverviewCard: React.FC = () => {
             value={pendingContracts}
             isLoading={isLoading}
             color="secondary"
+            onClick={() => navigate('/contracts')}
           />
         </Grid>
 

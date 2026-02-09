@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -18,21 +18,25 @@ import {
   TableSortLabel,
   TextField,
   InputAdornment,
+  CircularProgress,
+  TablePagination,
+  Grid,
 } from '@mui/material';
 import {
-  ArrowBack as ArrowBackIcon,
   Add as AddIcon,
   Visibility as ViewIcon,
-  Edit as EditIcon,
   Search as SearchIcon,
   FileDownload as ExportIcon,
+  FilterList as FilterIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
-import { 
+import {
   ContractSettlementListDto,
   ContractSettlementStatus,
-  getSettlementStatusColor 
+  ContractSettlementStatusLabels,
+  getSettlementStatusColor
 } from '@/types/settlement';
+import { settlementApi } from '@/services/settlementApi';
 
 interface SettlementListProps {
   settlements: ContractSettlementListDto[];
@@ -40,21 +44,94 @@ interface SettlementListProps {
   onSettlementSelect: (settlementId: string) => void;
   onCreateNew: () => void;
   onBackToSearch: () => void;
+  initialStatusFilter?: string;
 }
 
 type SortField = 'documentDate' | 'contractNumber' | 'externalContractNumber' | 'totalSettlementAmount' | 'status' | 'createdDate';
 type SortDirection = 'asc' | 'desc';
 
+// Status filter options
+const STATUS_FILTERS = [
+  { label: 'All', value: undefined },
+  { label: 'Draft', value: ContractSettlementStatus.Draft },
+  { label: 'Data Entered', value: ContractSettlementStatus.DataEntered },
+  { label: 'Calculated', value: ContractSettlementStatus.Calculated },
+  { label: 'Reviewed', value: ContractSettlementStatus.Reviewed },
+  { label: 'Approved', value: ContractSettlementStatus.Approved },
+  { label: 'Finalized', value: ContractSettlementStatus.Finalized },
+];
+
 export const SettlementList: React.FC<SettlementListProps> = ({
-  settlements,
+  settlements: searchResults,
   searchTerm,
   onSettlementSelect,
   onCreateNew,
-  onBackToSearch
+  onBackToSearch,
+  initialStatusFilter
 }) => {
-  const [sortField, setSortField] = useState<SortField>('documentDate');
+  const [sortField, setSortField] = useState<SortField>('createdDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [filterTerm, setFilterTerm] = useState('');
+
+  // Self-loading state
+  const [allSettlements, setAllSettlements] = useState<ContractSettlementListDto[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<ContractSettlementStatus | undefined>(() => {
+    if (initialStatusFilter) {
+      const match = Object.entries(ContractSettlementStatusLabels).find(
+        ([, label]) => label === initialStatusFilter
+      );
+      return match ? Number(match[0]) as ContractSettlementStatus : undefined;
+    }
+    return undefined;
+  });
+
+  // Determine if we're showing search results or self-loaded data
+  const isSearchMode = searchResults.length > 0 && searchTerm !== '';
+
+  // Load all settlements when not in search mode
+  const loadSettlements = useCallback(async () => {
+    if (isSearchMode) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await settlementApi.getSettlements({
+        pageNumber: page + 1,
+        pageSize: rowsPerPage,
+        status: statusFilter,
+      });
+      setAllSettlements(result.data || []);
+      setTotalCount(result.totalCount || 0);
+    } catch (err) {
+      console.error('Failed to load settlements:', err);
+      setError('Failed to load settlements. The backend may be unavailable.');
+      setAllSettlements([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isSearchMode, page, rowsPerPage, statusFilter]);
+
+  useEffect(() => {
+    loadSettlements();
+  }, [loadSettlements]);
+
+  // Use search results or self-loaded data
+  const settlements = isSearchMode ? searchResults : allSettlements;
+
+  // Status summary counts
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    settlements.forEach(s => {
+      const key = s.displayStatus || s.status || 'Unknown';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [settlements]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -65,6 +142,11 @@ export const SettlementList: React.FC<SettlementListProps> = ({
     }
   };
 
+  const handleStatusFilter = (status: ContractSettlementStatus | undefined) => {
+    setStatusFilter(status);
+    setPage(0);
+  };
+
   const sortedAndFilteredSettlements = React.useMemo(() => {
     let filtered = settlements;
 
@@ -72,11 +154,11 @@ export const SettlementList: React.FC<SettlementListProps> = ({
     if (filterTerm.trim()) {
       const term = filterTerm.toLowerCase();
       filtered = settlements.filter(settlement =>
-        settlement.externalContractNumber.toLowerCase().includes(term) ||
-        settlement.contractNumber.toLowerCase().includes(term) ||
-        settlement.documentNumber?.toLowerCase().includes(term) ||
-        settlement.status.toLowerCase().includes(term) ||
-        settlement.createdBy.toLowerCase().includes(term)
+        (settlement.externalContractNumber || '').toLowerCase().includes(term) ||
+        (settlement.contractNumber || '').toLowerCase().includes(term) ||
+        (settlement.documentNumber || '').toLowerCase().includes(term) ||
+        (settlement.status || '').toLowerCase().includes(term) ||
+        (settlement.createdBy || '').toLowerCase().includes(term)
       );
     }
 
@@ -111,8 +193,8 @@ export const SettlementList: React.FC<SettlementListProps> = ({
           bValue = new Date(b.createdDate);
           break;
         default:
-          aValue = a.documentDate;
-          bValue = b.documentDate;
+          aValue = a.createdDate;
+          bValue = b.createdDate;
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -122,21 +204,10 @@ export const SettlementList: React.FC<SettlementListProps> = ({
   }, [settlements, sortField, sortDirection, filterTerm]);
 
   const handleExport = () => {
-    // Create CSV content
     const headers = [
-      'Contract Number',
-      'External Contract Number',
-      'Document Number',
-      'Document Type',
-      'Document Date',
-      'Quantity (MT)',
-      'Quantity (BBL)',
-      'Settlement Amount',
-      'Currency',
-      'Status',
-      'Created Date',
-      'Created By',
-      'Charges Count'
+      'Contract Number', 'External Contract Number', 'Document Number',
+      'Document Type', 'Document Date', 'Quantity (MT)', 'Quantity (BBL)',
+      'Settlement Amount', 'Currency', 'Status', 'Created Date', 'Created By', 'Charges Count'
     ];
 
     const csvContent = [
@@ -160,7 +231,6 @@ export const SettlementList: React.FC<SettlementListProps> = ({
       )
     ].join('\n');
 
-    // Download CSV
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -186,70 +256,33 @@ export const SettlementList: React.FC<SettlementListProps> = ({
     }).format(quantity) + (unit ? ` ${unit}` : '');
   };
 
-  if (settlements.length === 0) {
-    return (
-      <Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={onBackToSearch}
-            sx={{ mr: 2 }}
-          >
-            Back to Search
-          </Button>
-          <Typography variant="h4" component="h1">
-            Settlement Search Results
-          </Typography>
-        </Box>
-
-        <Alert severity="info">
-          No settlements found for search term: <strong>{searchTerm}</strong>
-          <Box sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={onCreateNew}
-              sx={{ mr: 1 }}
-            >
-              Create New Settlement
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={onBackToSearch}
-            >
-              Try Another Search
-            </Button>
-          </Box>
-        </Alert>
-      </Box>
-    );
-  }
-
   return (
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={onBackToSearch}
-            sx={{ mr: 2 }}
-          >
-            Back to Search
-          </Button>
-          <Box>
-            <Typography variant="h4" component="h1">
-              Settlement Search Results
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Found {sortedAndFilteredSettlements.length} of {settlements.length} settlements for: <strong>{searchTerm}</strong>
-            </Typography>
-          </Box>
+        <Box>
+          <Typography variant="h4" component="h1">
+            {isSearchMode ? 'Search Results' : 'Settlements'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {isSearchMode
+              ? `Found ${sortedAndFilteredSettlements.length} settlements for: "${searchTerm}"`
+              : `${totalCount > 0 ? totalCount : settlements.length} total settlements`
+            }
+          </Typography>
         </Box>
-        
+
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<SearchIcon />}
+            onClick={onBackToSearch}
+            size="small"
+          >
+            Advanced Search
+          </Button>
           <Tooltip title="Export to CSV">
-            <IconButton onClick={handleExport}>
+            <IconButton onClick={handleExport} disabled={settlements.length === 0}>
               <ExportIcon />
             </IconButton>
           </Tooltip>
@@ -258,236 +291,304 @@ export const SettlementList: React.FC<SettlementListProps> = ({
             startIcon={<AddIcon />}
             onClick={onCreateNew}
           >
-            Create New
+            Create Settlement
           </Button>
         </Box>
       </Box>
 
-      {/* Filter Bar */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ py: 2 }}>
+      {/* Status Summary Cards */}
+      {!isSearchMode && settlements.length > 0 && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {Object.entries(statusCounts).map(([status, count]) => (
+            <Grid item key={status}>
+              <Card
+                sx={{
+                  minWidth: 120,
+                  cursor: 'pointer',
+                  border: statusFilter !== undefined && ContractSettlementStatusLabels[statusFilter] === status
+                    ? '2px solid'
+                    : '1px solid transparent',
+                  borderColor: statusFilter !== undefined && ContractSettlementStatusLabels[statusFilter] === status
+                    ? 'primary.main'
+                    : 'transparent',
+                  '&:hover': { borderColor: 'primary.light' }
+                }}
+                onClick={() => {
+                  const matchEntry = Object.entries(ContractSettlementStatusLabels).find(([, label]) => label === status);
+                  if (matchEntry) {
+                    const val = Number(matchEntry[0]) as ContractSettlementStatus;
+                    handleStatusFilter(statusFilter === val ? undefined : val);
+                  }
+                }}
+              >
+                <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                  <Typography variant="caption" color="text.secondary">{status}</Typography>
+                  <Typography variant="h5" fontWeight="bold">{count}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {/* Status Filter Chips + Local Text Filter */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <FilterIcon color="action" fontSize="small" />
+          {STATUS_FILTERS.map(sf => (
+            <Chip
+              key={sf.label}
+              label={sf.label}
+              variant={statusFilter === sf.value ? 'filled' : 'outlined'}
+              color={statusFilter === sf.value ? 'primary' : 'default'}
+              size="small"
+              onClick={() => handleStatusFilter(sf.value)}
+            />
+          ))}
+          <Box sx={{ flexGrow: 1 }} />
           <TextField
             size="small"
-            placeholder="Filter results..."
+            placeholder="Filter by text..."
             value={filterTerm}
             onChange={(e) => setFilterTerm(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon />
+                  <SearchIcon fontSize="small" />
                 </InputAdornment>
               ),
             }}
-            sx={{ minWidth: 300 }}
+            sx={{ minWidth: 200 }}
           />
         </CardContent>
       </Card>
 
-      {/* Results Table */}
-      <Card>
-        <TableContainer>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'externalContractNumber'}
-                    direction={sortField === 'externalContractNumber' ? sortDirection : 'asc'}
-                    onClick={() => handleSort('externalContractNumber')}
-                  >
-                    External Contract #
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'contractNumber'}
-                    direction={sortField === 'contractNumber' ? sortDirection : 'asc'}
-                    onClick={() => handleSort('contractNumber')}
-                  >
-                    Contract #
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>Document Info</TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'documentDate'}
-                    direction={sortField === 'documentDate' ? sortDirection : 'asc'}
-                    onClick={() => handleSort('documentDate')}
-                  >
-                    Document Date
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell align="right">Quantities</TableCell>
-                <TableCell align="right">
-                  <TableSortLabel
-                    active={sortField === 'totalSettlementAmount'}
-                    direction={sortField === 'totalSettlementAmount' ? sortDirection : 'asc'}
-                    onClick={() => handleSort('totalSettlementAmount')}
-                  >
-                    Settlement Amount
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortField === 'status'}
-                    direction={sortField === 'status' ? sortDirection : 'asc'}
-                    onClick={() => handleSort('status')}
-                  >
-                    Status
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>Created</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {sortedAndFilteredSettlements.map((settlement) => (
-                <TableRow
-                  key={settlement.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => onSettlementSelect(settlement.id)}
-                >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="medium">
-                      {settlement.externalContractNumber}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {settlement.contractNumber}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2" fontWeight="medium">
-                        {settlement.documentNumber || 'N/A'}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {settlement.documentType}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {format(new Date(settlement.documentDate), 'MMM dd, yyyy')}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Box>
-                      <Typography variant="body2">
-                        {formatQuantity(settlement.actualQuantityMT, 'MT')}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatQuantity(settlement.actualQuantityBBL, 'BBL')}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Box>
-                      <Typography variant="body2" fontWeight="medium">
-                        {formatCurrency(settlement.totalSettlementAmount, settlement.settlementCurrency)}
-                      </Typography>
-                      {settlement.chargesCount > 0 && (
-                        <Typography variant="caption" color="text.secondary">
-                          {settlement.chargesCount} charges
-                        </Typography>
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={settlement.displayStatus}
-                      color={getSettlementStatusColor(settlement.status as unknown as ContractSettlementStatus)}
-                      size="small"
-                      variant={settlement.isFinalized ? 'filled' : 'outlined'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box>
-                      <Typography variant="body2">
-                        {format(new Date(settlement.createdDate), 'MMM dd')}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        by {settlement.createdBy}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <Tooltip title="View Details">
-                        <IconButton
-                          size="small"
-                          onClick={() => onSettlementSelect(settlement.id)}
-                        >
-                          <ViewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      {(settlement as any).canBeModified && (
-                        <Tooltip title="Edit Settlement">
-                          <IconButton
-                            size="small"
-                            onClick={() => onSettlementSelect(settlement.id)}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Card>
+      {/* Error */}
+      {error && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      {/* Summary */}
-      {sortedAndFilteredSettlements.length > 0 && (
-        <Card sx={{ mt: 2 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Summary
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Empty State */}
+      {!loading && settlements.length === 0 && (
+        <Card>
+          <CardContent sx={{ textAlign: 'center', py: 6 }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No settlements found
             </Typography>
-            <Box sx={{ display: 'flex', gap: 4 }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Total Settlements
-                </Typography>
-                <Typography variant="h6">
-                  {sortedAndFilteredSettlements.length}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Total Value
-                </Typography>
-                <Typography variant="h6">
-                  {formatCurrency(
-                    sortedAndFilteredSettlements.reduce((sum, s) => sum + s.totalSettlementAmount, 0),
-                    sortedAndFilteredSettlements[0]?.settlementCurrency || 'USD'
-                  )}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Finalized
-                </Typography>
-                <Typography variant="h6">
-                  {sortedAndFilteredSettlements.filter(s => s.isFinalized).length}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Total Charges
-                </Typography>
-                <Typography variant="h6">
-                  {sortedAndFilteredSettlements.reduce((sum, s) => sum + s.chargesCount, 0)}
-                </Typography>
-              </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              {statusFilter !== undefined
+                ? `No settlements with status "${ContractSettlementStatusLabels[statusFilter]}". Try clearing the filter.`
+                : 'Create your first settlement to get started.'
+              }
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={onCreateNew}>
+                Create Settlement
+              </Button>
+              {statusFilter !== undefined && (
+                <Button variant="outlined" onClick={() => handleStatusFilter(undefined)}>
+                  Clear Filter
+                </Button>
+              )}
             </Box>
           </CardContent>
         </Card>
+      )}
+
+      {/* Results Table */}
+      {!loading && settlements.length > 0 && (
+        <>
+          <Card>
+            <TableContainer>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === 'externalContractNumber'}
+                        direction={sortField === 'externalContractNumber' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('externalContractNumber')}
+                      >
+                        External Contract #
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === 'contractNumber'}
+                        direction={sortField === 'contractNumber' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('contractNumber')}
+                      >
+                        Contract #
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>Document</TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === 'documentDate'}
+                        direction={sortField === 'documentDate' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('documentDate')}
+                      >
+                        Doc Date
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="right">Qty (MT)</TableCell>
+                    <TableCell align="right">
+                      <TableSortLabel
+                        active={sortField === 'totalSettlementAmount'}
+                        direction={sortField === 'totalSettlementAmount' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('totalSettlementAmount')}
+                      >
+                        Amount
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === 'status'}
+                        direction={sortField === 'status' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('status')}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortField === 'createdDate'}
+                        direction={sortField === 'createdDate' ? sortDirection : 'asc'}
+                        onClick={() => handleSort('createdDate')}
+                      >
+                        Created
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sortedAndFilteredSettlements.map((settlement) => (
+                    <TableRow
+                      key={settlement.id}
+                      hover
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => onSettlementSelect(settlement.id)}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {settlement.externalContractNumber || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {settlement.contractNumber}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {settlement.documentNumber || 'N/A'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {settlement.documentType}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {settlement.documentDate ? format(new Date(settlement.documentDate), 'MMM dd, yyyy') : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2">
+                          {formatQuantity(settlement.actualQuantityMT, 'MT')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight="medium">
+                          {formatCurrency(settlement.totalSettlementAmount, settlement.settlementCurrency)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={settlement.displayStatus || settlement.status}
+                          color={getSettlementStatusColor(settlement.status as unknown as ContractSettlementStatus)}
+                          size="small"
+                          variant={settlement.isFinalized ? 'filled' : 'outlined'}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {settlement.createdDate ? format(new Date(settlement.createdDate), 'MMM dd') : '-'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {settlement.createdBy}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                        <Tooltip title="View Details">
+                          <IconButton size="small" onClick={() => onSettlementSelect(settlement.id)}>
+                            <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            {!isSearchMode && (
+              <TablePagination
+                component="div"
+                count={totalCount}
+                page={page}
+                onPageChange={(_, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+              />
+            )}
+          </Card>
+
+          {/* Summary Bar */}
+          <Card sx={{ mt: 2 }}>
+            <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Showing</Typography>
+                  <Typography variant="subtitle2">{sortedAndFilteredSettlements.length} settlements</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Total Value</Typography>
+                  <Typography variant="subtitle2">
+                    {formatCurrency(
+                      sortedAndFilteredSettlements.reduce((sum, s) => sum + s.totalSettlementAmount, 0),
+                      sortedAndFilteredSettlements[0]?.settlementCurrency || 'USD'
+                    )}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Finalized</Typography>
+                  <Typography variant="subtitle2">
+                    {sortedAndFilteredSettlements.filter(s => s.isFinalized).length}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Total Qty (MT)</Typography>
+                  <Typography variant="subtitle2">
+                    {formatQuantity(sortedAndFilteredSettlements.reduce((sum, s) => sum + s.actualQuantityMT, 0), 'MT')}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </>
       )}
     </Box>
   );

@@ -11,6 +11,7 @@ interface KPICardProps {
   color?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info'
   suffix?: string
   prefix?: string
+  onClick?: () => void
 }
 
 export const KPICard: React.FC<KPICardProps> = ({
@@ -22,6 +23,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   color = 'primary',
   suffix = '',
   prefix = '',
+  onClick,
 }) => {
   const formatValue = (val: string | number): string => {
     if (typeof val === 'number') {
@@ -56,7 +58,16 @@ export const KPICard: React.FC<KPICardProps> = ({
   }
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card
+      sx={{
+        height: '100%',
+        ...(onClick && {
+          cursor: 'pointer',
+          '&:hover': { boxShadow: 4, transform: 'translateY(-1px)', transition: 'all 0.2s' }
+        })
+      }}
+      onClick={onClick}
+    >
       <CardContent>
         <Typography variant="body2" color="text.secondary" gutterBottom>
           {title}

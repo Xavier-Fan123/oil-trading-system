@@ -5,10 +5,6 @@ import {
   Typography,
   Card,
   CardContent,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Button,
   LinearProgress,
   Alert,
@@ -48,7 +44,7 @@ import {
   useBulkImport,
   useDeleteAllMarketData,
 } from '@/hooks/useMarketData';
-import { FILE_TYPES, type FileType } from '@/types/marketData';
+import { type FileType } from '@/types/marketData';
 import { marketDataApi } from '@/services/marketDataApi';
 
 interface MarketDataUploadProps {
@@ -65,7 +61,7 @@ interface FileWithPreview extends File {
 
 export const MarketDataUpload: React.FC<MarketDataUploadProps> = ({ onTabChange }) => {
   const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
-  const [fileType, setFileType] = useState<FileType>('XGroup');
+  const [fileType] = useState<FileType>('XGroup');
   const [uploadResults, setUploadResults] = useState<any[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [overwriteExisting, setOverwriteExisting] = useState(false);

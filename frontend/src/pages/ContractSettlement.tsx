@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import { SettlementSearch } from '@/components/Settlements/SettlementSearch';
 import { SettlementList } from '@/components/Settlements/SettlementList';
 import { SettlementDetail } from '@/components/Settlements/SettlementDetail';
@@ -9,10 +10,16 @@ import { ContractSettlementListDto } from '@/types/settlement';
 export type SettlementView = 'search' | 'list' | 'detail' | 'create' | 'edit';
 
 export const ContractSettlement: React.FC = () => {
-  const [view, setView] = useState<SettlementView>('search');
+  const [searchParams] = useSearchParams();
+
+  // Default to 'list' view so finance team sees all settlements immediately
+  const [view, setView] = useState<SettlementView>('list');
   const [selectedSettlementId, setSelectedSettlementId] = useState<string | undefined>();
   const [searchResults, setSearchResults] = useState<ContractSettlementListDto[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Read initial status filter from URL params (e.g., /settlements?status=Draft)
+  const initialStatusFilter = searchParams.get('status') || undefined;
 
   const handleSearch = (term: string, results: ContractSettlementListDto[]) => {
     setSearchTerm(term);
@@ -45,17 +52,13 @@ export const ContractSettlement: React.FC = () => {
   };
 
   const handleBackToList = () => {
-    if (searchResults.length > 0) {
-      setView('list');
-    } else {
-      setView('search');
-    }
+    setView('list');
     setSelectedSettlementId(undefined);
   };
 
   const handleSuccess = () => {
-    // After successful creation or update, go back to search
-    setView('search');
+    // After successful creation or update, go back to list
+    setView('list');
     setSelectedSettlementId(undefined);
     setSearchResults([]);
     setSearchTerm('');
@@ -70,7 +73,7 @@ export const ContractSettlement: React.FC = () => {
             onCreateNew={handleCreateNew}
           />
         );
-      
+
       case 'list':
         return (
           <SettlementList
@@ -79,9 +82,10 @@ export const ContractSettlement: React.FC = () => {
             onSettlementSelect={handleSettlementSelect}
             onCreateNew={handleCreateNew}
             onBackToSearch={handleBackToSearch}
+            initialStatusFilter={initialStatusFilter}
           />
         );
-      
+
       case 'detail':
         return selectedSettlementId ? (
           <SettlementDetail
@@ -92,7 +96,7 @@ export const ContractSettlement: React.FC = () => {
         ) : (
           <Box>Error: No settlement selected</Box>
         );
-      
+
       case 'create':
         return (
           <SettlementEntry
@@ -101,7 +105,7 @@ export const ContractSettlement: React.FC = () => {
             onCancel={handleBackToList}
           />
         );
-      
+
       case 'edit':
         return selectedSettlementId ? (
           <SettlementEntry
@@ -113,12 +117,16 @@ export const ContractSettlement: React.FC = () => {
         ) : (
           <Box>Error: No settlement selected for editing</Box>
         );
-      
+
       default:
         return (
-          <SettlementSearch
-            onSearch={handleSearch}
+          <SettlementList
+            settlements={searchResults}
+            searchTerm={searchTerm}
+            onSettlementSelect={handleSettlementSelect}
             onCreateNew={handleCreateNew}
+            onBackToSearch={handleBackToSearch}
+            initialStatusFilter={initialStatusFilter}
           />
         );
     }

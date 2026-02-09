@@ -25,7 +25,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   Calculate as CalculateIcon,
-  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { marketDataApi } from '@/services/marketDataApi';
 import { XGROUP_PRODUCTS, type BenchmarkPriceResult } from '@/types/marketData';
@@ -38,7 +37,7 @@ export const BenchmarkPricingPanel: React.FC<BenchmarkPricingPanelProps> = ({
   onPriceCalculated,
 }) => {
   const [pricingMethod, setPricingMethod] = useState<'dateRange' | 'contractMonth' | 'spotPremium'>('dateRange');
-  const [selectedProduct, setSelectedProduct] = useState(XGROUP_PRODUCTS[0].code);
+  const [selectedProduct, setSelectedProduct] = useState<string>(XGROUP_PRODUCTS[0].code);
   const [contractMonths, setContractMonths] = useState<string[]>([]);
   const [selectedContractMonth, setSelectedContractMonth] = useState<string>('');
   const [startDate, setStartDate] = useState<Date | null>(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));

@@ -17,11 +17,8 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Tooltip,
 } from '@mui/material';
 import {
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
   ShowChart as ChartIcon,
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
@@ -32,7 +29,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  Legend,
   ResponsiveContainer,
   AreaChart,
   Area,
@@ -40,13 +36,8 @@ import {
 import { marketDataApi } from '@/services/marketDataApi';
 import { XGROUP_PRODUCTS, type VaRMetrics, type BasisDataPoint } from '@/types/marketData';
 
-interface ProductTabProps {
-  productCode: string;
-  productName: string;
-}
-
 export const MarketPriceDashboard: React.FC = () => {
-  const [selectedProduct, setSelectedProduct] = useState(XGROUP_PRODUCTS[0].code);
+  const [selectedProduct, setSelectedProduct] = useState<string>(XGROUP_PRODUCTS[0].code);
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
   const [basisData, setBasisData] = useState<BasisDataPoint[]>([]);
   const [varMetrics, setVarMetrics] = useState<VaRMetrics | null>(null);
@@ -107,15 +98,9 @@ export const MarketPriceDashboard: React.FC = () => {
     setSelectedProduct(newValue);
   };
 
-  const formatPrice = (price: number, unit: string) => {
-    return `$${price.toFixed(2)}/${unit === 'MT' ? 'MT' : 'BBL'}`;
-  };
-
   const formatPercent = (value: number) => {
     return `${(value * 100).toFixed(2)}%`;
   };
-
-  const currentProduct = XGROUP_PRODUCTS.find(p => p.code === selectedProduct);
 
   // Prepare chart data
   const chartData = priceHistory

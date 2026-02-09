@@ -31,7 +31,8 @@ namespace OilTrading.Api.Controllers
                 var purchases = await _context.PurchaseContracts
                     .Include(p => p.Product)
                     .Include(p => p.TradingPartner)
-                    .Where(p => p.MatchedQuantity < p.ContractQuantity.Value)
+                    .Where(p => p.MatchedQuantity < p.ContractQuantity.Value
+                        && (p.Status == ContractStatus.Active || p.Status == ContractStatus.PendingApproval))
                     .Select(p => new
                     {
                         p.Id,
@@ -40,7 +41,14 @@ namespace OilTrading.Api.Controllers
                         p.MatchedQuantity,
                         AvailableQuantity = p.ContractQuantity.Value - p.MatchedQuantity,
                         ProductName = p.Product.Name,
-                        TradingPartnerName = p.TradingPartner.Name
+                        TradingPartnerName = p.TradingPartner.Name,
+                        // Price info for P&L preview
+                        ContractValue = p.ContractValue != null ? p.ContractValue.Amount : (decimal?)null,
+                        Currency = p.ContractValue != null ? p.ContractValue.Currency : "USD",
+                        IsFixedPrice = p.PriceFormula != null && p.PriceFormula.IsFixedPrice,
+                        UnitPrice = p.ContractValue != null && p.ContractQuantity.Value > 0
+                            ? p.ContractValue.Amount / p.ContractQuantity.Value
+                            : (decimal?)null
                     })
                     .ToListAsync();
 
@@ -60,21 +68,52 @@ namespace OilTrading.Api.Controllers
         [HttpGet("unmatched-sales")]
         public async Task<ActionResult<IEnumerable<object>>> GetUnmatchedSales()
         {
+            // T3.4 Fix: Include partially matched sales (where matched qty < contract qty)
+            // Previously excluded ANY sales with ANY matching, even if only partially matched
             var sales = await _context.SalesContracts
                 .Include(s => s.Product)
                 .Include(s => s.TradingPartner)
-                .Where(s => !_context.ContractMatchings.Any(cm => cm.SalesContractId == s.Id))
+                .Where(s => s.Status == ContractStatus.Active || s.Status == ContractStatus.PendingApproval)
                 .Select(s => new
                 {
                     s.Id,
                     ContractNumber = s.ContractNumber.Value,
                     ContractQuantity = s.ContractQuantity.Value,
                     ProductName = s.Product.Name,
-                    TradingPartnerName = s.TradingPartner.Name
+                    TradingPartnerName = s.TradingPartner.Name,
+                    MatchedQuantity = _context.ContractMatchings
+                        .Where(cm => cm.SalesContractId == s.Id)
+                        .Sum(cm => (decimal?)cm.MatchedQuantity) ?? 0,
+                    // Price info for P&L preview
+                    ContractValue = s.ContractValue != null ? s.ContractValue.Amount : (decimal?)null,
+                    Currency = s.ContractValue != null ? s.ContractValue.Currency : "USD",
+                    IsFixedPrice = s.PriceFormula != null && s.PriceFormula.IsFixedPrice,
+                    UnitPrice = s.ContractValue != null && s.ContractQuantity.Value > 0
+                        ? s.ContractValue.Amount / s.ContractQuantity.Value
+                        : (decimal?)null
                 })
                 .ToListAsync();
 
-            return Ok(sales);
+            // Filter to only include sales with remaining available quantity
+            var availableSales = sales
+                .Where(s => s.MatchedQuantity < s.ContractQuantity)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.ContractNumber,
+                    s.ContractQuantity,
+                    s.MatchedQuantity,
+                    AvailableQuantity = s.ContractQuantity - s.MatchedQuantity,
+                    s.ProductName,
+                    s.TradingPartnerName,
+                    s.ContractValue,
+                    s.Currency,
+                    s.IsFixedPrice,
+                    s.UnitPrice
+                })
+                .ToList();
+
+            return Ok(availableSales);
         }
 
         [HttpPost("match")]
@@ -223,6 +262,54 @@ namespace OilTrading.Api.Controllers
                 .ToListAsync();
 
             return Ok(matchings);
+        }
+
+        [HttpDelete("{matchingId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StandardErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(StandardErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> DeleteMatching(Guid matchingId)
+        {
+            try
+            {
+                var matching = await _context.ContractMatchings
+                    .FirstOrDefaultAsync(cm => cm.Id == matchingId);
+
+                if (matching == null)
+                {
+                    return this.CreateNotFoundResponse("ContractMatching", matchingId);
+                }
+
+                // Reduce the purchase contract's matched quantity
+                var purchaseContract = await _context.PurchaseContracts
+                    .FindAsync(matching.PurchaseContractId);
+
+                if (purchaseContract != null)
+                {
+                    var newMatchedQty = purchaseContract.MatchedQuantity - matching.MatchedQuantity;
+                    purchaseContract.UpdateMatchedQuantity(Math.Max(0, newMatchedQty));
+                    _context.PurchaseContracts.Update(purchaseContract);
+                }
+
+                _context.ContractMatchings.Remove(matching);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Contract matching removed successfully",
+                    matchingId = matchingId,
+                    releasedQuantity = matching.MatchedQuantity
+                });
+            }
+            catch (Exception ex)
+            {
+                return this.CreateErrorResponse(
+                    ErrorCodes.InternalServerError,
+                    "An error occurred while removing the contract matching",
+                    StatusCodes.Status500InternalServerError,
+                    ex.Message
+                );
+            }
         }
 
         [HttpGet("enhanced-net-position")]

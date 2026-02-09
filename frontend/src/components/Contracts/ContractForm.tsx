@@ -28,6 +28,7 @@ import {
   usePriceBenchmarks,
   useUsers
 } from '@/hooks/useContracts';
+import { useLatestPrices } from '@/hooks/useMarketData';
 import {
   CreatePurchaseContractDto,
   ContractType,
@@ -57,6 +58,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   const { data: products, isLoading: loadingProducts } = useProducts();
   const { data: priceBenchmarks, isLoading: loadingBenchmarks } = usePriceBenchmarks();
   const { data: users, isLoading: loadingUsers } = useUsers();
+  const { data: latestPrices } = useLatestPrices();
 
   const createMutation = useCreatePurchaseContract();
   const updateMutation = useUpdatePurchaseContract();
@@ -92,6 +94,15 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     creditPeriodDays: 30,
     prepaymentPercentage: 0,
     createdBy: 'System User',
+    // Professional Trading Terms
+    quantityTolerancePercent: undefined,
+    quantityToleranceOption: undefined,
+    brokerName: undefined,
+    brokerCommission: undefined,
+    brokerCommissionType: undefined,
+    laytimeHours: undefined,
+    demurrageRate: undefined,
+    despatchRate: undefined,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -594,16 +605,121 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                         </Grid>
                       </>
                     )}
+
+                    {/* Live Market Price Indicator */}
+                    {formData.productId && latestPrices && (() => {
+                      const selectedProduct = products?.find(p => p.id === formData.productId);
+                      if (!selectedProduct) return null;
+                      const productCode = selectedProduct.code;
+                      const spotPrice = latestPrices.spotPrices?.find(
+                        p => p.productCode === productCode || p.productCode?.includes(productCode)
+                      );
+                      const futuresPrice = latestPrices.futuresPrices?.find(
+                        p => p.productCode === productCode || p.productCode?.includes(productCode)
+                      );
+                      if (!spotPrice && !futuresPrice) return null;
+                      const displayPrice = spotPrice || futuresPrice;
+                      const priceChange = displayPrice?.change;
+                      return (
+                        <Grid item xs={12}>
+                          <Alert
+                            severity="info"
+                            sx={{ '& .MuiAlert-message': { width: '100%' } }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2">
+                                Current market price for <strong>{selectedProduct.name}</strong>:
+                                {' '}<strong>${displayPrice?.price?.toFixed(2)}</strong>
+                                {spotPrice ? ' (Spot)' : ' (Futures)'}
+                                {priceChange != null && (
+                                  <span style={{ color: priceChange >= 0 ? '#4caf50' : '#f44336', marginLeft: 8 }}>
+                                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}
+                                    {('changePercent' in (displayPrice || {})) && (displayPrice as any).changePercent != null && ` (${(displayPrice as any).changePercent.toFixed(2)}%)`}
+                                  </span>
+                                )}
+                              </Typography>
+                              {formData.pricingType === PricingType.Fixed && formData.fixedPrice && displayPrice?.price && (
+                                <Typography variant="body2">
+                                  {formData.fixedPrice > displayPrice.price
+                                    ? <span style={{ color: '#f44336' }}>Premium: +${(formData.fixedPrice - displayPrice.price).toFixed(2)}</span>
+                                    : <span style={{ color: '#4caf50' }}>Discount: -${(displayPrice.price - formData.fixedPrice).toFixed(2)}</span>
+                                  }
+                                </Typography>
+                              )}
+                            </Box>
+                          </Alert>
+                        </Grid>
+                      );
+                    })()}
                   </Grid>
                 </CardContent>
               </Card>
             </Grid>
 
+            {/* Estimated Contract Value (T5) */}
+            {formData.quantity > 0 && formData.pricingType === PricingType.Fixed && formData.fixedPrice && formData.fixedPrice > 0 && (
+              <Grid item xs={12}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    bgcolor: 'primary.50',
+                    borderColor: 'primary.main',
+                    borderWidth: 2,
+                  }}
+                >
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Unit Price</Typography>
+                      <Typography variant="h6" fontWeight="bold">
+                        ${formData.fixedPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/{formData.quantityUnit === 1 ? 'MT' : formData.quantityUnit === 2 ? 'BBL' : 'Unit'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <Typography variant="caption" color="text.secondary">Total Contract Value</Typography>
+                      <Typography variant="h6" fontWeight="bold" color="primary.main">
+                        ${(formData.fixedPrice * formData.quantity).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </Typography>
+                    </Grid>
+                    {formData.quantityTolerancePercent && formData.quantityTolerancePercent > 0 && (
+                      <>
+                        <Grid item xs={12} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Min Value ({`-${formData.quantityTolerancePercent}%`})</Typography>
+                          <Typography variant="body1">
+                            ${(formData.fixedPrice * formData.quantity * (1 - formData.quantityTolerancePercent / 100)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={3}>
+                          <Typography variant="caption" color="text.secondary">Max Value ({`+${formData.quantityTolerancePercent}%`})</Typography>
+                          <Typography variant="body1">
+                            ${(formData.fixedPrice * formData.quantity * (1 + formData.quantityTolerancePercent / 100)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </Typography>
+                        </Grid>
+                      </>
+                    )}
+                    {formData.brokerCommission && formData.brokerCommission > 0 && (
+                      <Grid item xs={12} sm={3}>
+                        <Typography variant="caption" color="text.secondary">
+                          Broker Commission ({formData.brokerCommissionType === 'Percentage' ? `${formData.brokerCommission}%` : `$${formData.brokerCommission}/unit`})
+                        </Typography>
+                        <Typography variant="body1" color="warning.main">
+                          ${(formData.brokerCommissionType === 'Percentage'
+                            ? formData.fixedPrice * formData.quantity * formData.brokerCommission / 100
+                            : formData.brokerCommission * formData.quantity
+                          ).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Paper>
+              </Grid>
+            )}
+
             {/* Settlement Configuration */}
             <Grid item xs={12}>
               <Card>
-                <CardHeader 
-                  title="Settlement Configuration" 
+                <CardHeader
+                  title="Settlement Configuration"
                   subheader="Configure mixed-unit pricing and quantity calculation modes for settlement"
                 />
                 <CardContent>
@@ -879,6 +995,138 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                         rows={3}
                         value={formData.notes || ''}
                         onChange={(e) => handleInputChange('notes', e.target.value)}
+                      />
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Professional Trading Terms */}
+            <Grid item xs={12}>
+              <Card>
+                <CardHeader
+                  title="Professional Trading Terms"
+                  subheader="Optional tolerance, broker, and demurrage/laytime terms"
+                />
+                <CardContent>
+                  {/* Quantity Tolerance */}
+                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 0 }}>
+                    Quantity Tolerance
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Tolerance %"
+                        type="number"
+                        value={formData.quantityTolerancePercent ?? ''}
+                        onChange={(e) => handleInputChange('quantityTolerancePercent', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        helperText="+/- percentage"
+                        inputProps={{ step: 0.1, min: 0, max: 100 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Tolerance Option</InputLabel>
+                        <Select
+                          value={formData.quantityToleranceOption || ''}
+                          label="Tolerance Option"
+                          onChange={(e) => handleInputChange('quantityToleranceOption', e.target.value || undefined)}
+                        >
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          <MenuItem value="AtSellersOption">At Seller's Option</MenuItem>
+                          <MenuItem value="AtBuyersOption">At Buyer's Option</MenuItem>
+                          <MenuItem value="Mutual">Mutual</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {formData.quantityTolerancePercent && formData.quantity ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                          Range: {(formData.quantity * (1 - formData.quantityTolerancePercent / 100)).toFixed(2)} - {(formData.quantity * (1 + formData.quantityTolerancePercent / 100)).toFixed(2)} {formData.quantityUnit === 1 ? 'MT' : formData.quantityUnit === 2 ? 'BBL' : 'GAL'}
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" color="text.disabled" sx={{ mt: 2 }}>
+                          Enter tolerance % to see range
+                        </Typography>
+                      )}
+                    </Grid>
+                  </Grid>
+
+                  {/* Broker Information */}
+                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+                    Broker Information
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Broker Name"
+                        value={formData.brokerName || ''}
+                        onChange={(e) => handleInputChange('brokerName', e.target.value || undefined)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Broker Commission"
+                        type="number"
+                        value={formData.brokerCommission ?? ''}
+                        onChange={(e) => handleInputChange('brokerCommission', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        inputProps={{ step: 0.01, min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Commission Type</InputLabel>
+                        <Select
+                          value={formData.brokerCommissionType || ''}
+                          label="Commission Type"
+                          onChange={(e) => handleInputChange('brokerCommissionType', e.target.value || undefined)}
+                        >
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          <MenuItem value="PerUnit">Per Unit</MenuItem>
+                          <MenuItem value="Percentage">Percentage</MenuItem>
+                          <MenuItem value="LumpSum">Lump Sum</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+
+                  {/* Demurrage & Laytime */}
+                  <Typography variant="subtitle2" gutterBottom sx={{ mt: 3 }}>
+                    Demurrage & Laytime
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Laytime (hours)"
+                        type="number"
+                        value={formData.laytimeHours ?? ''}
+                        onChange={(e) => handleInputChange('laytimeHours', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        inputProps={{ step: 1, min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Demurrage Rate ($/day)"
+                        type="number"
+                        value={formData.demurrageRate ?? ''}
+                        onChange={(e) => handleInputChange('demurrageRate', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        inputProps={{ step: 100, min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        fullWidth
+                        label="Despatch Rate ($/day)"
+                        type="number"
+                        value={formData.despatchRate ?? ''}
+                        onChange={(e) => handleInputChange('despatchRate', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        inputProps={{ step: 100, min: 0 }}
                       />
                     </Grid>
                   </Grid>

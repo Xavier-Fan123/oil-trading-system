@@ -69,7 +69,17 @@ public class PurchaseContractDto
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
-    
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
+
     // Linked Contracts
     public Guid? BenchmarkContractId { get; set; }
     public string? BenchmarkContractNumber { get; set; }
@@ -176,6 +186,16 @@ public class CreatePurchaseContractDto
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
 }
 
 public class UpdatePurchaseContractDto
@@ -206,6 +226,16 @@ public class UpdatePurchaseContractDto
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
 }
 
 public class ContractPricingDto

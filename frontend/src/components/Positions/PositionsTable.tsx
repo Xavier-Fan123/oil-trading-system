@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -13,6 +13,8 @@ import {
   Box,
   IconButton,
   Collapse,
+  LinearProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   KeyboardArrowDown,
@@ -22,6 +24,8 @@ import {
   Remove,
 } from '@mui/icons-material';
 import { NetPosition, PositionType, ProductType } from '@/types/positions';
+import { contractMatchingApi } from '@/services/contractMatchingApi';
+import type { EnhancedNetPosition } from '@/services/contractMatchingApi';
 
 interface PositionsTableProps {
   positions: NetPosition[];
@@ -70,9 +74,16 @@ const getPositionTypeIcon = (type: PositionType) => {
   }
 };
 
-const PositionRow: React.FC<{ position: NetPosition; index: number }> = ({
+const getHedgeColor = (ratio: number): string => {
+  if (ratio >= 0.8) return '#4caf50'; // green
+  if (ratio >= 0.5) return '#ff9800'; // orange
+  return '#f44336'; // red
+};
+
+const PositionRow: React.FC<{ position: NetPosition; index: number; hedgeData?: EnhancedNetPosition }> = ({
   position,
-  index
+  index,
+  hedgeData,
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -131,18 +142,52 @@ const PositionRow: React.FC<{ position: NetPosition; index: number }> = ({
           </Typography>
         </TableCell>
         <TableCell align="right">
-          <Typography 
+          <Typography
             variant="body2"
-            sx={{ 
+            sx={{
               color: position.unrealizedPnL >= 0 ? 'success.main' : 'error.main'
             }}
           >
             {formatCurrency(position.unrealizedPnL)}
           </Typography>
         </TableCell>
+        {/* Hedge columns */}
+        <TableCell align="right">
+          <Typography variant="body2">
+            {hedgeData ? `${formatNumber(hedgeData.totalMatched)} ${position.unit}` : '-'}
+          </Typography>
+        </TableCell>
+        <TableCell align="right">
+          {hedgeData ? (
+            <Tooltip title={`${(hedgeData.hedgeRatio * 100).toFixed(1)}% hedged`}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(hedgeData.hedgeRatio * 100, 100)}
+                  sx={{
+                    width: 50,
+                    height: 6,
+                    borderRadius: 3,
+                    '& .MuiLinearProgress-bar': { backgroundColor: getHedgeColor(hedgeData.hedgeRatio) }
+                  }}
+                />
+                <Typography variant="body2" sx={{ color: getHedgeColor(hedgeData.hedgeRatio), minWidth: 40, textAlign: 'right' }}>
+                  {(hedgeData.hedgeRatio * 100).toFixed(0)}%
+                </Typography>
+              </Box>
+            </Tooltip>
+          ) : (
+            <Typography variant="body2">-</Typography>
+          )}
+        </TableCell>
+        <TableCell align="right">
+          <Typography variant="body2" sx={{ color: hedgeData && hedgeData.netExposure !== 0 ? 'warning.main' : 'text.secondary' }}>
+            {hedgeData ? `${formatNumber(hedgeData.netExposure)} ${position.unit}` : '-'}
+          </Typography>
+        </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={11}>
           <Collapse in={expanded} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
               <Typography variant="h6" gutterBottom component="div">
@@ -202,12 +247,25 @@ const PositionRow: React.FC<{ position: NetPosition; index: number }> = ({
   );
 };
 
-export const PositionsTable: React.FC<PositionsTableProps> = ({ 
-  positions, 
-  isLoading = false 
+export const PositionsTable: React.FC<PositionsTableProps> = ({
+  positions,
+  isLoading = false
 }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [hedgeMap, setHedgeMap] = useState<Record<number, EnhancedNetPosition>>({});
+
+  useEffect(() => {
+    contractMatchingApi.getEnhancedNetPosition().then(result => {
+      if (result.success && result.data) {
+        const map: Record<number, EnhancedNetPosition> = {};
+        result.data.forEach(item => {
+          map[item.productType] = item;
+        });
+        setHedgeMap(map);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
@@ -237,19 +295,23 @@ export const PositionsTable: React.FC<PositionsTableProps> = ({
               <TableCell align="right">Market Value</TableCell>
               <TableCell align="right">Total P&L</TableCell>
               <TableCell align="right">Unrealized P&L</TableCell>
+              <TableCell align="right">Matched Qty</TableCell>
+              <TableCell align="right">Hedge Ratio</TableCell>
+              <TableCell align="right">Unhedged</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedPositions.map((position, index) => (
-              <PositionRow 
-                key={position.id} 
-                position={position} 
+              <PositionRow
+                key={position.id}
+                position={position}
                 index={index}
+                hedgeData={hedgeMap[position.productType]}
               />
             ))}
             {paginatedPositions.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={11} align="center">
                   <Typography variant="body2" color="textSecondary" py={4}>
                     No positions found
                   </Typography>

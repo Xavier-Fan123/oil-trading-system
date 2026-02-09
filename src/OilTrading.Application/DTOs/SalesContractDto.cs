@@ -71,7 +71,17 @@ public class SalesContractDto
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
-    
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
+
     // Business Metrics - NEW for frontend alignment
     public decimal? EstimatedProfit { get; set; }
     public decimal? Margin { get; set; }
@@ -150,6 +160,16 @@ public class CreateSalesContractDto
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
 }
 
 public class UpdateSalesContractDto
@@ -176,6 +196,16 @@ public class UpdateSalesContractDto
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
 }
 
 /// <summary>

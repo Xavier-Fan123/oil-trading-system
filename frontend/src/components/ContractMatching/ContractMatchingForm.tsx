@@ -131,7 +131,7 @@ const ContractMatchingForm: React.FC<ContractMatchingFormProps> = ({
   
   const getMaxQuantity = (): number => {
     if (!selectedPurchase || !selectedSales) return 0;
-    return Math.min(selectedPurchase.availableQuantity, selectedSales.contractQuantity);
+    return Math.min(selectedPurchase.availableQuantity, selectedSales.availableQuantity || selectedSales.contractQuantity);
   };
   
   const getFilteredSales = (): UnmatchedSales[] => {
@@ -302,7 +302,7 @@ const ContractMatchingForm: React.FC<ContractMatchingFormProps> = ({
                           {sales.contractNumber} - {sales.tradingPartnerName}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
-                          {sales.productName} • Quantity: {sales.contractQuantity.toLocaleString()}
+                          {sales.productName} • Available: {(sales.availableQuantity || sales.contractQuantity).toLocaleString()}
                         </Typography>
                       </Box>
                     </MenuItem>

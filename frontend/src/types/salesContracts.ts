@@ -102,6 +102,20 @@ export interface SalesContract {
   inspectionAgency?: string;
   notes?: string;
 
+  // Quantity Tolerance
+  quantityTolerancePercent?: number;
+  quantityToleranceOption?: string;
+
+  // Broker & Commission
+  brokerName?: string;
+  brokerCommission?: number;
+  brokerCommissionType?: string;
+
+  // Demurrage & Laytime
+  laytimeHours?: number;
+  demurrageRate?: number;
+  despatchRate?: number;
+
   // Business Metrics
   estimatedProfit?: number;
   margin?: number;
@@ -144,6 +158,17 @@ export interface CreateSalesContractDto {
   qualitySpecifications?: string;
   inspectionAgency?: string;
   notes?: string;
+  // Quantity Tolerance
+  quantityTolerancePercent?: number;
+  quantityToleranceOption?: string;
+  // Broker & Commission
+  brokerName?: string;
+  brokerCommission?: number;
+  brokerCommissionType?: string;
+  // Demurrage & Laytime
+  laytimeHours?: number;
+  demurrageRate?: number;
+  despatchRate?: number;
 }
 
 export interface UpdateSalesContractDto extends Partial<CreateSalesContractDto> {

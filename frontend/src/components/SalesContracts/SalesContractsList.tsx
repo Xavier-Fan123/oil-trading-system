@@ -376,7 +376,7 @@ export const SalesContractsList: React.FC<SalesContractsListProps> = ({
           </TableHead>
           <TableBody>
             {contracts.map((contract) => (
-              <TableRow key={contract.id} hover>
+              <TableRow key={contract.id} hover onClick={() => onView(contract.id)} sx={{ cursor: 'pointer' }}>
                 <TableCell>
                   <Typography variant="body2" fontWeight="medium" color={contract.externalContractNumber ? "text.primary" : "text.secondary"}>
                     {contract.externalContractNumber || contract.contractNumber || "—"}
@@ -397,7 +397,7 @@ export const SalesContractsList: React.FC<SalesContractsListProps> = ({
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={ContractStatus[contract.status]}
+                    label={typeof contract.status === 'string' ? contract.status : ContractStatus[contract.status]}
                     color={getStatusColor(contract.status)}
                     size="small"
                   />
@@ -411,14 +411,15 @@ export const SalesContractsList: React.FC<SalesContractsListProps> = ({
                 <TableCell>
                   {format(new Date(contract.createdAt), 'MMM dd, yyyy')}
                 </TableCell>
-                <TableCell align="center">
+                <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                   <Tooltip title="View">
                     <IconButton size="small" onClick={() => onView(contract.id)}>
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
                   {(normalizeStatus(contract.status) === ContractStatus.Draft ||
-                    normalizeStatus(contract.status) === ContractStatus.PendingApproval) && (
+                    normalizeStatus(contract.status) === ContractStatus.PendingApproval ||
+                    normalizeStatus(contract.status) === ContractStatus.Active) && (
                     <Tooltip title="Edit">
                       <IconButton size="small" onClick={() => onEdit(contract.id)}>
                         <EditIcon />

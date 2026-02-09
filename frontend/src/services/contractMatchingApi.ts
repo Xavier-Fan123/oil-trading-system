@@ -20,14 +20,26 @@ export interface AvailablePurchase {
   availableQuantity: number;
   productName: string;
   tradingPartnerName: string;
+  // Price info for P&L preview
+  contractValue: number | null;
+  currency: string;
+  isFixedPrice: boolean;
+  unitPrice: number | null;
 }
 
 export interface UnmatchedSales {
   id: string;
   contractNumber: string;
   contractQuantity: number;
+  matchedQuantity: number;
+  availableQuantity: number;
   productName: string;
   tradingPartnerName: string;
+  // Price info for P&L preview
+  contractValue: number | null;
+  currency: string;
+  isFixedPrice: boolean;
+  unitPrice: number | null;
 }
 
 export interface CreateMatchingRequest {
@@ -181,6 +193,31 @@ export const contractMatchingApi = {
     }
   },
 
+  // DELETE /api/contract-matching/{id}
+  // Removes a contract matching and releases the matched quantity
+  deleteMatching: async (matchingId: string): Promise<ApiResult<{ message: string; releasedQuantity: number }>> => {
+    try {
+      const response = await api.delete(`/contract-matching/${matchingId}`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      const normalizedError = normalizeError(error);
+      logError(normalizedError, {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        action: 'deleteMatching',
+        component: 'contractMatchingApi'
+      });
+      return {
+        success: false,
+        error: normalizedError
+      };
+    }
+  },
+
   // GET /api/contract-matching/enhanced-net-position
   // Gets enhanced position calculation with natural hedging
   getEnhancedNetPosition: async (): Promise<ApiResult<EnhancedNetPosition[]>> => {
@@ -283,6 +320,10 @@ export const contractMatchingApi = {
     maxQuantity: number;
     purchaseContract: string;
     salesContract: string;
+    purchaseUnitPrice: number | null;
+    salesUnitPrice: number | null;
+    estimatedMargin: number | null;
+    currency: string;
   }[] => {
     const potentialMatches: {
       purchaseId: string;
@@ -291,26 +332,46 @@ export const contractMatchingApi = {
       maxQuantity: number;
       purchaseContract: string;
       salesContract: string;
+      purchaseUnitPrice: number | null;
+      salesUnitPrice: number | null;
+      estimatedMargin: number | null;
+      currency: string;
     }[] = [];
 
     purchases.forEach(purchase => {
       sales.forEach(sale => {
         // Only match if same product
         if (purchase.productName === sale.productName && purchase.availableQuantity > 0) {
+          const maxQty = Math.min(purchase.availableQuantity, sale.availableQuantity);
+          const margin = (purchase.unitPrice != null && sale.unitPrice != null)
+            ? (sale.unitPrice - purchase.unitPrice) * maxQty
+            : null;
+
           potentialMatches.push({
             purchaseId: purchase.id,
             salesId: sale.id,
             productName: purchase.productName,
-            maxQuantity: Math.min(purchase.availableQuantity, sale.contractQuantity),
+            maxQuantity: maxQty,
             purchaseContract: purchase.contractNumber,
-            salesContract: sale.contractNumber
+            salesContract: sale.contractNumber,
+            purchaseUnitPrice: purchase.unitPrice,
+            salesUnitPrice: sale.unitPrice,
+            estimatedMargin: margin,
+            currency: purchase.currency || 'USD',
           });
         }
       });
     });
 
-    // Sort by potential quantity (descending)
-    return potentialMatches.sort((a, b) => b.maxQuantity - a.maxQuantity);
+    // Sort by estimated margin (highest first), then by quantity
+    return potentialMatches.sort((a, b) => {
+      if (a.estimatedMargin != null && b.estimatedMargin != null) {
+        return b.estimatedMargin - a.estimatedMargin;
+      }
+      if (a.estimatedMargin != null) return -1;
+      if (b.estimatedMargin != null) return 1;
+      return b.maxQuantity - a.maxQuantity;
+    });
   }
 };
 

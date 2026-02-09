@@ -161,7 +161,22 @@ public class SalesContract : BaseEntity
     public string? QualitySpecifications { get; private set; }
     public string? InspectionAgency { get; private set; }
     public string? Notes { get; private set; }
-    
+
+    // Professional Trading Fields (v2.19)
+    // Quantity Tolerance
+    public decimal? QuantityTolerancePercent { get; private set; }
+    public string? QuantityToleranceOption { get; private set; }
+
+    // Broker & Inspection
+    public string? BrokerName { get; private set; }
+    public decimal? BrokerCommission { get; private set; }
+    public string? BrokerCommissionType { get; private set; }
+
+    // Demurrage & Laytime
+    public decimal? LaytimeHours { get; private set; }
+    public decimal? DemurrageRate { get; private set; }
+    public decimal? DespatchRate { get; private set; }
+
     // Trade Group Association
     /// <summary>
     /// Trade Group ID for multi-leg strategies
@@ -543,10 +558,10 @@ public class SalesContract : BaseEntity
     }
 
     // Purpose: Set price benchmark to determine contract settlement price reference
-    // Logic: Only allowed in Draft/PendingApproval status to ensure contract pricing consistency
+    // Logic: Allowed in Draft/PendingApproval/Active status (Active contracts can be amended)
     public void SetPriceBenchmark(Guid? priceBenchmarkId, string updatedBy = "")
     {
-        if (Status != ContractStatus.Draft && Status != ContractStatus.PendingApproval)
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
             throw new DomainException($"Cannot set price benchmark when contract is in {Status} status");
 
         PriceBenchmarkId = priceBenchmarkId;

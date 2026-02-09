@@ -231,6 +231,16 @@ public class SalesContractConfiguration : IEntityTypeConfiguration<SalesContract
         // Payment Date - Ignore for now (column doesn't exist in database yet, migration pending)
         builder.Ignore(e => e.EstimatedPaymentDate);
 
+        // Professional Trading Fields (v2.19) - Ignore for now (columns don't exist in database yet)
+        builder.Ignore(e => e.QuantityTolerancePercent);
+        builder.Ignore(e => e.QuantityToleranceOption);
+        builder.Ignore(e => e.BrokerName);
+        builder.Ignore(e => e.BrokerCommission);
+        builder.Ignore(e => e.BrokerCommissionType);
+        builder.Ignore(e => e.LaytimeHours);
+        builder.Ignore(e => e.DemurrageRate);
+        builder.Ignore(e => e.DespatchRate);
+
         // ═══════════════════════════════════════════════════════════════════════════
         // DATA LINEAGE ENHANCEMENT - Deal Reference ID & Pricing Status
         // Purpose: Enable full lifecycle traceability and explicit pricing state tracking

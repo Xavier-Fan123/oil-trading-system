@@ -210,6 +210,20 @@ export interface PurchaseContract {
   inspectionAgency?: string;
   notes?: string;
 
+  // Quantity Tolerance
+  quantityTolerancePercent?: number;
+  quantityToleranceOption?: string;
+
+  // Broker & Commission
+  brokerName?: string;
+  brokerCommission?: number;
+  brokerCommissionType?: string;
+
+  // Demurrage & Laytime
+  laytimeHours?: number;
+  demurrageRate?: number;
+  despatchRate?: number;
+
   // Business Metrics
   estimatedProfit?: number;
   margin?: number;
@@ -303,6 +317,17 @@ export interface CreatePurchaseContractDto {
   qualitySpecifications?: string;
   inspectionAgency?: string;
   notes?: string;
+  // Quantity Tolerance
+  quantityTolerancePercent?: number;
+  quantityToleranceOption?: string;
+  // Broker & Commission
+  brokerName?: string;
+  brokerCommission?: number;
+  brokerCommissionType?: string;
+  // Demurrage & Laytime
+  laytimeHours?: number;
+  demurrageRate?: number;
+  despatchRate?: number;
   createdBy: string;
 }
 
@@ -336,6 +361,17 @@ export interface UpdatePurchaseContractDto {
   qualitySpecifications?: string;
   inspectionAgency?: string;
   notes?: string;
+  // Quantity Tolerance
+  quantityTolerancePercent?: number;
+  quantityToleranceOption?: string;
+  // Broker & Commission
+  brokerName?: string;
+  brokerCommission?: number;
+  brokerCommissionType?: string;
+  // Demurrage & Laytime
+  laytimeHours?: number;
+  demurrageRate?: number;
+  despatchRate?: number;
 }
 
 export interface PagedResult<T> {
@@ -352,14 +388,27 @@ export interface PurchaseContractListDto {
   id: string;
   contractNumber: string;
   externalContractNumber?: string; // External/Manual contract number
+  contractType?: ContractType;
   status: ContractStatus;
+  supplierId?: string;
   supplierName: string;
+  productId?: string;
   productName: string;
+  traderName?: string;
   quantity: number;
   quantityUnit: QuantityUnit | string; // Backend returns as string due to JsonStringEnumConverter
+  contractValue?: number;
+  contractValueCurrency?: string;
   laycanStart: Date;
   laycanEnd: Date;
+  loadPort?: string;
+  dischargePort?: string;
+  isPriceFinalized?: boolean;
+  pricingStatus?: string; // "Unpriced" | "PartiallyPriced" | "FullyPriced"
+  linkedSalesContractsCount?: number;
+  shippingOperationsCount?: number;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface ContractFilters {
