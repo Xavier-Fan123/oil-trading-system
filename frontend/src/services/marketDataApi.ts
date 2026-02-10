@@ -6,7 +6,8 @@ import type {
   ImportResult,
   DataImportStatus,
   FileType,
-  DeleteMarketDataResultDto
+  DeleteMarketDataResultDto,
+  AvailableBenchmark
 } from '@/types/marketData';
 import { formatApiDate, parseApiDateFields } from '@/utils/dateUtils';
 
@@ -248,6 +249,12 @@ export const marketDataApi = {
     const query = params.toString() ? `?${params.toString()}` : '';
     const response = await api.get(`/market-data/contract-months/${productCode}${query}`);
 
+    return response.data;
+  },
+
+  // Get available benchmarks for floating pricing contracts
+  getAvailableBenchmarks: async (): Promise<AvailableBenchmark[]> => {
+    const response = await api.get('/market-data/available-benchmarks');
     return response.data;
   },
 

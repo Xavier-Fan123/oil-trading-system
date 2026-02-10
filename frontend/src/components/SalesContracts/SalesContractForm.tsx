@@ -16,6 +16,9 @@ import {
   Divider,
   Alert,
   CircularProgress,
+  Autocomplete,
+  Chip,
+  InputAdornment,
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -25,8 +28,9 @@ import {
   useUpdateSalesContract,
   useSalesContract,
 } from '@/hooks/useSalesContracts';
-import { useTradingPartners, useProducts, usePriceBenchmarks, useUsers } from '@/hooks/useContracts';
-import { useLatestPrices } from '@/hooks/useMarketData';
+import { useTradingPartners, useProducts, useUsers } from '@/hooks/useContracts';
+import { useLatestPrices, useAvailableBenchmarks } from '@/hooks/useMarketData';
+import type { AvailableBenchmark } from '@/types/marketData';
 import {
   DeliveryTerms,
   SettlementType,
@@ -106,9 +110,14 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
   const { data: existingContract, isLoading: contractLoading } = useSalesContract(contractId || '');
   const { data: tradingPartners, isLoading: loadingPartners } = useTradingPartners();
   const { data: products, isLoading: loadingProducts } = useProducts();
-  const { data: priceBenchmarks, isLoading: loadingBenchmarks } = usePriceBenchmarks();
+  const { data: availableBenchmarks, isLoading: loadingBenchmarks } = useAvailableBenchmarks();
   const { data: users, isLoading: loadingUsers } = useUsers();
   const { data: latestPrices } = useLatestPrices();
+
+  // Floating pricing state
+  const [selectedBenchmark, setSelectedBenchmark] = useState<AvailableBenchmark | null>(null);
+  const [differential, setDifferential] = useState<number>(0);
+  const [differentialUnit, setDifferentialUnit] = useState<string>('USD/MT');
 
   // Mutations
   const createMutation = useCreateSalesContract();
@@ -305,6 +314,21 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
       console.error('Error saving contract:', error);
       if (error.response?.data) {
         console.error('API Response Error Details:', error.response.data);
+        const data = error.response.data;
+
+        // Parse server-side validation errors and display them on the form
+        if (data.validationErrors && typeof data.validationErrors === 'object') {
+          const serverErrors: Record<string, string> = {};
+          for (const [key, messages] of Object.entries(data.validationErrors)) {
+            // Convert PascalCase backend property names to camelCase frontend field names
+            const fieldName = key.charAt(0).toLowerCase() + key.slice(1);
+            const msgArray = messages as string[];
+            if (msgArray && msgArray.length > 0) {
+              serverErrors[fieldName] = msgArray.join('; ');
+            }
+          }
+          setErrors(prev => ({ ...prev, ...serverErrors }));
+        }
       }
     }
   };
@@ -497,25 +521,74 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
                       </Grid>
 
                       {(formData.pricingType === PricingType.Floating || formData.pricingType === PricingType.Formula) && (
-                        <Grid item xs={12} sm={6}>
-                          <FormControl fullWidth>
-                            <InputLabel>Price Benchmark</InputLabel>
-                            <Select
-                              value={formData.priceBenchmarkId || ''}
-                              label="Price Benchmark"
-                              onChange={(e) => handleInputChange('priceBenchmarkId', e.target.value)}
-                            >
-                              <MenuItem value="">
-                                <em>None</em>
-                              </MenuItem>
-                              {priceBenchmarks?.map(benchmark => (
-                                <MenuItem key={benchmark.id} value={benchmark.id}>
-                                  {benchmark.benchmarkName} ({benchmark.currency}/{benchmark.unit})
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Grid>
+                        <>
+                          <Grid item xs={12} sm={6}>
+                            <Autocomplete
+                              options={availableBenchmarks || []}
+                              groupBy={(option) => option.category}
+                              getOptionLabel={(option) => {
+                                const priceStr = option.latestPrice ? ` - $${option.latestPrice.toFixed(2)}/${option.unit}` : '';
+                                return `${option.displayName} (${option.priceType})${priceStr}`;
+                              }}
+                              value={selectedBenchmark}
+                              onChange={(_e, newValue) => {
+                                setSelectedBenchmark(newValue);
+                                if (newValue) {
+                                  setDifferentialUnit(`USD/${newValue.unit}`);
+                                  const formula = differential !== 0
+                                    ? `AVG(${newValue.productCode}) ${differential >= 0 ? '+' : '-'} ${Math.abs(differential).toFixed(2)} USD/${newValue.unit}`
+                                    : `AVG(${newValue.productCode})`;
+                                  handleInputChange('pricingFormula', formula);
+                                } else {
+                                  handleInputChange('pricingFormula', '');
+                                }
+                              }}
+                              renderInput={(params) => (
+                                <TextField {...params} label="Price Benchmark *" placeholder="Select benchmark..." />
+                              )}
+                              isOptionEqualToValue={(option, value) =>
+                                option.productCode === value.productCode && option.priceType === value.priceType
+                              }
+                            />
+                          </Grid>
+
+                          {selectedBenchmark && (
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                fullWidth
+                                label={`Differential (${differentialUnit})`}
+                                type="number"
+                                value={differential || ''}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setDifferential(val);
+                                  if (selectedBenchmark) {
+                                    const formula = val !== 0
+                                      ? `AVG(${selectedBenchmark.productCode}) ${val >= 0 ? '+' : '-'} ${Math.abs(val).toFixed(2)} ${differentialUnit}`
+                                      : `AVG(${selectedBenchmark.productCode})`;
+                                    handleInputChange('pricingFormula', formula);
+                                  }
+                                }}
+                                InputProps={{
+                                  startAdornment: <InputAdornment position="start">+/-</InputAdornment>,
+                                }}
+                                helperText="Premium (+) or Discount (-) per unit"
+                              />
+                            </Grid>
+                          )}
+
+                          {/* Formula Preview */}
+                          {formData.pricingFormula && (
+                            <Grid item xs={12}>
+                              <Chip
+                                label={`Pricing Formula: ${formData.pricingFormula}`}
+                                color="info"
+                                variant="outlined"
+                                sx={{ fontSize: '0.9rem', py: 2, px: 1 }}
+                              />
+                            </Grid>
+                          )}
+                        </>
                       )}
 
                       {formData.pricingType === PricingType.Fixed && (
@@ -1049,7 +1122,20 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
 
             {(createMutation.error || updateMutation.error) && (
               <Alert severity="error" sx={{ mt: 2 }}>
-                Error saving contract: {createMutation.error?.message || updateMutation.error?.message}
+                <Typography variant="subtitle2" gutterBottom>
+                  {(createMutation.error as any)?.response?.data?.message
+                    || (updateMutation.error as any)?.response?.data?.message
+                    || 'Failed to save contract'}
+                </Typography>
+                {Object.keys(errors).filter(k => errors[k]).length > 0 && (
+                  <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
+                    {Object.entries(errors).filter(([, v]) => v).map(([field, msg]) => (
+                      <li key={field}>
+                        <Typography variant="body2">{msg}</Typography>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Alert>
             )}
           </form>

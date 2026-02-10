@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MediatR;
 using OilTrading.Application.Commands.MarketData;
 using OilTrading.Application.Queries.MarketData;
@@ -6,6 +7,7 @@ using OilTrading.Application.DTOs;
 using OilTrading.Application.Services;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Entities;
+using OilTrading.Infrastructure.Data;
 
 namespace OilTrading.Api.Controllers;
 
@@ -16,15 +18,21 @@ public class MarketDataController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<MarketDataController> _logger;
     private readonly IVaRCalculationService _varService;
+    private readonly ApplicationDbContext _dbContext;
+    private readonly IProductCodeResolverService _productCodeResolver;
 
     public MarketDataController(
         IMediator mediator,
         ILogger<MarketDataController> logger,
-        IVaRCalculationService varService)
+        IVaRCalculationService varService,
+        ApplicationDbContext dbContext,
+        IProductCodeResolverService productCodeResolver)
     {
         _mediator = mediator;
         _logger = logger;
         _varService = varService;
+        _dbContext = dbContext;
+        _productCodeResolver = productCodeResolver;
     }
 
     private string GetCurrentUserName()
@@ -512,6 +520,97 @@ public class MarketDataController : ControllerBase
         {
             _logger.LogError(ex, "Error calculating VaR for {ProductCode}", productCode);
             return StatusCode(500, new { error = "Error calculating VaR metrics", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get available price benchmarks from market data for floating pricing contracts.
+    /// Returns distinct products with latest prices, grouped by category.
+    /// </summary>
+    [HttpGet("available-benchmarks")]
+    [ResponseCache(Duration = 300)] // 5-minute cache
+    [ProducesResponseType(typeof(IEnumerable<AvailableBenchmarkDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAvailableBenchmarks()
+    {
+        try
+        {
+            // Product display name and category mapping for known product codes
+            var productInfo = new Dictionary<string, (string DisplayName, string Category, string Unit)>(StringComparer.OrdinalIgnoreCase)
+            {
+                // Fuel Oil
+                ["SG380"] = ("MOPS FO 380cst FOB Sg", "Fuel Oil", "MT"),
+                ["SG180"] = ("MOPS FO 180cst FOB Sg", "Fuel Oil", "MT"),
+                ["BUNKER_SPORE"] = ("HSFO 380 Singapore", "Fuel Oil", "MT"),
+                ["BUNKER_HK"] = ("HSFO 380 Hong Kong", "Fuel Oil", "MT"),
+                ["FUEL_OIL_35_RTDM"] = ("HSFO 3.5% Rotterdam", "Fuel Oil", "MT"),
+                // Marine Fuel
+                ["MF 0.5"] = ("MOPS Marine Fuel 0.5%", "Marine Fuel", "MT"),
+                ["MGO"] = ("Marine Gas Oil", "Marine Fuel", "MT"),
+                // Gasoil
+                ["GO 10ppm"] = ("Gas Oil 10ppm", "Gasoil", "MT"),
+                ["MOPS_GASOIL"] = ("Gasoil 0.1% Singapore", "Gasoil", "MT"),
+                ["GASOIL_FUTURES"] = ("ICE Gasoil Futures", "Gasoil", "MT"),
+                // Crude Oil
+                ["BRENT_CRUDE"] = ("Brent Crude (Platts)", "Crude Oil", "BBL"),
+                ["BRENT"] = ("ICE Brent Futures", "Crude Oil", "BBL"),
+                ["Brt Fut"] = ("ICE Brent Future", "Crude Oil", "BBL"),
+                ["WTI"] = ("WTI NYMEX", "Crude Oil", "BBL"),
+                // Gasoline
+                ["GASOLINE_92"] = ("Gasoline 92 RON", "Gasoline", "BBL"),
+                ["GASOLINE_95"] = ("Gasoline 95 RON", "Gasoline", "BBL"),
+                ["GASOLINE_97"] = ("Gasoline 97 RON", "Gasoline", "BBL"),
+                // Jet Fuel
+                ["JET_FUEL"] = ("Jet Fuel/Kerosene", "Jet Fuel", "BBL"),
+            };
+
+            // Query distinct product codes with their latest prices from MarketPrice table
+            // Group by ProductCode and PriceType (Spot vs Futures)
+            var latestPrices = await _dbContext.MarketPrices
+                .GroupBy(mp => new { mp.ProductCode, mp.IsSettlement })
+                .Select(g => new
+                {
+                    ProductCode = g.Key.ProductCode,
+                    IsSettlement = g.Key.IsSettlement,
+                    LatestPrice = g.OrderByDescending(p => p.PriceDate).Select(p => p.Price).FirstOrDefault(),
+                    LatestDate = g.Max(p => p.PriceDate),
+                    Currency = g.Select(p => p.Currency).FirstOrDefault() ?? "USD",
+                    DataSource = g.Select(p => p.DataSource).FirstOrDefault(),
+                })
+                .ToListAsync();
+
+            var benchmarks = latestPrices.Select(lp =>
+            {
+                var priceType = lp.IsSettlement ? "Futures" : "Spot";
+                var info = productInfo.GetValueOrDefault(lp.ProductCode);
+                var displayName = info.DisplayName ?? _productCodeResolver.GetDisplayName(lp.ProductCode) ?? lp.ProductCode;
+                var category = info.Category ?? _productCodeResolver.GetAssetClass(lp.ProductCode) ?? "Other";
+                var unit = info.Unit ?? "MT";
+
+                return new AvailableBenchmarkDto
+                {
+                    ProductCode = lp.ProductCode,
+                    DisplayName = displayName,
+                    Category = category,
+                    PriceType = priceType,
+                    Unit = unit,
+                    Currency = lp.Currency,
+                    LatestPrice = lp.LatestPrice,
+                    LatestDate = lp.LatestDate,
+                    DataSource = lp.DataSource,
+                };
+            })
+            .OrderBy(b => b.Category)
+            .ThenBy(b => b.DisplayName)
+            .ThenBy(b => b.PriceType)
+            .ToList();
+
+            _logger.LogInformation("Available benchmarks retrieved: {Count} benchmarks from market data", benchmarks.Count);
+            return Ok(benchmarks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving available benchmarks");
+            return StatusCode(500, new { error = "Error retrieving available benchmarks", details = ex.Message });
         }
     }
 }

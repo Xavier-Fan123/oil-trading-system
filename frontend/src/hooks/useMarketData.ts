@@ -2,6 +2,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketDataApi } from '@/services/marketDataApi';
 import type { FileType } from '@/types/marketData';
 
+// Get available benchmarks for floating pricing contracts
+export const useAvailableBenchmarks = (enabled = true) => {
+  return useQuery({
+    queryKey: ['market-data', 'available-benchmarks'],
+    queryFn: () => marketDataApi.getAvailableBenchmarks(),
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+  });
+};
+
 // Get latest prices
 export const useLatestPrices = () => {
   return useQuery({

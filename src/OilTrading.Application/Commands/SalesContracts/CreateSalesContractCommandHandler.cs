@@ -162,11 +162,7 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
 
         if (!string.IsNullOrWhiteSpace(request.PricingFormula))
         {
-            return PriceFormula.Index(
-                request.PricingFormula,
-                PricingMethod.AVG,
-                null // No adjustment for now
-            );
+            return PriceFormula.Parse(request.PricingFormula);
         }
 
         throw new DomainException("Either fixed price or pricing formula must be provided");

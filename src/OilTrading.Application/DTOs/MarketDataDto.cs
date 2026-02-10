@@ -105,3 +105,16 @@ public class DeleteMarketDataResultDto
     public string Message { get; set; } = string.Empty;
     public List<string> Errors { get; set; } = new();
 }
+
+public class AvailableBenchmarkDto
+{
+    public string ProductCode { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string PriceType { get; set; } = string.Empty;
+    public string Unit { get; set; } = "MT";
+    public string Currency { get; set; } = "USD";
+    public decimal? LatestPrice { get; set; }
+    public DateTime? LatestDate { get; set; }
+    public string? DataSource { get; set; }
+}

@@ -893,6 +893,19 @@ export interface BasisDataPoint {
 /**
  * VaR metrics
  */
+// Available benchmark for floating pricing contract selection
+export interface AvailableBenchmark {
+  productCode: string;
+  displayName: string;
+  category: string;
+  priceType: string;       // "Spot" | "Futures"
+  unit: string;            // "MT" | "BBL"
+  currency: string;        // "USD"
+  latestPrice?: number;
+  latestDate?: string;
+  dataSource?: string;
+}
+
 export interface VaRMetrics {
   productCode: string;
   latestPrice: number;

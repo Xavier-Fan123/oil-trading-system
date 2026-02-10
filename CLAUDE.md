@@ -1,4 +1,4 @@
-# CLAUDE.md - Oil Trading System - Production Ready v2.19.0
+# CLAUDE.md - Oil Trading System - Production Ready v2.20.0
 
 ## 🎯 Project Overview
 
@@ -421,6 +421,19 @@ dotnet run
 - **Production Critical Bugs**: All fixed and verified
 
 ### 🚀 **LATEST UPDATES (February 2026)**
+
+#### ✅ **Floating Pricing Benchmark - Market Data Integration** **[v2.20.0 - February 10, 2026 - FEATURE]**
+- **Root Cause Fix**: Floating pricing benchmark dropdown was empty because it read from `PriceBenchmark` table (never seeded), not from `MarketPrice` table (has real MOPS/ICE/Platts data)
+- **New Backend Endpoint**: `GET /api/market-data/available-benchmarks` queries distinct products from MarketPrice table with latest prices, enriched with display names and categories
+- **Backend Fix**: Sales contract handlers (`CreateSalesContractCommandHandler`, `UpdateSalesContractCommandHandler`) changed from `PriceFormula.Index()` to `PriceFormula.Parse()` to support full formula strings like `AVG(SG380) + 3.50 USD/MT`
+- **Frontend UI**: Replaced empty PriceBenchmark Select with MUI Autocomplete grouped by product category (Fuel Oil, Gasoil, Crude Oil, Marine Fuel)
+- **Differential Support**: Simple +/- differential input with auto-unit detection (USD/MT or USD/BBL based on benchmark)
+- **Formula Auto-Construction**: Selecting benchmark + differential auto-constructs pricing formula (e.g., `AVG(SG380) + 3.50 USD/MT`) with live preview chip
+- **Files Modified**: 10 files (3 backend, 7 frontend)
+  - Backend: `MarketDataController.cs`, `MarketDataDto.cs`, `CreateSalesContractCommandHandler.cs`, `UpdateSalesContractCommandHandler.cs`
+  - Frontend: `marketData.ts`, `marketDataApi.ts`, `useMarketData.ts`, `ContractForm.tsx`, `SalesContractForm.tsx`
+- **Build Verification**: Backend 0 errors, Frontend `tsc && vite build` 0 errors
+- **System Status**: **PRODUCTION READY v2.20.0**
 
 #### ✅ **Trading Module Deep Enhancement - Top-Tier Trading House Standards** **[v2.19.0 - February 9, 2026 - MAJOR FEATURE]**
 - **MAJOR ACHIEVEMENT**: Complete 6-phase professional trading module enhancement bringing the system to Vitol/Trafigura/Gunvor/Glencore standards
@@ -2089,8 +2102,8 @@ Storage                     500GB               Multiple terabytes (archival)
 
 ---
 
-**Last Updated**: February 9, 2026 (Trading Module Deep Enhancement v2.19.0)
-**Project Version**: 2.19.0 (Production Ready - Enterprise Grade)
+**Last Updated**: February 10, 2026 (Floating Pricing Benchmark - Market Data Integration v2.20.0)
+**Project Version**: 2.20.0 (Production Ready - Enterprise Grade)
 **Framework Version**: .NET 9.0
 **Database**: SQLite (Development) / PostgreSQL 16 (Production)
 **API Routing**: `/api/` (non-versioned endpoints with data transformation layer)
