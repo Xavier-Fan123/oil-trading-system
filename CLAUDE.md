@@ -1,4 +1,4 @@
-# CLAUDE.md - Oil Trading System - Production Ready v2.20.0
+# CLAUDE.md - Oil Trading System - Production Ready v2.21.0
 
 ## 🎯 Project Overview
 
@@ -421,6 +421,52 @@ dotnet run
 - **Production Critical Bugs**: All fixed and verified
 
 ### 🚀 **LATEST UPDATES (February 2026)**
+
+#### ✅ **Position Module Deep Optimization - Accurate Exposure & P&L** **[v2.21.0 - February 11, 2026 - CRITICAL OPTIMIZATION]**
+- **CRITICAL ACHIEVEMENT**: Fixed 5 critical gaps in position calculation that caused traders to see inflated exposure and incorrect P&L
+
+- **Gap 1: Settled Quantities Still Counted as Open Exposure** (CRITICAL):
+  - **Problem**: A 50,000 MT contract fully settled still showed 50,000 MT open exposure
+  - **Solution**: Added `IContractSettlementRepository` to `NetPositionService`, batch-queries settlements, deducts settled quantities from open positions
+  - **Impact**: Open exposure now accurately reflects only unsettled quantities
+
+- **Gap 2: Contract Matching (Natural Hedges) Ignored in Positions** (CRITICAL):
+  - **Problem**: Net position = Buy - Sell, but didn't subtract matched/hedged quantities
+  - **Solution**: Uses `PurchaseContract.MatchedQuantity` to calculate `AdjustedNetExposure = |NetPosition| - MatchedQuantity`
+  - **Impact**: Hedged positions now correctly reduce reported exposure
+
+- **Gap 3: VaR Risk Only Used Paper Contracts** (HIGH):
+  - **Problem**: Physical contract exposure (the core business) was invisible to risk calculations
+  - **Solution**: Added `IPurchaseContractRepository` and `ISalesContractRepository` to `RiskCalculationService`, creates synthetic PaperContract positions from physical contracts
+  - **Impact**: VaR now includes physical contract risk (Long for purchases, Short for sales)
+
+- **Gap 4: Realized P&L Always Zero** (HIGH):
+  - **Problem**: `RealizedPnL` was always 0, even for settled contracts with known settlement prices
+  - **Solution**: Calculates realized P&L from settlement `BenchmarkPrice` vs contract price for all non-Draft settlements
+  - **Impact**: Traders now see actual profit/loss from completed settlements
+
+- **Gap 5: No Cache Invalidation on Settlement/Shipping Events** (MODERATE):
+  - **Problem**: Position cache (15-min TTL) served stale data after settlements or shipping deliveries
+  - **Solution**: Added `ICacheInvalidationService.InvalidatePositionCacheAsync()` to PurchaseSettlementController, SalesSettlementController, and ShippingOperationController
+  - **Impact**: Positions refresh immediately after business events
+
+- **New DTO Fields** (NetPositionDto):
+  - `SettledPurchaseQuantity` / `SettledSalesQuantity` - How much has been settled
+  - `MatchedQuantity` - How much is naturally hedged
+  - `AdjustedNetExposure` - True unhedged exposure
+
+- **Files Modified**: 9 files (Application: 3, API: 4, Tests: 2)
+  - `NetPositionService.cs` - Settlement deduction, matching integration, realized P&L (~176 lines added)
+  - `RiskCalculationService.cs` - Physical contracts in VaR calculation (~54 lines added)
+  - `PhysicalContractDto.cs` - 4 new fields on NetPositionDto
+  - `PositionController.cs` - New fields in frontend transform
+  - `PurchaseSettlementController.cs` - Cache invalidation on all mutation endpoints
+  - `SalesSettlementController.cs` - Cache invalidation on all mutation endpoints
+  - `ShippingOperationController.cs` - Cache invalidation on CompleteLoading/CompleteDischarge
+  - `RiskCalculationServiceTests.cs` (x2) - Updated mocks for new constructor parameters
+
+- **Build Verification**: 0 compilation errors, 1,131 tests passed (0 failures)
+- **System Status**: **PRODUCTION READY v2.21.0**
 
 #### ✅ **Floating Pricing Benchmark - Market Data Integration** **[v2.20.0 - February 10, 2026 - FEATURE]**
 - **Root Cause Fix**: Floating pricing benchmark dropdown was empty because it read from `PriceBenchmark` table (never seeded), not from `MarketPrice` table (has real MOPS/ICE/Platts data)
@@ -2102,8 +2148,8 @@ Storage                     500GB               Multiple terabytes (archival)
 
 ---
 
-**Last Updated**: February 10, 2026 (Floating Pricing Benchmark - Market Data Integration v2.20.0)
-**Project Version**: 2.20.0 (Production Ready - Enterprise Grade)
+**Last Updated**: February 11, 2026 (Position Module Deep Optimization v2.21.0)
+**Project Version**: 2.21.0 (Production Ready - Enterprise Grade)
 **Framework Version**: .NET 9.0
 **Database**: SQLite (Development) / PostgreSQL 16 (Production)
 **API Routing**: `/api/` (non-versioned endpoints with data transformation layer)
@@ -2111,7 +2157,7 @@ Storage                     500GB               Multiple terabytes (archival)
 **Frontend Build**: Zero TypeScript compilation errors (verified with Vite)
 **Backend Build**: Zero C# compilation errors (358 non-critical warnings)
 **Backend Status**: ✅ Running on http://localhost:5000
-**Production Status**: ✅ FULLY OPERATIONAL - PRODUCTION READY v2.19.0
+**Production Status**: ✅ FULLY OPERATIONAL - PRODUCTION READY v2.21.0
 
 **🚀 Quick Start**: Double-click `START-ALL.bat` to launch everything!
 

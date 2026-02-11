@@ -12,6 +12,8 @@ public class RiskCalculationService : IRiskCalculationService
 {
     private readonly IMarketDataRepository _marketDataRepository;
     private readonly IPaperContractRepository _paperContractRepository;
+    private readonly IPurchaseContractRepository _purchaseContractRepository;
+    private readonly ISalesContractRepository _salesContractRepository;
     private readonly ILogger<RiskCalculationService> _logger;
     private readonly string _pythonScriptPath;
     private const int RANDOM_SEED = 42; // Fixed seed for reproducibility
@@ -19,10 +21,14 @@ public class RiskCalculationService : IRiskCalculationService
     public RiskCalculationService(
         IMarketDataRepository marketDataRepository,
         IPaperContractRepository paperContractRepository,
+        IPurchaseContractRepository purchaseContractRepository,
+        ISalesContractRepository salesContractRepository,
         ILogger<RiskCalculationService> logger)
     {
         _marketDataRepository = marketDataRepository;
         _paperContractRepository = paperContractRepository;
+        _purchaseContractRepository = purchaseContractRepository;
+        _salesContractRepository = salesContractRepository;
         _logger = logger;
         _pythonScriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts", "risk_engine.py");
     }
@@ -801,9 +807,51 @@ public class RiskCalculationService : IRiskCalculationService
     // Helper methods
     private async Task<List<PaperContract>> GetOpenPositionsAsync(DateTime asOfDate)
     {
-        // Fetch open positions from repository
-        var positions = await _paperContractRepository.GetOpenPositionsAsync();
-        return positions.ToList();
+        // Fetch paper contract positions
+        var positions = (await _paperContractRepository.GetOpenPositionsAsync()).ToList();
+
+        // Include physical purchase contracts as synthetic Long positions for VaR
+        try
+        {
+            var purchases = await _purchaseContractRepository.GetActiveContractsAsync();
+            foreach (var contract in purchases)
+            {
+                if (contract.Status == ContractStatus.Cancelled || contract.Status == ContractStatus.Completed) continue;
+                positions.Add(new PaperContract
+                {
+                    ProductType = contract.Product?.Type.ToString() ?? "Unknown",
+                    ContractMonth = (contract.LaycanStart ?? DateTime.UtcNow).ToString("MMMyy").ToUpper(),
+                    Quantity = contract.ContractQuantity.Value,
+                    LotSize = 1,
+                    EntryPrice = contract.PriceFormula?.FixedPrice ?? 0m,
+                    Position = PositionType.Long,
+                    Status = PaperContractStatus.Open
+                });
+            }
+
+            // Include physical sales contracts as synthetic Short positions for VaR
+            var sales = await _salesContractRepository.GetActiveContractsAsync();
+            foreach (var contract in sales)
+            {
+                if (contract.Status == ContractStatus.Cancelled || contract.Status == ContractStatus.Completed) continue;
+                positions.Add(new PaperContract
+                {
+                    ProductType = contract.Product?.Type.ToString() ?? "Unknown",
+                    ContractMonth = (contract.LaycanStart ?? DateTime.UtcNow).ToString("MMMyy").ToUpper(),
+                    Quantity = contract.ContractQuantity.Value,
+                    LotSize = 1,
+                    EntryPrice = contract.PriceFormula?.FixedPrice ?? 0m,
+                    Position = PositionType.Short,
+                    Status = PaperContractStatus.Open
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to include physical contracts in VaR calculation, using paper-only");
+        }
+
+        return positions;
     }
 
     private async Task<Dictionary<string, decimal>> GetCurrentPricesAsync(List<string> productTypes, DateTime date)

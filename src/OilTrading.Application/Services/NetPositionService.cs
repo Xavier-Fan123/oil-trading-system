@@ -1,4 +1,5 @@
 using OilTrading.Application.DTOs;
+using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
 using OilTrading.Core.ValueObjects;
 
@@ -46,6 +47,7 @@ public class NetPositionService : INetPositionService
     private readonly IShippingOperationRepository _shippingOperationRepository;
     private readonly IMarketDataRepository _marketDataRepository;
     private readonly IPositionCacheService _cacheService;
+    private readonly IContractSettlementRepository _contractSettlementRepository;
 
     public NetPositionService(
         IPhysicalContractRepository physicalContractRepository,
@@ -54,7 +56,8 @@ public class NetPositionService : INetPositionService
         ISalesContractRepository salesContractRepository,
         IShippingOperationRepository shippingOperationRepository,
         IMarketDataRepository marketDataRepository,
-        IPositionCacheService cacheService)
+        IPositionCacheService cacheService,
+        IContractSettlementRepository contractSettlementRepository)
     {
         _physicalContractRepository = physicalContractRepository;
         _paperContractRepository = paperContractRepository;
@@ -63,6 +66,7 @@ public class NetPositionService : INetPositionService
         _shippingOperationRepository = shippingOperationRepository;
         _marketDataRepository = marketDataRepository;
         _cacheService = cacheService;
+        _contractSettlementRepository = contractSettlementRepository;
     }
 
     public async Task<IEnumerable<NetPositionDto>> CalculateNetPositionsAsync(CancellationToken cancellationToken = default)
@@ -172,16 +176,48 @@ public class NetPositionService : INetPositionService
         }
 
         var positions = new List<NetPositionDto>();
-        
+
         // Get all active contracts with real-time data
         var purchaseContracts = await _purchaseContractRepository.GetActiveContractsAsync(cancellationToken);
         var salesContracts = await _salesContractRepository.GetActiveContractsAsync(cancellationToken);
         var physicalContracts = await _physicalContractRepository.GetActiveContractsForPositionAsync(cancellationToken);
         var paperContracts = await _paperContractRepository.GetActiveContractsAsync(cancellationToken);
-        
+
+        // Phase 1: Get settled quantities to deduct from open positions
+        var activePurchaseIds = purchaseContracts
+            .Where(c => c.Status != ContractStatus.Cancelled && c.Status != ContractStatus.Completed)
+            .Select(c => c.Id).ToList();
+        var activeSalesIds = salesContracts
+            .Where(c => c.Status != ContractStatus.Cancelled && c.Status != ContractStatus.Completed)
+            .Select(c => c.Id).ToList();
+
+        var purchaseSettlements = activePurchaseIds.Any()
+            ? await _contractSettlementRepository.GetByContractIdsAsync(activePurchaseIds, cancellationToken)
+            : Array.Empty<ContractSettlement>() as IReadOnlyList<ContractSettlement>;
+        var salesSettlements = activeSalesIds.Any()
+            ? await _contractSettlementRepository.GetByContractIdsAsync(activeSalesIds, cancellationToken)
+            : Array.Empty<ContractSettlement>() as IReadOnlyList<ContractSettlement>;
+
+        var settledPurchaseQty = purchaseSettlements
+            .Where(s => s.Status != ContractSettlementStatus.Draft)
+            .GroupBy(s => s.ContractId)
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.ActualQuantityMT));
+        var settledSalesQty = salesSettlements
+            .Where(s => s.Status != ContractSettlementStatus.Draft)
+            .GroupBy(s => s.ContractId)
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.ActualQuantityMT));
+
+        // Phase 2: Get matched quantities from contract matching (natural hedges)
+        // PurchaseContract.MatchedQuantity tracks how much of each contract is matched to sales
+        var matchedByProduct = new Dictionary<string, decimal>();
+
         // Group by product type and laycan month
         var groupedData = new Dictionary<(string product, string month), NetPositionDto>();
-        
+
+        // Track settled totals per product-month for DTO population
+        var settledPurchaseByKey = new Dictionary<(string, string), decimal>();
+        var settledSalesByKey = new Dictionary<(string, string), decimal>();
+
         // Process purchase contracts
         // Include both Draft and Active contracts for real-time position calculation
         // Draft contracts represent ongoing negotiations and are critical for traders to see
@@ -189,8 +225,8 @@ public class NetPositionService : INetPositionService
         foreach (var contract in purchaseContracts)
         {
             // Include Draft and Active contracts - only skip Cancelled and Completed
-            if (contract.Status == Core.Entities.ContractStatus.Cancelled ||
-                contract.Status == Core.Entities.ContractStatus.Completed) continue;
+            if (contract.Status == ContractStatus.Cancelled ||
+                contract.Status == ContractStatus.Completed) continue;
 
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
 
@@ -208,7 +244,20 @@ public class NetPositionService : INetPositionService
                 };
             }
 
-            groupedData[key].PurchaseContractQuantity += contract.ContractQuantity.Value;
+            // Deduct settled quantities from open position
+            var settledQty = settledPurchaseQty.GetValueOrDefault(contract.Id, 0m);
+            var openQty = Math.Max(0, contract.ContractQuantity.Value - settledQty);
+            groupedData[key].PurchaseContractQuantity += openQty;
+
+            if (!settledPurchaseByKey.ContainsKey(key)) settledPurchaseByKey[key] = 0;
+            settledPurchaseByKey[key] += settledQty;
+
+            // Accumulate matched quantities per product for natural hedge calculation
+            if (contract.MatchedQuantity > 0)
+            {
+                if (!matchedByProduct.ContainsKey(productType)) matchedByProduct[productType] = 0;
+                matchedByProduct[productType] += contract.MatchedQuantity;
+            }
         }
 
         // Process sales contracts
@@ -217,8 +266,8 @@ public class NetPositionService : INetPositionService
         foreach (var contract in salesContracts)
         {
             // Include Draft and Active contracts - only skip Cancelled and Completed
-            if (contract.Status == Core.Entities.ContractStatus.Cancelled ||
-                contract.Status == Core.Entities.ContractStatus.Completed) continue;
+            if (contract.Status == ContractStatus.Cancelled ||
+                contract.Status == ContractStatus.Completed) continue;
 
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
 
@@ -236,7 +285,13 @@ public class NetPositionService : INetPositionService
                 };
             }
 
-            groupedData[key].SalesContractQuantity += contract.ContractQuantity.Value;
+            // Deduct settled quantities from open position
+            var settledQty = settledSalesQty.GetValueOrDefault(contract.Id, 0m);
+            var openQty = Math.Max(0, contract.ContractQuantity.Value - settledQty);
+            groupedData[key].SalesContractQuantity += openQty;
+
+            if (!settledSalesByKey.ContainsKey(key)) settledSalesByKey[key] = 0;
+            settledSalesByKey[key] += settledQty;
         }
         
         // Process physical contracts
@@ -289,20 +344,31 @@ public class NetPositionService : INetPositionService
         }
         
         // Calculate net positions and exposure with real market data
-        foreach (var position in groupedData.Values)
+        foreach (var kvp in groupedData)
         {
+            var position = kvp.Value;
+            var key = kvp.Key;
+
+            // Populate settled quantity fields
+            position.SettledPurchaseQuantity = settledPurchaseByKey.GetValueOrDefault(key, 0m);
+            position.SettledSalesQuantity = settledSalesByKey.GetValueOrDefault(key, 0m);
+
             // Physical net position
             position.PhysicalNetPosition = position.PhysicalPurchases - position.PhysicalSales;
-            
-            // Contract net position
+
+            // Contract net position (already settlement-adjusted from accumulation above)
             position.ContractNetPosition = position.PurchaseContractQuantity - position.SalesContractQuantity;
-            
+
             // Paper net position
             position.PaperNetPosition = position.PaperLongPosition - position.PaperShortPosition;
-            
+
             // Total net position
             position.TotalNetPosition = position.PhysicalNetPosition + position.ContractNetPosition + position.PaperNetPosition;
-            
+
+            // Contract matching: natural hedge reduces net exposure
+            position.MatchedQuantity = matchedByProduct.GetValueOrDefault(position.ProductType, 0m);
+            position.AdjustedNetExposure = Math.Max(0, Math.Abs(position.TotalNetPosition) - position.MatchedQuantity);
+
             // Determine position status
             if (Math.Abs(position.TotalNetPosition) < 100)
             {
@@ -316,12 +382,12 @@ public class NetPositionService : INetPositionService
             {
                 position.PositionStatus = "Short";
             }
-            
-            // Calculate exposure value using real market prices
+
+            // Calculate exposure value using real market prices (use adjusted exposure)
             var marketPrice = await GetCurrentMarketPriceAsync(position.ProductType, cancellationToken);
-            position.ExposureValue = Math.Abs(position.TotalNetPosition) * marketPrice;
+            position.ExposureValue = position.AdjustedNetExposure * marketPrice;
             position.MarketPrice = marketPrice;
-            
+
             positions.Add(position);
         }
         
@@ -374,59 +440,101 @@ public class NetPositionService : INetPositionService
         }
 
         var pnlResults = new List<PnLDto>();
-        
+
         // Get all active contracts
         var purchaseContracts = await _purchaseContractRepository.GetActiveContractsAsync(cancellationToken);
         var salesContracts = await _salesContractRepository.GetActiveContractsAsync(cancellationToken);
-        
+
+        // Get settled quantities to calculate P&L on open portion only
+        var allContractIds = purchaseContracts.Select(c => c.Id)
+            .Concat(salesContracts.Select(c => c.Id)).ToList();
+        var allSettlements = allContractIds.Any()
+            ? await _contractSettlementRepository.GetByContractIdsAsync(allContractIds, cancellationToken)
+            : Array.Empty<ContractSettlement>() as IReadOnlyList<ContractSettlement>;
+
+        var settledQtyMap = allSettlements
+            .Where(s => s.Status != ContractSettlementStatus.Draft)
+            .GroupBy(s => s.ContractId)
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.ActualQuantityMT));
+
         // Calculate P&L for purchase contracts
         foreach (var contract in purchaseContracts)
         {
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
             var currentPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
             var contractPrice = contract.PriceFormula?.FixedPrice ?? 0;
-            
-            var unrealizedPnL = (currentPrice - contractPrice) * contract.ContractQuantity.Value;
-            
+
+            var settledQty = settledQtyMap.GetValueOrDefault(contract.Id, 0m);
+            var openQty = Math.Max(0, contract.ContractQuantity.Value - settledQty);
+
+            // Unrealized P&L on open (unsettled) quantity only
+            var unrealizedPnL = (currentPrice - contractPrice) * openQty;
+
+            // Realized P&L from settled portion
+            var realizedPnL = 0m;
+            var contractSettlements = allSettlements
+                .Where(s => s.ContractId == contract.Id && s.Status >= ContractSettlementStatus.Calculated);
+            foreach (var settlement in contractSettlements)
+            {
+                if (settlement.BenchmarkPrice > 0)
+                    realizedPnL += (settlement.BenchmarkPrice - contractPrice) * settlement.ActualQuantityMT;
+            }
+
             pnlResults.Add(new PnLDto
             {
                 ContractId = contract.Id,
                 ContractNumber = contract.ContractNumber.Value,
                 ContractType = "Purchase",
                 ProductType = productType,
-                Quantity = contract.ContractQuantity.Value,
+                Quantity = openQty,
                 ContractPrice = contractPrice,
                 MarketPrice = currentPrice,
                 UnrealizedPnL = unrealizedPnL,
-                Currency = contract.PriceFormula?.FixedPrice != null ? "USD" : "USD",
+                RealizedPnL = realizedPnL,
+                Currency = "USD",
                 AsOfDate = valueDate
             });
         }
-        
+
         // Calculate P&L for sales contracts
         foreach (var contract in salesContracts)
         {
             var productType = contract.Product?.Type.ToString() ?? "Unknown";
             var currentPrice = await GetCurrentMarketPriceAsync(productType, cancellationToken);
             var contractPrice = contract.PriceFormula?.FixedPrice ?? 0;
-            
-            var unrealizedPnL = (contractPrice - currentPrice) * contract.ContractQuantity.Value;
-            
+
+            var settledQty = settledQtyMap.GetValueOrDefault(contract.Id, 0m);
+            var openQty = Math.Max(0, contract.ContractQuantity.Value - settledQty);
+
+            // Unrealized P&L on open (unsettled) quantity only
+            var unrealizedPnL = (contractPrice - currentPrice) * openQty;
+
+            // Realized P&L from settled portion
+            var realizedPnL = 0m;
+            var contractSettlements = allSettlements
+                .Where(s => s.ContractId == contract.Id && s.Status >= ContractSettlementStatus.Calculated);
+            foreach (var settlement in contractSettlements)
+            {
+                if (settlement.BenchmarkPrice > 0)
+                    realizedPnL += (contractPrice - settlement.BenchmarkPrice) * settlement.ActualQuantityMT;
+            }
+
             pnlResults.Add(new PnLDto
             {
                 ContractId = contract.Id,
                 ContractNumber = contract.ContractNumber.Value,
                 ContractType = "Sales",
                 ProductType = productType,
-                Quantity = contract.ContractQuantity.Value,
+                Quantity = openQty,
                 ContractPrice = contractPrice,
                 MarketPrice = currentPrice,
                 UnrealizedPnL = unrealizedPnL,
-                Currency = contract.PriceFormula?.FixedPrice != null ? "USD" : "USD",
+                RealizedPnL = realizedPnL,
+                Currency = "USD",
                 AsOfDate = valueDate
             });
         }
-        
+
         var sortedPnL = pnlResults.OrderBy(p => p.ProductType).ThenBy(p => p.ContractNumber).ToList();
         
         // Cache the P&L results

@@ -3,6 +3,7 @@ using MediatR;
 using OilTrading.Application.Commands.Settlements;
 using OilTrading.Application.Queries.Settlements;
 using OilTrading.Application.DTOs;
+using OilTrading.Application.Services;
 using OilTrading.Core.Entities;
 
 namespace OilTrading.Api.Controllers;
@@ -18,13 +19,16 @@ public class SalesSettlementController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<SalesSettlementController> _logger;
+    private readonly ICacheInvalidationService _cacheInvalidationService;
 
     public SalesSettlementController(
         IMediator mediator,
-        ILogger<SalesSettlementController> logger)
+        ILogger<SalesSettlementController> logger,
+        ICacheInvalidationService cacheInvalidationService)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _cacheInvalidationService = cacheInvalidationService ?? throw new ArgumentNullException(nameof(cacheInvalidationService));
     }
 
     /// <summary>
@@ -150,6 +154,7 @@ public class SalesSettlementController : ControllerBase
             };
 
             var settlementId = await _mediator.Send(command);
+            await _cacheInvalidationService.InvalidatePositionCacheAsync();
 
             _logger.LogInformation("Created sales settlement {SettlementId} for contract {ContractId}",
                 settlementId, request.SalesContractId);
@@ -199,6 +204,7 @@ public class SalesSettlementController : ControllerBase
             };
 
             await _mediator.Send(command);
+            await _cacheInvalidationService.InvalidatePositionCacheAsync();
 
             _logger.LogInformation("Calculated sales settlement {SettlementId}", settlementId);
 
@@ -241,6 +247,7 @@ public class SalesSettlementController : ControllerBase
             };
 
             await _mediator.Send(command);
+            await _cacheInvalidationService.InvalidatePositionCacheAsync();
 
             _logger.LogInformation("Approved sales settlement {SettlementId}", settlementId);
 
@@ -282,6 +289,7 @@ public class SalesSettlementController : ControllerBase
             };
 
             await _mediator.Send(command);
+            await _cacheInvalidationService.InvalidatePositionCacheAsync();
 
             _logger.LogInformation("Finalized sales settlement {SettlementId}", settlementId);
 

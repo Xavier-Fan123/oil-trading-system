@@ -43,24 +43,26 @@ public class PositionController : ControllerBase
                 id = $"{p.ProductType}-{p.Month}",
                 productType = GetProductTypeEnum(p.ProductType),
                 deliveryMonth = p.Month,
-                // ✅ NEW FIELD: ContractMonth in YYMM format for risk aggregation and sorting
-                // Used to distinguish between different futures months (e.g., AUG25 vs SEP25)
-                // Critical for proper VaR calculation and hedging analysis
                 contractMonth = p.ContractMonth,
                 netQuantity = p.ContractNetPosition != 0 ? p.ContractNetPosition : p.TotalNetPosition,
                 longQuantity = p.PurchaseContractQuantity > 0 ? p.PurchaseContractQuantity : p.PhysicalPurchases,
                 shortQuantity = p.SalesContractQuantity > 0 ? p.SalesContractQuantity : p.PhysicalSales,
-                unit = "MT", // Default unit
+                unit = "MT",
                 averagePrice = p.MarketPrice > 0 ? p.MarketPrice : GetEstimatedPrice(p.ProductType),
                 currentPrice = p.MarketPrice > 0 ? p.MarketPrice : GetEstimatedPrice(p.ProductType),
-                unrealizedPnL = 0m, // Calculated from positions
+                unrealizedPnL = 0m,
                 realizedPnL = 0m,
                 totalPnL = 0m,
                 positionValue = Math.Abs(p.TotalNetPosition) * (p.MarketPrice > 0 ? p.MarketPrice : GetEstimatedPrice(p.ProductType)),
                 positionType = GetPositionType(p.TotalNetPosition),
                 currency = "USD",
                 lastUpdated = DateTime.UtcNow.ToString("O"),
-                riskMetrics = (object?)null
+                riskMetrics = (object?)null,
+                // Position optimization: settlement-adjusted and hedge-aware fields
+                settledQuantity = p.SettledPurchaseQuantity + p.SettledSalesQuantity,
+                matchedQuantity = p.MatchedQuantity,
+                adjustedNetExposure = p.AdjustedNetExposure,
+                exposureValue = p.ExposureValue
             }).ToList();
 
             return Ok(transformedPositions);

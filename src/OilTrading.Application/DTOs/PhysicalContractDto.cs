@@ -177,6 +177,14 @@ public class NetPositionDto
     public decimal PaperShortPosition { get; set; }
     public decimal PaperNetPosition { get; set; }
 
+    // Settlement-adjusted quantities
+    public decimal SettledPurchaseQuantity { get; set; }
+    public decimal SettledSalesQuantity { get; set; }
+
+    // Contract matching (natural hedge)
+    public decimal MatchedQuantity { get; set; }
+    public decimal AdjustedNetExposure { get; set; }
+
     // Combined
     public decimal TotalNetPosition { get; set; }
     public string PositionStatus { get; set; } = string.Empty;

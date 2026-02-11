@@ -14,6 +14,8 @@ public class RiskCalculationServiceTests
 {
     private readonly Mock<IMarketDataRepository> _mockMarketDataRepository;
     private readonly Mock<IPaperContractRepository> _mockPaperContractRepository;
+    private readonly Mock<IPurchaseContractRepository> _mockPurchaseContractRepository;
+    private readonly Mock<ISalesContractRepository> _mockSalesContractRepository;
     private readonly Mock<ILogger<RiskCalculationService>> _mockLogger;
     private readonly RiskCalculationService _service;
 
@@ -21,10 +23,14 @@ public class RiskCalculationServiceTests
     {
         _mockMarketDataRepository = new Mock<IMarketDataRepository>();
         _mockPaperContractRepository = new Mock<IPaperContractRepository>();
+        _mockPurchaseContractRepository = new Mock<IPurchaseContractRepository>();
+        _mockSalesContractRepository = new Mock<ISalesContractRepository>();
         _mockLogger = new Mock<ILogger<RiskCalculationService>>();
         _service = new RiskCalculationService(
             _mockMarketDataRepository.Object,
             _mockPaperContractRepository.Object,
+            _mockPurchaseContractRepository.Object,
+            _mockSalesContractRepository.Object,
             _mockLogger.Object);
     }
 

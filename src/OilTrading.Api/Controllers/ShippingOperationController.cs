@@ -6,6 +6,7 @@ using OilTrading.Application.Queries.Contracts;
 using OilTrading.Application.DTOs;
 using OilTrading.Application.Common;
 using OilTrading.Core.Repositories;
+using OilTrading.Application.Services;
 using OilTrading.Core.Enums;
 using OilTrading.Core.ValueObjects;
 
@@ -19,15 +20,18 @@ public class ShippingOperationController : ControllerBase
     private readonly IMediator _mediator;
     private readonly ILogger<ShippingOperationController> _logger;
     private readonly IShippingOperationRepository _shippingOperationRepository;
+    private readonly ICacheInvalidationService _cacheInvalidationService;
 
     public ShippingOperationController(
         IMediator mediator,
         ILogger<ShippingOperationController> logger,
-        IShippingOperationRepository shippingOperationRepository)
+        IShippingOperationRepository shippingOperationRepository,
+        ICacheInvalidationService cacheInvalidationService)
     {
         _mediator = mediator;
         _logger = logger;
         _shippingOperationRepository = shippingOperationRepository ?? throw new ArgumentNullException(nameof(shippingOperationRepository));
+        _cacheInvalidationService = cacheInvalidationService ?? throw new ArgumentNullException(nameof(cacheInvalidationService));
     }
 
     private string GetCurrentUserName()
@@ -359,9 +363,10 @@ public class ShippingOperationController : ControllerBase
         };
 
         await _mediator.Send(command);
-        
+        await _cacheInvalidationService.InvalidatePositionCacheAsync();
+
         _logger.LogInformation("Loading completed for shipping operation {OperationId}", operationId);
-        
+
         return NoContent();
     }
 
@@ -386,9 +391,10 @@ public class ShippingOperationController : ControllerBase
         };
 
         await _mediator.Send(command);
-        
+        await _cacheInvalidationService.InvalidatePositionCacheAsync();
+
         _logger.LogInformation("Discharge completed for shipping operation {OperationId}", operationId);
-        
+
         return NoContent();
     }
 
