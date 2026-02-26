@@ -1,5 +1,6 @@
 using OilTrading.Core.Entities;
 using OilTrading.Core.Repositories;
+using OilTrading.Application.DTOs;
 
 namespace OilTrading.Application.Services;
 
@@ -22,6 +23,15 @@ public interface IVaRCalculationService
     /// </summary>
     Task<PortfolioVaRResultDto> CalculatePortfolioVaRAsync(
         IEnumerable<PositionDto> positions,
+        int lookbackDays = 252,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Calculate VaR and CVaR for exposure positions (spot + futures).
+    /// </summary>
+    Task<ExposureVaRResultDto> CalculateExposureVaRAsync(
+        IEnumerable<ExposurePositionDto> positions,
+        List<ExposureRowDto> parsedExposures,
         int lookbackDays = 252,
         CancellationToken cancellationToken = default);
 }
@@ -195,6 +205,143 @@ public class VaRCalculationService : IVaRCalculationService
             PortfolioVar10Day99 = portfolioVar99 * (decimal)Math.Sqrt(10),
             PositionVaRs = positionVaRs
         };
+    }
+
+    public async Task<ExposureVaRResultDto> CalculateExposureVaRAsync(
+        IEnumerable<ExposurePositionDto> positions,
+        List<ExposureRowDto> parsedExposures,
+        int lookbackDays = 252,
+        CancellationToken cancellationToken = default)
+    {
+        var positionList = positions.ToList();
+        var result = new ExposureVaRResultDto
+        {
+            CalculationDate = DateTime.UtcNow,
+            ParsedExposures = parsedExposures,
+            RowsParsed = parsedExposures.Count,
+        };
+
+        if (!positionList.Any())
+            return result;
+
+        var endDate = DateTime.UtcNow.Date;
+        var startDate = endDate.AddDays(-lookbackDays - 10);
+        var warnings = new List<string>();
+
+        // CVaR multipliers for normal distribution: φ(z_α) / (1-α)
+        var cvarMultiplier95 = CalculateCVaRMultiplier(0.95);
+        var cvarMultiplier99 = CalculateCVaRMultiplier(0.99);
+
+        var positionVaRs = new List<ExposurePositionVaRDto>();
+        var totalPositionValue = 0m;
+
+        foreach (var position in positionList)
+        {
+            List<MarketPrice> priceList;
+
+            if (position.PositionType == "Futures" && !string.IsNullOrEmpty(position.ContractMonth))
+            {
+                // Futures: use settlement price series for the specific contract month
+                var prices = await _marketDataRepository.GetByProductCodeAndContractMonthRangeAsync(
+                    position.ProductCode, position.ContractMonth,
+                    startDate, endDate, MarketPriceType.FuturesSettlement,
+                    cancellationToken);
+                priceList = prices.OrderBy(p => p.PriceDate).ToList();
+            }
+            else
+            {
+                // Spot: use spot price series (no contract month)
+                var prices = await _marketDataRepository.GetByProductAsync(
+                    position.ProductCode, startDate, endDate, cancellationToken);
+                // Filter to spot prices only (no contract month / PriceType = Spot)
+                priceList = prices
+                    .Where(p => p.PriceType == MarketPriceType.Spot || string.IsNullOrEmpty(p.ContractMonth))
+                    .OrderBy(p => p.PriceDate)
+                    .ToList();
+            }
+
+            if (priceList.Count < 30)
+            {
+                var label = position.PositionType == "Futures"
+                    ? $"{position.ProductCode} {position.ContractMonth} (Futures)"
+                    : $"{position.ProductCode} (Spot)";
+                warnings.Add($"{label}: insufficient price data ({priceList.Count} records, need 30+). Skipped.");
+                continue;
+            }
+
+            var returns = CalculateLogReturns(priceList);
+            if (returns.Count < 20)
+            {
+                warnings.Add($"{position.ProductCode}: insufficient return data ({returns.Count} returns). Skipped.");
+                continue;
+            }
+
+            var ewmaVariance = CalculateEWMAVariance(returns);
+            var dailyVol = Math.Sqrt(ewmaVariance);
+            var latestPrice = priceList.Last().Price;
+            var positionValue = Math.Abs(position.Quantity) * latestPrice;
+
+            // VaR = |PositionValue| * σ * z_α
+            var var1Day95 = positionValue * (decimal)dailyVol * (decimal)ConfidenceZScores[0.95];
+            var var1Day99 = positionValue * (decimal)dailyVol * (decimal)ConfidenceZScores[0.99];
+            var var10Day95 = var1Day95 * (decimal)Math.Sqrt(10);
+            var var10Day99 = var1Day99 * (decimal)Math.Sqrt(10);
+
+            // CVaR = |PositionValue| * σ * cvar_multiplier
+            var cvar1Day95 = positionValue * (decimal)dailyVol * (decimal)cvarMultiplier95;
+            var cvar1Day99 = positionValue * (decimal)dailyVol * (decimal)cvarMultiplier99;
+            var cvar10Day95 = cvar1Day95 * (decimal)Math.Sqrt(10);
+            var cvar10Day99 = cvar1Day99 * (decimal)Math.Sqrt(10);
+
+            positionVaRs.Add(new ExposurePositionVaRDto
+            {
+                ProductCode = position.ProductCode,
+                ContractMonth = position.ContractMonth,
+                PositionType = position.PositionType,
+                Quantity = position.Quantity,
+                Unit = position.Unit,
+                LatestPrice = latestPrice,
+                PositionValue = positionValue,
+                DailyVolatility = (decimal)dailyVol,
+                Var1Day95 = var1Day95,
+                Var1Day99 = var1Day99,
+                Var10Day95 = var10Day95,
+                Var10Day99 = var10Day99,
+                CVaR1Day95 = cvar1Day95,
+                CVaR1Day99 = cvar1Day99,
+                CVaR10Day95 = cvar10Day95,
+                CVaR10Day99 = cvar10Day99,
+            });
+
+            totalPositionValue += positionValue;
+        }
+
+        // Portfolio level: sum of individual VaRs (conservative, no diversification benefit)
+        result.TotalPositionValue = totalPositionValue;
+        result.PortfolioVar1Day95 = positionVaRs.Sum(p => p.Var1Day95);
+        result.PortfolioVar1Day99 = positionVaRs.Sum(p => p.Var1Day99);
+        result.PortfolioVar10Day95 = positionVaRs.Sum(p => p.Var10Day95);
+        result.PortfolioVar10Day99 = positionVaRs.Sum(p => p.Var10Day99);
+        result.PortfolioCVaR1Day95 = positionVaRs.Sum(p => p.CVaR1Day95);
+        result.PortfolioCVaR1Day99 = positionVaRs.Sum(p => p.CVaR1Day99);
+        result.PortfolioCVaR10Day95 = positionVaRs.Sum(p => p.CVaR10Day95);
+        result.PortfolioCVaR10Day99 = positionVaRs.Sum(p => p.CVaR10Day99);
+        result.PositionVaRs = positionVaRs;
+        result.PositionsProcessed = positionVaRs.Count;
+        result.Warnings = warnings;
+
+        return result;
+    }
+
+    /// <summary>
+    /// CVaR multiplier for normal distribution: φ(z_α) / (1-α)
+    /// where φ is the standard normal PDF and z_α is the z-score for confidence level α.
+    /// </summary>
+    private static double CalculateCVaRMultiplier(double confidenceLevel)
+    {
+        var zScore = ConfidenceZScores[confidenceLevel];
+        var phi = Math.Exp(-0.5 * zScore * zScore) / Math.Sqrt(2 * Math.PI);
+        return phi / (1 - confidenceLevel);
     }
 
     /// <summary>

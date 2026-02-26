@@ -8,6 +8,7 @@ using OilTrading.Application.Services;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Entities;
 using OilTrading.Infrastructure.Data;
+using ExposureVaRResultDto = OilTrading.Application.DTOs.ExposureVaRResultDto;
 
 namespace OilTrading.Api.Controllers;
 
@@ -129,6 +130,68 @@ public class MarketDataController : ControllerBase
             details = result.Errors,
             success = false 
         });
+    }
+
+    /// <summary>
+    /// Upload exposure table (敞口表) and automatically calculate VaR/CVaR.
+    /// </summary>
+    /// <returns>VaR and CVaR calculation results with position breakdown</returns>
+    [HttpPost("upload-exposure")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ExposureVaRResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadExposure([FromForm] ExposureUploadRequest request)
+    {
+        var file = request?.File;
+
+        if (file == null || file.Length == 0)
+        {
+            _logger.LogWarning("No file uploaded for exposure table");
+            return BadRequest(new { error = "No file uploaded" });
+        }
+
+        // Check file extension - only xlsx supported
+        var extension = Path.GetExtension(file.FileName).ToLower();
+        if (extension != ".xlsx" && extension != ".xls")
+            return BadRequest(new { error = "Invalid file format. Only Excel (.xlsx, .xls) files are supported for exposure tables." });
+
+        // Check file size (max 10MB)
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(new { error = "File size exceeds maximum allowed size of 10MB" });
+
+        _logger.LogInformation("Exposure table upload received: {FileName}, Size: {Size}",
+            file.FileName, file.Length);
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+
+            var command = new UploadExposureCommand
+            {
+                FileName = file.FileName,
+                FileContent = ms.ToArray(),
+                UploadedBy = GetCurrentUserName(),
+            };
+
+            var result = await _mediator.Send(command);
+
+            _logger.LogInformation(
+                "Exposure VaR calculated successfully. File: {FileName}, Positions: {Positions}, VaR95: {VaR95:F2}",
+                file.FileName, result.PositionsProcessed, result.PortfolioVar1Day95);
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Exposure table processing failed: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error processing exposure table: {FileName}", file.FileName);
+            return StatusCode(500, new { error = "Error processing exposure table", details = ex.Message });
+        }
     }
 
     /// <summary>
@@ -625,4 +688,10 @@ public class MarketDataUploadRequest
 
     [FromForm(Name = "overwriteExisting")]
     public bool OverwriteExisting { get; set; } = false;
+}
+
+public class ExposureUploadRequest
+{
+    [FromForm(Name = "file")]
+    public IFormFile File { get; set; }
 }

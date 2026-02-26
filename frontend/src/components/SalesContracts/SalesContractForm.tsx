@@ -145,8 +145,13 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
       'CFR': DeliveryTerms.CFR,
       'DAP': DeliveryTerms.DAP,
       'DDP': DeliveryTerms.DDP,
+      'DES': DeliveryTerms.DES,
+      'DDU': DeliveryTerms.DDU,
+      'STS': DeliveryTerms.STS,
+      'ITT': DeliveryTerms.ITT,
+      'EXW': DeliveryTerms.EXW,
     };
-    return mapping[String(value)] || DeliveryTerms.FOB;
+    return mapping[String(value).toUpperCase()] || DeliveryTerms.FOB;
   };
 
   const convertQuantityUnitToEnum = (value: any): number => {
@@ -175,8 +180,10 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
       'TT': SettlementType.TT,
       'LC': SettlementType.LC,
       'CAD': SettlementType.CAD,
+      'SBLC': SettlementType.SBLC,
+      'DP': SettlementType.DP,
     };
-    return mapping[String(value)] || SettlementType.TT;
+    return mapping[String(value).toUpperCase()] || SettlementType.TT;
   };
 
   // Load existing contract data
@@ -277,7 +284,7 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
     const contractTypeNames: Record<number, string> = { 1: 'Cargo', 2: 'Exw', 3: 'Del' };
 
     // DeliveryTerms enum: FOB=1, CIF=2, CFR=3, DAP=4, DDP=5
-    const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP' };
+    const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP', 6: 'DES', 7: 'DDU', 8: 'STS', 9: 'ITT', 10: 'EXW' };
 
     // QuantityUnit enum: MT=1, BBL=2, GAL=3
     const quantityUnitNames: Record<number, string> = { 1: 'MT', 2: 'BBL', 3: 'GAL' };
@@ -286,7 +293,7 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
     const pricingTypeNames: Record<number, string> = { 1: 'Fixed', 2: 'Floating', 3: 'Formula' };
 
     // SettlementType enum: TT=1, LC=2, CAD=3
-    const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD' };
+    const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD', 4: 'SBLC', 5: 'DP' };
 
     const submitData = {
       ...formData,
@@ -600,7 +607,7 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
                             value={formData.fixedPrice ?? ''}
                             onChange={(e) => handleInputChange('fixedPrice', e.target.value ? parseFloat(e.target.value) : undefined)}
                             error={!!errors.fixedPrice}
-                            helperText={errors.fixedPrice || `Unit price × ${formData.quantity || 0} = Total: $${((formData.fixedPrice || 0) * (formData.quantity || 0)).toLocaleString()}`}
+                            helperText={errors.fixedPrice || `Unit price 鑴?${formData.quantity || 0} = Total: $${((formData.fixedPrice || 0) * (formData.quantity || 0)).toLocaleString()}`}
                           />
                         </Grid>
                       )}
@@ -814,6 +821,11 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
                             <MenuItem value={DeliveryTerms.CFR}>CFR</MenuItem>
                             <MenuItem value={DeliveryTerms.DAP}>DAP</MenuItem>
                             <MenuItem value={DeliveryTerms.DDP}>DDP</MenuItem>
+                            <MenuItem value={DeliveryTerms.DES}>DES</MenuItem>
+                            <MenuItem value={DeliveryTerms.DDU}>DDU</MenuItem>
+                            <MenuItem value={DeliveryTerms.STS}>STS</MenuItem>
+                            <MenuItem value={DeliveryTerms.ITT}>ITT</MenuItem>
+                            <MenuItem value={DeliveryTerms.EXW}>EXW</MenuItem>
                           </Select>
                         </FormControl>
                       </Grid>
@@ -885,6 +897,8 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
                             <MenuItem value={SettlementType.TT}>TT (Telegraphic Transfer)</MenuItem>
                             <MenuItem value={SettlementType.LC}>LC (Letter of Credit)</MenuItem>
                             <MenuItem value={SettlementType.CAD}>CAD (Cash Against Documents)</MenuItem>
+                            <MenuItem value={SettlementType.SBLC}>SBLC (Standby LC)</MenuItem>
+                            <MenuItem value={SettlementType.DP}>DP (Documents Against Payment)</MenuItem>
                           </Select>
                         </FormControl>
                       </Grid>
@@ -1144,3 +1158,5 @@ export const SalesContractForm: React.FC<SalesContractFormProps> = ({
     </LocalizationProvider>
   );
 };
+
+

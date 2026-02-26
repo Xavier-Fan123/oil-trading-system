@@ -137,8 +137,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       'CFR': DeliveryTerms.CFR,
       'DAP': DeliveryTerms.DAP,
       'DDP': DeliveryTerms.DDP,
+      'DES': DeliveryTerms.DES,
+      'DDU': DeliveryTerms.DDU,
+      'STS': DeliveryTerms.STS,
+      'ITT': DeliveryTerms.ITT,
+      'EXW': DeliveryTerms.EXW,
     };
-    return mapping[String(value)] || DeliveryTerms.FOB;
+    return mapping[String(value).toUpperCase()] || DeliveryTerms.FOB;
   };
 
   const convertQuantityUnitToEnum = (value: any): number => {
@@ -167,8 +172,10 @@ export const ContractForm: React.FC<ContractFormProps> = ({
       'TT': SettlementType.TT,
       'LC': SettlementType.LC,
       'CAD': SettlementType.CAD,
+      'SBLC': SettlementType.SBLC,
+      'DP': SettlementType.DP,
     };
-    return mapping[String(value)] || SettlementType.TT;
+    return mapping[String(value).toUpperCase()] || SettlementType.TT;
   };
 
   useEffect(() => {
@@ -266,10 +273,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         // Convert enums to string names for API - using correct enum values
         const quantityUnitNames: Record<number, string> = { 1: 'MT', 2: 'BBL', 3: 'GAL' };
         const pricingTypeNames: Record<number, string> = { 1: 'Fixed', 2: 'Floating', 3: 'Formula' };
-        const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP' };
-        const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD' };
+        const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP', 6: 'DES', 7: 'DDU', 8: 'STS', 9: 'ITT', 10: 'EXW' };
+        const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD', 4: 'SBLC', 5: 'DP' };
 
         const updateData = {
+          externalContractNumber: formData.externalContractNumber || undefined,
+          supplierId: formData.supplierId || undefined,
+          productId: formData.productId || undefined,
+          traderId: formData.traderId || undefined,
           quantity: formData.quantity,
           quantityUnit: quantityUnitNames[formData.quantityUnit],
           tonBarrelRatio: formData.tonBarrelRatio,
@@ -291,6 +302,14 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           qualitySpecifications: formData.qualitySpecifications,
           inspectionAgency: formData.inspectionAgency,
           notes: formData.notes,
+          quantityTolerancePercent: formData.quantityTolerancePercent,
+          quantityToleranceOption: formData.quantityToleranceOption,
+          brokerName: formData.brokerName,
+          brokerCommission: formData.brokerCommission,
+          brokerCommissionType: formData.brokerCommissionType,
+          laytimeHours: formData.laytimeHours,
+          demurrageRate: formData.demurrageRate,
+          despatchRate: formData.despatchRate,
         } as any;
         await updateMutation.mutateAsync({ id: contractId, contract: updateData });
       } else {
@@ -298,8 +317,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         const contractTypeNames: Record<number, string> = { 1: 'Cargo', 2: 'Exw', 3: 'Del' };
         const quantityUnitNames: Record<number, string> = { 1: 'MT', 2: 'BBL', 3: 'GAL' };
         const pricingTypeNames: Record<number, string> = { 1: 'Fixed', 2: 'Floating', 3: 'Formula' };
-        const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP' };
-        const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD' };
+        const deliveryTermsNames: Record<number, string> = { 1: 'FOB', 2: 'CIF', 3: 'CFR', 4: 'DAP', 5: 'DDP', 6: 'DES', 7: 'DDU', 8: 'STS', 9: 'ITT', 10: 'EXW' };
+        const settlementTypeNames: Record<number, string> = { 1: 'TT', 2: 'LC', 3: 'CAD', 4: 'SBLC', 5: 'DP' };
 
         // Ensure Laycan dates are valid before submission
         if (!formData.laycanStart || !(formData.laycanStart instanceof Date) || isNaN(formData.laycanStart.getTime())) {
@@ -640,7 +659,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           value={formData.fixedPrice || ''}
                           onChange={(e) => handleInputChange('fixedPrice', parseFloat(e.target.value) || undefined)}
                           error={!!errors.fixedPrice}
-                          helperText={errors.fixedPrice || `Unit price × ${formData.quantity || 0} = Total: $${((formData.fixedPrice || 0) * (formData.quantity || 0)).toLocaleString()}`}
+                          helperText={errors.fixedPrice || `Unit price 鑴?${formData.quantity || 0} = Total: $${((formData.fixedPrice || 0) * (formData.quantity || 0)).toLocaleString()}`}
                         />
                       </Grid>
                     )}
@@ -911,6 +930,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           <MenuItem value={DeliveryTerms.CFR}>CFR</MenuItem>
                           <MenuItem value={DeliveryTerms.DAP}>DAP</MenuItem>
                           <MenuItem value={DeliveryTerms.DDP}>DDP</MenuItem>
+                          <MenuItem value={DeliveryTerms.DES}>DES</MenuItem>
+                          <MenuItem value={DeliveryTerms.DDU}>DDU</MenuItem>
+                          <MenuItem value={DeliveryTerms.STS}>STS</MenuItem>
+                          <MenuItem value={DeliveryTerms.ITT}>ITT</MenuItem>
+                          <MenuItem value={DeliveryTerms.EXW}>EXW</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
@@ -982,6 +1006,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                           <MenuItem value={SettlementType.TT}>TT (Telegraphic Transfer)</MenuItem>
                           <MenuItem value={SettlementType.LC}>LC (Letter of Credit)</MenuItem>
                           <MenuItem value={SettlementType.CAD}>CAD (Cash Against Documents)</MenuItem>
+                          <MenuItem value={SettlementType.SBLC}>SBLC (Standby LC)</MenuItem>
+                          <MenuItem value={SettlementType.DP}>DP (Documents Against Payment)</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
@@ -1251,3 +1277,5 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     </LocalizationProvider>
   );
 };
+
+

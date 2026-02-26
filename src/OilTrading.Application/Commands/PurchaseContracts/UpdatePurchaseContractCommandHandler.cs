@@ -1,8 +1,9 @@
-using MediatR;
+﻿using MediatR;
 using OilTrading.Core.Repositories;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Common;
 using OilTrading.Core.Entities;
+using OilTrading.Core.Enums;
 using OilTrading.Application.Common.Exceptions;
 
 namespace OilTrading.Application.Commands.PurchaseContracts;
@@ -10,13 +11,22 @@ namespace OilTrading.Application.Commands.PurchaseContracts;
 public class UpdatePurchaseContractCommandHandler : IRequestHandler<UpdatePurchaseContractCommand, Unit>
 {
     private readonly IPurchaseContractRepository _purchaseContractRepository;
+    private readonly ITradingPartnerRepository _tradingPartnerRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdatePurchaseContractCommandHandler(
         IPurchaseContractRepository purchaseContractRepository,
+        ITradingPartnerRepository tradingPartnerRepository,
+        IProductRepository productRepository,
+        IUserRepository userRepository,
         IUnitOfWork unitOfWork)
     {
         _purchaseContractRepository = purchaseContractRepository;
+        _tradingPartnerRepository = tradingPartnerRepository;
+        _productRepository = productRepository;
+        _userRepository = userRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -26,33 +36,52 @@ public class UpdatePurchaseContractCommandHandler : IRequestHandler<UpdatePurcha
         if (contract == null)
             throw new NotFoundException($"Purchase contract with ID {request.Id} not found");
 
-        // Update external contract number if provided
+        if (request.SupplierId.HasValue || request.ProductId.HasValue || request.TraderId.HasValue)
+        {
+            var supplierId = request.SupplierId ?? contract.TradingPartnerId;
+            var productId = request.ProductId ?? contract.ProductId;
+            var traderId = request.TraderId ?? contract.TraderId;
+
+            var supplier = await _tradingPartnerRepository.GetByIdAsync(supplierId, cancellationToken);
+            if (supplier == null)
+                throw new NotFoundException($"Supplier with ID {supplierId} not found");
+
+            if (supplier.Type == TradingPartnerType.Customer || supplier.Type == TradingPartnerType.EndUser)
+                throw new DomainException($"Trading partner {supplier.Name} cannot be a supplier");
+
+            var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
+            if (product == null)
+                throw new NotFoundException($"Product with ID {productId} not found");
+
+            var trader = await _userRepository.GetByIdAsync(traderId, cancellationToken);
+            if (trader == null)
+                throw new NotFoundException($"Trader with ID {traderId} not found");
+
+            contract.UpdateCoreReferences(supplierId, productId, traderId, request.UpdatedBy);
+        }
+
         if (!string.IsNullOrEmpty(request.ExternalContractNumber))
         {
             contract.SetExternalContractNumber(request.ExternalContractNumber, request.UpdatedBy);
         }
 
-        // Update price benchmark if provided
         if (request.PriceBenchmarkId.HasValue)
         {
             contract.SetPriceBenchmark(request.PriceBenchmarkId, request.UpdatedBy);
         }
 
-        // Update quantity if provided
         if (request.Quantity.HasValue && !string.IsNullOrEmpty(request.QuantityUnit))
         {
             var quantityUnit = MapQuantityUnit(request.QuantityUnit);
             var quantity = new Quantity(request.Quantity.Value, quantityUnit);
-            contract.UpdateQuantity(quantity, "System");
+            contract.UpdateQuantity(quantity, request.UpdatedBy);
         }
 
-        // Update ton/barrel ratio
         if (request.TonBarrelRatio.HasValue)
         {
             contract.UpdateTonBarrelRatio(request.TonBarrelRatio.Value);
         }
 
-        // Update pricing information
         if (!string.IsNullOrEmpty(request.PricingType))
         {
             if (request.PricingType == "Fixed" && request.FixedPrice.HasValue)
@@ -68,70 +97,86 @@ public class UpdatePurchaseContractCommandHandler : IRequestHandler<UpdatePurcha
             }
         }
 
-        // Update pricing period
         if (request.PricingPeriodStart.HasValue && request.PricingPeriodEnd.HasValue)
         {
             contract.SetPricingPeriod(request.PricingPeriodStart.Value, request.PricingPeriodEnd.Value);
         }
 
-        // Update laycan dates
         if (request.LaycanStart.HasValue && request.LaycanEnd.HasValue)
         {
             contract.UpdateLaycan(request.LaycanStart.Value, request.LaycanEnd.Value);
         }
 
-        // Update ports
         if (!string.IsNullOrEmpty(request.LoadPort) && !string.IsNullOrEmpty(request.DischargePort))
         {
             contract.UpdatePorts(request.LoadPort, request.DischargePort);
         }
 
-        // Update delivery terms
         if (!string.IsNullOrEmpty(request.DeliveryTerms))
         {
             var deliveryTerms = MapDeliveryTerms(request.DeliveryTerms);
             contract.UpdateDeliveryTerms(deliveryTerms);
         }
 
-        // Note: Settlement type updates are handled via UpdateSettlementTypeCommand in CQRS pattern
-
-        // Update payment terms
-        if (!string.IsNullOrEmpty(request.PaymentTerms) && request.CreditPeriodDays.HasValue)
+        if (!string.IsNullOrEmpty(request.SettlementType))
         {
-            contract.UpdatePaymentTerms(request.PaymentTerms, request.CreditPeriodDays.Value);
+            contract.UpdateSettlementType(MapSettlementType(request.SettlementType));
         }
 
-        // Update prepayment percentage
+        if (request.PaymentTerms != null || request.CreditPeriodDays.HasValue)
+        {
+            var paymentTerms = request.PaymentTerms ?? contract.PaymentTerms ?? "NET 30";
+            var creditPeriodDays = request.CreditPeriodDays ?? contract.CreditPeriodDays;
+            contract.UpdatePaymentTerms(paymentTerms, creditPeriodDays);
+        }
+
         if (request.PrepaymentPercentage.HasValue)
         {
             contract.SetPrepaymentPercentage(request.PrepaymentPercentage.Value);
         }
 
-        // Update quality specifications
         if (request.QualitySpecifications != null)
         {
             contract.UpdateQualitySpecifications(request.QualitySpecifications);
         }
 
-        // Update inspection agency
         if (request.InspectionAgency != null)
         {
             contract.UpdateInspectionAgency(request.InspectionAgency);
         }
 
-        // Update notes
         if (request.Notes != null)
         {
-            contract.AddNotes(request.Notes);
+            contract.SetNotes(request.Notes);
         }
 
-        // Set updated by
+        var hasProfessionalUpdates =
+            request.QuantityTolerancePercent.HasValue ||
+            request.QuantityToleranceOption != null ||
+            request.BrokerName != null ||
+            request.BrokerCommission.HasValue ||
+            request.BrokerCommissionType != null ||
+            request.LaytimeHours.HasValue ||
+            request.DemurrageRate.HasValue ||
+            request.DespatchRate.HasValue;
+
+        if (hasProfessionalUpdates)
+        {
+            contract.UpdateProfessionalTerms(
+                request.QuantityTolerancePercent ?? contract.QuantityTolerancePercent,
+                request.QuantityToleranceOption ?? contract.QuantityToleranceOption,
+                request.BrokerName ?? contract.BrokerName,
+                request.BrokerCommission ?? contract.BrokerCommission,
+                request.BrokerCommissionType ?? contract.BrokerCommissionType,
+                request.LaytimeHours ?? contract.LaytimeHours,
+                request.DemurrageRate ?? contract.DemurrageRate,
+                request.DespatchRate ?? contract.DespatchRate,
+                request.UpdatedBy);
+        }
+
         contract.SetUpdatedBy(request.UpdatedBy);
 
-        // Update in repository
         await _purchaseContractRepository.UpdateAsync(contract, cancellationToken);
-
-        // Save changes
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
@@ -155,10 +200,35 @@ public class UpdatePurchaseContractCommandHandler : IRequestHandler<UpdatePurcha
             "FOB" => DeliveryTerms.FOB,
             "CFR" => DeliveryTerms.CFR,
             "CIF" => DeliveryTerms.CIF,
-            "EXW" => DeliveryTerms.EXW,
+            "DAP" => DeliveryTerms.DAP,
             "DDP" => DeliveryTerms.DDP,
+            "DES" => DeliveryTerms.DES,
+            "DDU" => DeliveryTerms.DDU,
+            "STS" => DeliveryTerms.STS,
+            "ITT" => DeliveryTerms.ITT,
+            "EXW" => DeliveryTerms.EXW,
             _ => throw new ArgumentException($"Invalid delivery terms: {terms}")
         };
     }
 
+    private static OilTrading.Core.Enums.SettlementType MapSettlementType(string settlementType)
+    {
+        if (Enum.TryParse<OilTrading.Core.Enums.SettlementType>(settlementType, true, out var parsed))
+        {
+            return parsed;
+        }
+
+        return settlementType.ToUpper() switch
+        {
+            "TT" => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            "LC" => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            "CAD" => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            "SBLC" => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            "DP" => OilTrading.Core.Enums.SettlementType.ContractPayment,
+            _ => throw new ArgumentException($"Invalid settlement type: {settlementType}")
+        };
+    }
 }
+
+
+

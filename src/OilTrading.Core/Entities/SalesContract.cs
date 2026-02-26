@@ -1,4 +1,4 @@
-using OilTrading.Core.Common;
+﻿using OilTrading.Core.Common;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Events;
 using OilTrading.Core.Enums;
@@ -43,12 +43,12 @@ public class SalesContract : BaseEntity
     public string? ExternalContractNumber { get; private set; } // External/Manual contract number for official records
     public ContractType ContractType { get; private set; }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
     // DATA LINEAGE ENHANCEMENT - Deal Reference ID
     // Purpose: Business-meaningful identifier that flows through entire transaction lifecycle
     // For SalesContract: Can be inherited from LinkedPurchaseContract's DealReferenceId
     // or generated independently for standalone sales
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
     /// <summary>
     /// Deal Reference ID - Lifecycle-spanning business identifier
@@ -86,11 +86,11 @@ public class SalesContract : BaseEntity
     public Money? Premium { get; private set; }
     public Money? Discount { get; private set; }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
     // DATA LINEAGE ENHANCEMENT - Explicit Pricing Status
     // Purpose: Replace implicit pricing status determination with explicit state
     // Solves: Risk calculations using wrong exposure values due to implicit state
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
     /// <summary>
     /// Explicit Pricing Status - Unpriced, PartiallyPriced, or FullyPriced
@@ -241,9 +241,9 @@ public class SalesContract : BaseEntity
         AddDomainEvent(new SalesContractPricingUpdatedEvent(Id, priceFormula.Formula, contractValue.Amount));
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
     // DATA LINEAGE METHODS - Deal Reference ID Management
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
     /// <summary>
     /// Set the Deal Reference ID for this contract
@@ -283,9 +283,9 @@ public class SalesContract : BaseEntity
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
     // DATA LINEAGE METHODS - Explicit Pricing Status Management
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
     /// <summary>
     /// Update the pricing status based on fixed quantity
@@ -383,6 +383,160 @@ public class SalesContract : BaseEntity
 
         LoadPort = loadPort.Trim();
         DischargePort = dischargePort.Trim();
+    }
+
+    public void SetPricingPeriod(DateTime pricingPeriodStart, DateTime pricingPeriodEnd)
+    {
+        if (pricingPeriodStart >= pricingPeriodEnd)
+            throw new DomainException("Pricing period start must be before pricing period end");
+
+        PricingPeriodStart = pricingPeriodStart;
+        PricingPeriodEnd = pricingPeriodEnd;
+    }
+
+    public void UpdateQuantity(Quantity newQuantity, string updatedBy)
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update quantity for contract in {Status} status");
+
+        if (newQuantity == null)
+            throw new ArgumentNullException(nameof(newQuantity));
+
+        if (newQuantity.IsZero())
+            throw new DomainException("Contract quantity cannot be zero");
+
+        ContractQuantity = newQuantity;
+        if (!string.IsNullOrWhiteSpace(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
+    }
+
+    public void UpdateTonBarrelRatio(decimal tonBarrelRatio)
+    {
+        if (tonBarrelRatio <= 0)
+            throw new DomainException("Ton/Barrel ratio must be greater than 0");
+
+        TonBarrelRatio = tonBarrelRatio;
+    }
+
+    public void UpdateDeliveryTerms(DeliveryTerms deliveryTerms)
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update delivery terms for contract in {Status} status");
+
+        DeliveryTerms = deliveryTerms;
+    }
+
+    public void UpdateSettlementType(SettlementType settlementType)
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update settlement type for contract in {Status} status");
+
+        SettlementType = settlementType;
+    }
+
+    public void UpdatePaymentTerms(string paymentTerms, int? creditPeriodDays = null)
+    {
+        if (string.IsNullOrWhiteSpace(paymentTerms))
+            throw new DomainException("Payment terms cannot be empty");
+
+        if (creditPeriodDays.HasValue && creditPeriodDays.Value < 0)
+            throw new DomainException("Credit period cannot be negative");
+
+        PaymentTerms = paymentTerms.Trim();
+        CreditPeriodDays = creditPeriodDays;
+    }
+
+    public void SetPrepaymentPercentage(decimal prepaymentPercentage)
+    {
+        if (prepaymentPercentage < 0 || prepaymentPercentage > 100)
+            throw new DomainException("Prepayment percentage must be between 0 and 100");
+
+        PrepaymentPercentage = prepaymentPercentage;
+    }
+
+    public void UpdateQualitySpecifications(string? qualitySpecifications)
+    {
+        QualitySpecifications = qualitySpecifications?.Trim();
+    }
+
+    public void UpdateInspectionAgency(string? inspectionAgency)
+    {
+        InspectionAgency = inspectionAgency?.Trim();
+    }
+
+    public void SetNotes(string? notes)
+    {
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+    }
+
+    public void UpdateProfessionalTerms(
+        decimal? quantityTolerancePercent,
+        string? quantityToleranceOption,
+        string? brokerName,
+        decimal? brokerCommission,
+        string? brokerCommissionType,
+        decimal? laytimeHours,
+        decimal? demurrageRate,
+        decimal? despatchRate,
+        string updatedBy = "")
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update professional terms for contract in {Status} status");
+
+        if (quantityTolerancePercent.HasValue && (quantityTolerancePercent.Value < 0 || quantityTolerancePercent.Value > 100))
+            throw new DomainException("Quantity tolerance percentage must be between 0 and 100");
+
+        if (brokerCommission.HasValue && brokerCommission.Value < 0)
+            throw new DomainException("Broker commission cannot be negative");
+
+        if (laytimeHours.HasValue && laytimeHours.Value < 0)
+            throw new DomainException("Laytime hours cannot be negative");
+
+        if (demurrageRate.HasValue && demurrageRate.Value < 0)
+            throw new DomainException("Demurrage rate cannot be negative");
+
+        if (despatchRate.HasValue && despatchRate.Value < 0)
+            throw new DomainException("Despatch rate cannot be negative");
+
+        QuantityTolerancePercent = quantityTolerancePercent;
+        QuantityToleranceOption = string.IsNullOrWhiteSpace(quantityToleranceOption) ? null : quantityToleranceOption.Trim();
+        BrokerName = string.IsNullOrWhiteSpace(brokerName) ? null : brokerName.Trim();
+        BrokerCommission = brokerCommission;
+        BrokerCommissionType = string.IsNullOrWhiteSpace(brokerCommissionType) ? null : brokerCommissionType.Trim();
+        LaytimeHours = laytimeHours;
+        DemurrageRate = demurrageRate;
+        DespatchRate = despatchRate;
+
+        if (!string.IsNullOrWhiteSpace(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
+    }
+
+    public void UpdateCoreReferences(Guid tradingPartnerId, Guid productId, Guid traderId, string updatedBy = "")
+    {
+        if (Status == ContractStatus.Completed || Status == ContractStatus.Cancelled)
+            throw new DomainException($"Cannot update core references for contract in {Status} status");
+
+        if (tradingPartnerId == Guid.Empty)
+            throw new DomainException("Trading partner is required");
+
+        if (productId == Guid.Empty)
+            throw new DomainException("Product is required");
+
+        if (traderId == Guid.Empty)
+            throw new DomainException("Trader is required");
+
+        TradingPartnerId = tradingPartnerId;
+        ProductId = productId;
+        TraderId = traderId;
+
+        if (!string.IsNullOrWhiteSpace(updatedBy))
+        {
+            SetUpdatedBy(updatedBy);
+        }
     }
 
     public void Activate()
@@ -662,3 +816,4 @@ public class SalesContract : BaseEntity
         return string.Join(", ", tags.Select(t => t.Name));
     }
 }
+

@@ -478,7 +478,7 @@ export const EnhancedContractsList: React.FC<EnhancedContractsListProps> = ({ on
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color={contract.externalContractNumber ? "text.primary" : "text.secondary"}>
-                    {contract.externalContractNumber || "—"}
+                    {contract.externalContractNumber || "--"}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -511,7 +511,7 @@ export const EnhancedContractsList: React.FC<EnhancedContractsListProps> = ({ on
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
-                  {(contract.status === ContractStatus.Draft || contract.status === ContractStatus.PendingApproval) && (
+                  {(contract.status === ContractStatus.Draft || contract.status === ContractStatus.PendingApproval || contract.status === ContractStatus.Active) && (
                     <Tooltip title="Edit Contract">
                       <IconButton size="small" onClick={() => onEdit(contract.id)}>
                         <EditIcon />
@@ -576,3 +576,4 @@ export const EnhancedContractsList: React.FC<EnhancedContractsListProps> = ({ on
     </Box>
   );
 };
+

@@ -333,6 +333,9 @@ export interface CreatePurchaseContractDto {
 
 export interface UpdatePurchaseContractDto {
   externalContractNumber?: string; // External/Manual contract number
+  supplierId?: string;
+  productId?: string;
+  traderId?: string;
   quantity: number;
   quantityUnit: QuantityUnit;
   tonBarrelRatio: number;

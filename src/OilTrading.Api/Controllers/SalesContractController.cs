@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using OilTrading.Application.Commands.SalesContracts;
 using OilTrading.Application.Queries.SalesContracts;
@@ -166,6 +166,9 @@ public class SalesContractController : ControllerBase
         {
             Id = id,
             ExternalContractNumber = dto.ExternalContractNumber,
+            CustomerId = dto.CustomerId,
+            ProductId = dto.ProductId,
+            TraderId = dto.TraderId,
             Quantity = dto.Quantity,
             QuantityUnit = dto.QuantityUnit,
             TonBarrelRatio = dto.TonBarrelRatio,
@@ -186,6 +189,14 @@ public class SalesContractController : ControllerBase
             QualitySpecifications = dto.QualitySpecifications,
             InspectionAgency = dto.InspectionAgency,
             Notes = dto.Notes,
+            QuantityTolerancePercent = dto.QuantityTolerancePercent,
+            QuantityToleranceOption = dto.QuantityToleranceOption,
+            BrokerName = dto.BrokerName,
+            BrokerCommission = dto.BrokerCommission,
+            BrokerCommissionType = dto.BrokerCommissionType,
+            LaytimeHours = dto.LaytimeHours,
+            DemurrageRate = dto.DemurrageRate,
+            DespatchRate = dto.DespatchRate,
             UpdatedBy = GetCurrentUserName()
         };
 
@@ -397,9 +408,9 @@ public class SalesContractController : ControllerBase
         return Ok(details);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
     // PRICING STATUS ENDPOINTS (Data Lineage Enhancement v2.18.0)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
     /// <summary>
     /// Gets the current pricing status for a sales contract.
@@ -645,9 +656,9 @@ public class SalesContractController : ControllerBase
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 // SALES CONTRACT PRICING STATUS DTOs (Data Lineage Enhancement v2.18.0)
-// ═══════════════════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 /// <summary>
 /// DTO for sales contract pricing status information
@@ -725,3 +736,5 @@ public class UpdateSalesPricingStatusRequestDto
     /// </summary>
     public string? UpdatedBy { get; set; }
 }
+
+

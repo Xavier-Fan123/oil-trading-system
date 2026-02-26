@@ -7,7 +7,8 @@ import type {
   DataImportStatus,
   FileType,
   DeleteMarketDataResultDto,
-  AvailableBenchmark
+  AvailableBenchmark,
+  ExposureVaRResultDto,
 } from '@/types/marketData';
 import { formatApiDate, parseApiDateFields } from '@/utils/dateUtils';
 
@@ -354,5 +355,20 @@ export const marketDataApi = {
   getBenchmarkContractMonths: async (productCode: string) => {
     const response = await api.get(`/benchmark-pricing/available-contract-months/${productCode}`);
     return response.data;
-  }
+  },
+
+  // Upload exposure table (敞口表) and calculate VaR/CVaR
+  uploadExposure: async (file: File): Promise<ExposureVaRResultDto> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post('/market-data/upload-exposure', formData, {
+      headers: {
+        'Content-Type': undefined,
+      },
+      timeout: 120000, // 2 minutes
+    });
+
+    return response.data;
+  },
 };

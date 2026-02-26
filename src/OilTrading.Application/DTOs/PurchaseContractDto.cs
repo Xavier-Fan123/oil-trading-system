@@ -202,6 +202,9 @@ public class UpdatePurchaseContractDto
 {
     // External Contract Number Update - 外部合同编号更新
     public string? ExternalContractNumber { get; set; }
+    public Guid? SupplierId { get; set; }
+    public Guid? ProductId { get; set; }
+    public Guid? TraderId { get; set; }
     public decimal? Quantity { get; set; }
     public QuantityUnit? QuantityUnit { get; set; }
     public decimal? TonBarrelRatio { get; set; }

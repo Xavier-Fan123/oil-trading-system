@@ -103,6 +103,16 @@ const getDeliveryTermsLabel = (terms: DeliveryTerms): string => {
       return 'DAP (Delivered at Place)';
     case DeliveryTerms.DDP:
       return 'DDP (Delivered Duty Paid)';
+    case DeliveryTerms.DES:
+      return 'DES (Delivered Ex Ship)';
+    case DeliveryTerms.DDU:
+      return 'DDU (Delivered Duty Unpaid)';
+    case DeliveryTerms.STS:
+      return 'STS (Ship to Ship)';
+    case DeliveryTerms.ITT:
+      return 'ITT (In-Tank Transfer)';
+    case DeliveryTerms.EXW:
+      return 'EXW (Ex Works)';
     default:
       return 'Unknown';
   }
@@ -116,6 +126,10 @@ const getSettlementTypeLabel = (type: SettlementType): string => {
       return 'LC (Letter of Credit)';
     case SettlementType.CAD:
       return 'CAD (Cash Against Documents)';
+    case SettlementType.SBLC:
+      return 'SBLC (Standby LC)';
+    case SettlementType.DP:
+      return 'DP (Documents Against Payment)';
     default:
       return 'Unknown';
   }
@@ -144,7 +158,8 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
     );
   }
 
-  const canEdit = contract.status === ContractStatus.Draft || contract.status === ContractStatus.PendingApproval;
+  const canEdit = contract.status === ContractStatus.Draft || contract.status === ContractStatus.PendingApproval || contract.status === ContractStatus.Active;
+  const derivedUnitPrice = contract.quantity > 0 && contract.contractValue ? contract.contractValue / contract.quantity : undefined;
 
   return (
     <Box>
@@ -203,7 +218,7 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                         External Contract Number
                       </Typography>
                       <Typography variant="body1">
-                        {contract.externalContractNumber || '—'}
+                        {contract.externalContractNumber || '--'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -257,13 +272,13 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
                         {getPricingTypeLabel(contract.pricingType)}
                       </Typography>
                     </Grid>
-                    {contract.fixedPrice && (
+                    {derivedUnitPrice !== undefined && (
                       <Grid item xs={12} sm={6}>
                         <Typography variant="subtitle2" color="text.secondary">
                           Fixed Price
                         </Typography>
                         <Typography variant="body1">
-                          ${contract.fixedPrice.toLocaleString()} USD
+                          ${derivedUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                         </Typography>
                       </Grid>
                     )}
@@ -456,3 +471,5 @@ export const ContractDetail: React.FC<ContractDetailProps> = ({
     </Box>
   );
 };
+
+

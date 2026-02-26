@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using OilTrading.Application.Commands.PurchaseContracts;
 using OilTrading.Application.Queries.PurchaseContracts;
@@ -169,6 +169,9 @@ public class PurchaseContractController : ControllerBase
         {
             Id = id,
             ExternalContractNumber = dto.ExternalContractNumber,
+            SupplierId = dto.SupplierId,
+            ProductId = dto.ProductId,
+            TraderId = dto.TraderId,
             PriceBenchmarkId = dto.PriceBenchmarkId,
             Quantity = dto.Quantity,
             QuantityUnit = dto.QuantityUnit?.ToString(),
@@ -190,6 +193,14 @@ public class PurchaseContractController : ControllerBase
             QualitySpecifications = dto.QualitySpecifications,
             InspectionAgency = dto.InspectionAgency,
             Notes = dto.Notes,
+            QuantityTolerancePercent = dto.QuantityTolerancePercent,
+            QuantityToleranceOption = dto.QuantityToleranceOption,
+            BrokerName = dto.BrokerName,
+            BrokerCommission = dto.BrokerCommission,
+            BrokerCommissionType = dto.BrokerCommissionType,
+            LaytimeHours = dto.LaytimeHours,
+            DemurrageRate = dto.DemurrageRate,
+            DespatchRate = dto.DespatchRate,
             UpdatedBy = GetCurrentUserName()
         };
 
@@ -309,9 +320,9 @@ public class PurchaseContractController : ControllerBase
         return Ok(details);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
     // PRICING STATUS ENDPOINTS (Data Lineage Enhancement v2.18.0)
-    // ═══════════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
     /// <summary>
     /// Gets the current pricing status for a purchase contract.
@@ -557,9 +568,9 @@ public class PurchaseContractController : ControllerBase
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 // PRICING STATUS DTOs (Data Lineage Enhancement v2.18.0)
-// ═══════════════════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 /// <summary>
 /// DTO for contract pricing status information
@@ -637,3 +648,5 @@ public class UpdatePricingStatusRequestDto
     /// </summary>
     public string? UpdatedBy { get; set; }
 }
+
+

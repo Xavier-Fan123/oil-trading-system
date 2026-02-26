@@ -48,7 +48,7 @@ import { type FileType } from '@/types/marketData';
 import { marketDataApi } from '@/services/marketDataApi';
 
 interface MarketDataUploadProps {
-  onTabChange: (tab: 'upload' | 'latest' | 'history') => void;
+  onTabChange: (tab: 'upload' | 'latest' | 'history' | 'exposure') => void;
 }
 
 interface FileWithPreview extends File {
@@ -250,10 +250,15 @@ export const MarketDataUpload: React.FC<MarketDataUploadProps> = ({ onTabChange 
             icon={<ViewListIcon />}
             iconPosition="start"
           />
-          <Tab 
-            label="Price History" 
-            value="history" 
+          <Tab
+            label="Price History"
+            value="history"
             icon={<HistoryIcon />}
+            iconPosition="start"
+          />
+          <Tab
+            label="Exposure VaR"
+            value="exposure"
             iconPosition="start"
           />
         </Tabs>

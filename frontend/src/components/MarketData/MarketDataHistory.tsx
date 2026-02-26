@@ -51,7 +51,7 @@ import {
 } from '@/types/marketData';
 
 interface MarketDataHistoryProps {
-  onTabChange: (tab: 'upload' | 'latest' | 'history') => void;
+  onTabChange: (tab: 'upload' | 'latest' | 'history' | 'exposure') => void;
 }
 
 export const MarketDataHistory: React.FC<MarketDataHistoryProps> = ({ onTabChange }) => {
@@ -413,9 +413,14 @@ export const MarketDataHistory: React.FC<MarketDataHistoryProps> = ({ onTabChang
             iconPosition="start"
           />
           <Tab 
-            label="Price History" 
-            value="history" 
+            label="Price History"
+            value="history"
             icon={<HistoryIcon />}
+            iconPosition="start"
+          />
+          <Tab
+            label="Exposure VaR"
+            value="exposure"
             iconPosition="start"
           />
         </Tabs>

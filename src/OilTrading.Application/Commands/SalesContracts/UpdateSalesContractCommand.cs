@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using FluentValidation;
 using OilTrading.Core.ValueObjects;
 using OilTrading.Core.Enums;
@@ -9,6 +9,9 @@ public class UpdateSalesContractCommand : IRequest<Unit>
 {
     public Guid Id { get; set; }
     public string? ExternalContractNumber { get; set; }
+    public Guid? CustomerId { get; set; }
+    public Guid? ProductId { get; set; }
+    public Guid? TraderId { get; set; }
     public Guid? PriceBenchmarkId { get; set; }
     public decimal? Quantity { get; set; }
     public string? QuantityUnit { get; set; }
@@ -30,6 +33,17 @@ public class UpdateSalesContractCommand : IRequest<Unit>
     public string? QualitySpecifications { get; set; }
     public string? InspectionAgency { get; set; }
     public string? Notes { get; set; }
+
+    // Professional Trading Fields (v2.19)
+    public decimal? QuantityTolerancePercent { get; set; }
+    public string? QuantityToleranceOption { get; set; }
+    public string? BrokerName { get; set; }
+    public decimal? BrokerCommission { get; set; }
+    public string? BrokerCommissionType { get; set; }
+    public decimal? LaytimeHours { get; set; }
+    public decimal? DemurrageRate { get; set; }
+    public decimal? DespatchRate { get; set; }
+
     public string UpdatedBy { get; set; } = string.Empty;
 }
 
@@ -40,6 +54,21 @@ public class UpdateSalesContractCommandValidator : AbstractValidator<UpdateSales
         RuleFor(x => x.Id)
             .NotEmpty()
             .WithMessage("Contract ID is required");
+
+        RuleFor(x => x.CustomerId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.CustomerId.HasValue)
+            .WithMessage("Customer ID must be a valid GUID");
+
+        RuleFor(x => x.ProductId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.ProductId.HasValue)
+            .WithMessage("Product ID must be a valid GUID");
+
+        RuleFor(x => x.TraderId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.TraderId.HasValue)
+            .WithMessage("Trader ID must be a valid GUID");
 
         RuleFor(x => x.Quantity)
             .GreaterThan(0)
@@ -59,7 +88,7 @@ public class UpdateSalesContractCommandValidator : AbstractValidator<UpdateSales
         RuleFor(x => x.PricingType)
             .Must(BeValidPricingType)
             .When(x => !string.IsNullOrEmpty(x.PricingType))
-            .WithMessage("Pricing type must be Fixed, IndexAverage, IndexPoint, or EventBased");
+            .WithMessage("Pricing type must be Fixed, Floating, Formula, IndexAverage, IndexPoint, or EventBased");
 
         RuleFor(x => x.FixedPrice)
             .GreaterThan(0)
@@ -87,6 +116,31 @@ public class UpdateSalesContractCommandValidator : AbstractValidator<UpdateSales
             .When(x => x.PrepaymentPercentage.HasValue)
             .WithMessage("Prepayment percentage must be between 0 and 100");
 
+        RuleFor(x => x.QuantityTolerancePercent)
+            .InclusiveBetween(0, 100)
+            .When(x => x.QuantityTolerancePercent.HasValue)
+            .WithMessage("Quantity tolerance percentage must be between 0 and 100");
+
+        RuleFor(x => x.BrokerCommission)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.BrokerCommission.HasValue)
+            .WithMessage("Broker commission must be greater than or equal to 0");
+
+        RuleFor(x => x.LaytimeHours)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.LaytimeHours.HasValue)
+            .WithMessage("Laytime hours must be greater than or equal to 0");
+
+        RuleFor(x => x.DemurrageRate)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.DemurrageRate.HasValue)
+            .WithMessage("Demurrage rate must be greater than or equal to 0");
+
+        RuleFor(x => x.DespatchRate)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.DespatchRate.HasValue)
+            .WithMessage("Despatch rate must be greater than or equal to 0");
+
         RuleFor(x => x.UpdatedBy)
             .NotEmpty()
             .WithMessage("Updated by is required");
@@ -108,7 +162,7 @@ public class UpdateSalesContractCommandValidator : AbstractValidator<UpdateSales
     private static bool BeValidPricingType(string? pricingType)
     {
         if (string.IsNullOrEmpty(pricingType)) return false;
-        return new[] { "Fixed", "IndexAverage", "IndexPoint", "EventBased" }.Contains(pricingType);
+        return new[] { "Fixed", "Floating", "Formula", "IndexAverage", "IndexPoint", "EventBased" }.Contains(pricingType);
     }
 
     private static bool BeValidSettlementType(string? settlementType)
@@ -117,3 +171,5 @@ public class UpdateSalesContractCommandValidator : AbstractValidator<UpdateSales
         return new[] { "TT", "LC", "SBLC", "DP", "CAD" }.Contains(settlementType.ToUpper());
     }
 }
+
+

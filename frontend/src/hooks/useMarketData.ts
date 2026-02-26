@@ -213,3 +213,10 @@ export const useBasisAnalysis = (
     retry: 2,
   });
 };
+
+// Upload exposure table and calculate VaR/CVaR
+export const useUploadExposure = () => {
+  return useMutation({
+    mutationFn: (file: File) => marketDataApi.uploadExposure(file),
+  });
+};

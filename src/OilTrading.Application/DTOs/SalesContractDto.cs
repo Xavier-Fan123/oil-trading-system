@@ -175,6 +175,9 @@ public class CreateSalesContractDto
 public class UpdateSalesContractDto
 {
     public string? ExternalContractNumber { get; set; }
+    public Guid? CustomerId { get; set; }
+    public Guid? ProductId { get; set; }
+    public Guid? TraderId { get; set; }
     public Guid? PriceBenchmarkId { get; set; }
     public decimal? Quantity { get; set; }
     public string? QuantityUnit { get; set; }

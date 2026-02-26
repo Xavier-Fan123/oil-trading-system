@@ -922,3 +922,50 @@ export interface VaRMetrics {
   startDate: Date;
   endDate: Date;
 }
+
+// ===== EXPOSURE TABLE (敞口表) TYPES =====
+
+export interface ExposureRowDto {
+  productCode: string;
+  contractMonth?: string | null;
+  spotPosition: number;
+  futuresPosition: number;
+  unit: string;
+}
+
+export interface ExposurePositionVaRDto {
+  productCode: string;
+  contractMonth?: string | null;
+  positionType: 'Spot' | 'Futures';
+  quantity: number;
+  unit: string;
+  latestPrice: number;
+  positionValue: number;
+  dailyVolatility: number;
+  var1Day95: number;
+  var1Day99: number;
+  var10Day95: number;
+  var10Day99: number;
+  cVaR1Day95: number;
+  cVaR1Day99: number;
+  cVaR10Day95: number;
+  cVaR10Day99: number;
+}
+
+export interface ExposureVaRResultDto {
+  calculationDate: string;
+  totalPositionValue: number;
+  portfolioVar1Day95: number;
+  portfolioVar1Day99: number;
+  portfolioVar10Day95: number;
+  portfolioVar10Day99: number;
+  portfolioCVaR1Day95: number;
+  portfolioCVaR1Day99: number;
+  portfolioCVaR10Day95: number;
+  portfolioCVaR10Day99: number;
+  positionVaRs: ExposurePositionVaRDto[];
+  rowsParsed: number;
+  positionsProcessed: number;
+  warnings: string[];
+  parsedExposures: ExposureRowDto[];
+}

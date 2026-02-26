@@ -57,14 +57,14 @@ public class RateLimitingMiddleware
             return;
         }
 
+        var userId = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
+        var userEmail = context.User?.FindFirst(ClaimTypes.Email)?.Value ?? "unknown";
+        var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var endpoint = $"{context.Request.Method} {path}";
+
+        // Check rate limit - fail-open if rate limit service is unavailable
         try
         {
-            var userId = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
-            var userEmail = context.User?.FindFirst(ClaimTypes.Email)?.Value ?? "unknown";
-            var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var endpoint = $"{context.Request.Method} {path}";
-
-            // Check rate limit
             var rateLimitResult = await rateLimitService.CheckRateLimitAsync(
                 userId,
                 path,
@@ -125,21 +125,21 @@ public class RateLimitingMiddleware
                 rateLimitResult.RequestsLimit,
                 rateLimitResult.ResetTime
             );
-
-            await _next(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            // Fail-open: If rate limit service fails, allow the request through
+            _logger.LogWarning(
                 ex,
-                "Error in rate limiting middleware: {Method} {Path}",
+                "Rate limit service error, failing open: {Method} {Path}",
                 context.Request.Method,
                 context.Request.Path
             );
-
-            // Fail-open: Allow request if rate limit service fails
-            await _next(context);
         }
+
+        // Call next middleware OUTSIDE the try-catch so downstream exceptions
+        // (e.g. ValidationException) propagate to GlobalExceptionMiddleware
+        await _next(context);
     }
 
     /// <summary>
