@@ -1,4 +1,4 @@
-# Oil Trading & Risk Management System v2.17.2
+# Oil Trading & Risk Management System v2.22.0
 
 An enterprise-grade oil trading and risk management platform built with .NET 9 and React 18, implementing Clean Architecture principles with advanced contract matching, external contract number resolution, comprehensive settlement management, full shipping operation capabilities, data lineage tracking, market data region support, settlement automation rules, and trade group management.
 
