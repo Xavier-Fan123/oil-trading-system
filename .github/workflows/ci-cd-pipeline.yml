@@ -2,9 +2,9 @@ name: Oil Trading System CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 'feature/*' ]
+    branches: [ main, master, develop, 'feature/*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   workflow_dispatch:
     inputs:
       environment:
@@ -54,7 +54,7 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: src/OilTrading.Frontend/package-lock.json
+        cache-dependency-path: frontend/package-lock.json
 
     - name: 📦 Cache NuGet packages
       uses: actions/cache@v4
@@ -77,13 +77,13 @@ jobs:
 
     - name: 🔧 Restore dependencies
       run: |
-        dotnet restore src/OilTrading.sln
-        cd src/OilTrading.Frontend && npm ci
+        dotnet restore OilTrading.sln
+        cd frontend && npm ci
 
     - name: 🏗️ Build solution
       id: build
       run: |
-        dotnet build src/OilTrading.sln \
+        dotnet build OilTrading.sln \
           --configuration Release \
           --no-restore \
           -p:Version=${{ steps.version.outputs.version }} \
@@ -91,7 +91,7 @@ jobs:
           -p:AssemblyVersion=${{ steps.version.outputs.version }}
         
         # Build frontend
-        cd src/OilTrading.Frontend
+        cd frontend
         npm run build
         
         echo "artifact-name=oil-trading-${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
@@ -99,7 +99,7 @@ jobs:
     - name: 🧪 Run unit tests
       if: ${{ !inputs.skip_tests }}
       run: |
-        dotnet test src/OilTrading.Tests.Unit/*.csproj \
+        dotnet test tests/OilTrading.UnitTests/*.csproj \
           --configuration Release \
           --no-build \
           --verbosity normal \
@@ -136,7 +136,7 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }}
         
         # Package frontend
-        cp -r src/OilTrading.Frontend/dist ./artifacts/frontend
+        cp -r frontend/dist ./artifacts/frontend
         
         # Create deployment scripts
         cp -r deployment/ ./artifacts/deployment 2>/dev/null || true
@@ -202,7 +202,7 @@ jobs:
         ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=oiltrading_test;Username=postgres;Password=postgres
         ConnectionStrings__Redis: localhost:6379
       run: |
-        dotnet test src/OilTrading.Tests.Integration/*.csproj \
+        dotnet test tests/OilTrading.IntegrationTests/*.csproj \
           --configuration Release \
           --verbosity normal \
           --logger trx \
@@ -239,7 +239,7 @@ jobs:
     - name: 🔍 Run security audit
       run: |
         # .NET security audit
-        dotnet list src/OilTrading.sln package --vulnerable --include-transitive
+        dotnet list OilTrading.sln package --vulnerable --include-transitive
         
         # Install security scanning tools
         dotnet tool install --global security-scan --version 5.6.7
@@ -249,8 +249,10 @@ jobs:
       with:
         languages: csharp, javascript
 
-    - name: 🏗️ Autobuild
-      uses: github/codeql-action/autobuild@v3
+    - name: 🏗️ Build for CodeQL
+      run: |
+        dotnet restore OilTrading.sln
+        dotnet build OilTrading.sln --configuration Release --no-restore
 
     - name: 🔒 Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3

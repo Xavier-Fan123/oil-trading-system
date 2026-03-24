@@ -17,7 +17,7 @@ on:
           - dependency-only
           - container-only
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
     paths:
       - '**/*.cs'
       - '**/*.js'
@@ -64,10 +64,10 @@ jobs:
     - name: 🔍 .NET vulnerability scan
       run: |
         # Restore packages
-        dotnet restore src/OilTrading.sln
+        dotnet restore OilTrading.sln
         
         # Check for vulnerable packages
-        dotnet list src/OilTrading.sln package --vulnerable --include-transitive > dotnet-vulnerabilities.txt
+        dotnet list OilTrading.sln package --vulnerable --include-transitive > dotnet-vulnerabilities.txt
         
         # Check if vulnerabilities were found
         if grep -q "has the following vulnerable packages" dotnet-vulnerabilities.txt; then
@@ -83,7 +83,7 @@ jobs:
       working-directory: frontend
       run: |
         # Install packages
-        npm ci --only=production
+        npm ci
         
         # Run security audit
         npm audit --audit-level=moderate --json > npm-audit-results.json || true
@@ -163,8 +163,8 @@ jobs:
 
     - name: 🏗️ Build for CodeQL analysis
       run: |
-        dotnet restore src/OilTrading.sln
-        dotnet build src/OilTrading.sln --configuration Release --no-restore
+        dotnet restore OilTrading.sln
+        dotnet build OilTrading.sln --configuration Release --no-restore
 
     - name: 🔒 Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
@@ -205,7 +205,7 @@ jobs:
     - name: 🔍 Run ESLint security scan for frontend
       working-directory: frontend
       run: |
-        npm ci --only=dev
+        npm ci
         npx eslint src/ --ext .js,.jsx,.ts,.tsx --format json -o eslint-security-results.json || true
         
         if [ -f eslint-security-results.json ]; then
@@ -341,37 +341,37 @@ jobs:
 
     - name: 🔍 Kubernetes manifest security scan
       run: |
-        # Install kubesec
+        if [ ! -d "k8s" ]; then
+          echo "Skipping: k8s/ directory not found"
+          exit 0
+        fi
+
         curl -sSfL https://github.com/controlplaneio/kubesec/releases/latest/download/kubesec_linux_amd64.tar.gz | tar -xz -C /tmp
         sudo mv /tmp/kubesec /usr/local/bin/
-        
-        # Scan Kubernetes manifests
+
         find k8s/ -name "*.yaml" -exec kubesec scan {} \; > kubesec-results.json || true
-        
-        # Check for security issues
+
         if grep -q '"score": 0' kubesec-results.json; then
-          echo "❌ Security issues found in Kubernetes manifests"
+          echo "Security issues found in Kubernetes manifests"
           cat kubesec-results.json
         else
-          echo "✅ No critical security issues found in Kubernetes manifests"
+          echo "No critical security issues found in Kubernetes manifests"
         fi
 
     - name: 🔍 Helm chart security scan
       run: |
-        # Install helm-secrets plugin for secret scanning
+        if [ ! -d "helm/oil-trading-system" ]; then
+          echo "Skipping: Helm chart directory not found"
+          exit 0
+        fi
+
         helm plugin install https://github.com/jkroepke/helm-secrets || true
-        
-        # Lint Helm charts for security issues
         helm lint helm/oil-trading-system/ || echo "Helm lint issues found"
-        
-        # Template charts and scan for secrets
         helm template oil-trading-system helm/oil-trading-system/ > templated-manifests.yaml
-        
-        # Check for potential secrets in templates
-        if grep -i "password\|secret\|key\|token" templated-manifates.yaml; then
-          echo "⚠️ Potential secrets found in Helm templates - please review"
+        if grep -i "password\|secret\|key\|token" templated-manifests.yaml; then
+          echo "Potential secrets found in Helm templates - please review"
         else
-          echo "✅ No obvious secrets found in Helm templates"
+          echo "No obvious secrets found in Helm templates"
         fi
 
     - name: 🔍 Run Checkov infrastructure scan
