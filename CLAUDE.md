@@ -2201,22 +2201,12 @@ Storage                     500GB               Multiple terabytes (archival)
 
 ### Scope
 - Consolidated current full-system working changes and deployment updates.
-- Introduced OA D240 contract automation as an integrated operations module under `scripts/oa_x_sync`.
 
 ### Contract Module Updates
 - Fixed contract form/detail enum mappings and display consistency across purchase/sales flows.
 - Enabled edit entry points for active contracts and completed update payload alignment for professional fields.
 - Corrected fixed-price display derivation and resolved malformed external contract fallback rendering.
 - Extended backend update commands/handlers/domain fields for purchase and sales contract update scenarios.
-
-### OA -> X D240 Automation
-- Migrated OA sync stack from `C:\Windows\System32` to `C:\Users\itg\Desktop\X\scripts\oa_x_sync`.
-- Scheduled task `OA_X_D240_Sync_Hourly` now runs the migrated launcher.
-- Added dedicated local runtime: `scripts/oa_x_sync/.venv` (Playwright + dependencies installed).
-- Preserved incremental state during migration (`oa_x_sync_state.json`) to avoid duplicate processing.
-- Added Chinese-source parsing hardening and normalization pipeline:
-  - Counterparty names may remain Chinese as source-of-truth.
-  - Non-counterparty output fields are normalized to stable English/ASCII before X API writes.
 
 ### Market Data / Risk Changes In Working Tree
 - Added and updated market data UI/API flows including upload/table/history and type contracts.
@@ -2225,5 +2215,4 @@ Storage                     500GB               Multiple terabytes (archival)
 - Included middleware/service adjustments (rate limiting and VaR service integration updates).
 
 ### Operational Notes
-- Hourly sync remains incremental and idempotent via processed request/external contract state.
-- Runtime artifacts for OA sync (`.venv`, `output`, state files) are now git-ignored.
+- All contracts are manually entered through the frontend UI or bulk import scripts.

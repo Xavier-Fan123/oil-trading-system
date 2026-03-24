@@ -388,8 +388,3 @@ coveragereport/
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
-# OA -> X D240 sync runtime artifacts
-scripts/oa_x_sync/.venv/
-scripts/oa_x_sync/output/
-scripts/oa_x_sync/storage_state.json
-scripts/oa_x_sync/output/oa_x_sync_state.json
