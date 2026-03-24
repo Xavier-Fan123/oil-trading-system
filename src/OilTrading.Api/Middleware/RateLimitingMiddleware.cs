@@ -1,5 +1,6 @@
 using OilTrading.Infrastructure.Services;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace OilTrading.Api.Middleware;
 
@@ -57,9 +58,9 @@ public class RateLimitingMiddleware
             return;
         }
 
-        var userId = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
-        var userEmail = context.User?.FindFirst(ClaimTypes.Email)?.Value ?? "unknown";
-        var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var userId = SanitizeLogInput(context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous");
+        var userEmail = SanitizeLogInput(context.User?.FindFirst(ClaimTypes.Email)?.Value ?? "unknown");
+        var ipAddress = SanitizeLogInput(context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
         var endpoint = $"{context.Request.Method} {path}";
 
         // Check rate limit - fail-open if rate limit service is unavailable
@@ -126,20 +127,38 @@ public class RateLimitingMiddleware
                 rateLimitResult.ResetTime
             );
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            // Fail-open: If rate limit service fails, allow the request through
-            _logger.LogWarning(
-                ex,
-                "Rate limit service error, failing open: {Method} {Path}",
-                context.Request.Method,
-                context.Request.Path
-            );
+            _logger.LogWarning(ex, "Rate limit service configuration error, failing open: {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Rate limit service timeout, failing open: {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+        }
+        catch (OperationCanceledException)
+        {
+            // Request was cancelled, no need to log
+            return;
         }
 
         // Call next middleware OUTSIDE the try-catch so downstream exceptions
         // (e.g. ValidationException) propagate to GlobalExceptionMiddleware
         await _next(context);
+    }
+
+    /// <summary>
+    /// Sanitize user-controlled input before logging to prevent log forging/injection.
+    /// Removes control characters and newlines that could be used to forge log entries.
+    /// </summary>
+    private static string SanitizeLogInput(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        // Remove control characters, newlines, and carriage returns
+        return Regex.Replace(input, @"[\r\n\t\p{Cc}]", "_");
     }
 
     /// <summary>

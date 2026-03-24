@@ -98,12 +98,17 @@ public class UploadExposureCommandHandler : IRequestHandler<UploadExposureComman
         var headerRow = worksheet.Row(1);
         var columnMap = DetectColumns(headerRow);
 
-        if (!columnMap.ContainsKey("Product"))
+        if (!columnMap.TryGetValue("Product", out var productCol))
         {
             throw new InvalidOperationException(
                 $"Required column '{HEADER_PRODUCT}' not found in header row. " +
                 $"Expected headers: {HEADER_PRODUCT}, {HEADER_CONTRACT_MONTH}, {HEADER_SPOT_POSITION}, {HEADER_FUTURES_POSITION}, {HEADER_UNIT}");
         }
+
+        columnMap.TryGetValue("ContractMonth", out var contractMonthCol);
+        columnMap.TryGetValue("SpotPosition", out var spotPositionCol);
+        columnMap.TryGetValue("FuturesPosition", out var futuresPositionCol);
+        columnMap.TryGetValue("Unit", out var unitCol);
 
         // Parse data rows
         for (int rowNum = 2; rowNum <= lastRow; rowNum++)
@@ -111,7 +116,7 @@ public class UploadExposureCommandHandler : IRequestHandler<UploadExposureComman
             var row = worksheet.Row(rowNum);
 
             // Skip empty rows
-            var productCell = row.Cell(columnMap["Product"]).GetString()?.Trim();
+            var productCell = row.Cell(productCol).GetString()?.Trim();
             if (string.IsNullOrWhiteSpace(productCell))
                 continue;
 
@@ -124,25 +129,25 @@ public class UploadExposureCommandHandler : IRequestHandler<UploadExposureComman
 
             // Parse contract month
             string? contractMonth = null;
-            if (columnMap.ContainsKey("ContractMonth"))
+            if (contractMonthCol > 0)
             {
-                contractMonth = row.Cell(columnMap["ContractMonth"]).GetString()?.Trim();
+                contractMonth = row.Cell(contractMonthCol).GetString()?.Trim();
                 if (string.IsNullOrWhiteSpace(contractMonth))
                     contractMonth = null;
             }
 
             // Parse spot position
             decimal spotPosition = 0;
-            if (columnMap.ContainsKey("SpotPosition"))
+            if (spotPositionCol > 0)
             {
-                spotPosition = ParseDecimalCell(row.Cell(columnMap["SpotPosition"]));
+                spotPosition = ParseDecimalCell(row.Cell(spotPositionCol));
             }
 
             // Parse futures position
             decimal futuresPosition = 0;
-            if (columnMap.ContainsKey("FuturesPosition"))
+            if (futuresPositionCol > 0)
             {
-                futuresPosition = ParseDecimalCell(row.Cell(columnMap["FuturesPosition"]));
+                futuresPosition = ParseDecimalCell(row.Cell(futuresPositionCol));
             }
 
             // Validate at least one position is non-zero
@@ -154,9 +159,9 @@ public class UploadExposureCommandHandler : IRequestHandler<UploadExposureComman
 
             // Parse unit
             string unit = "MT";
-            if (columnMap.ContainsKey("Unit"))
+            if (unitCol > 0)
             {
-                var unitValue = row.Cell(columnMap["Unit"]).GetString()?.Trim();
+                var unitValue = row.Cell(unitCol).GetString()?.Trim();
                 if (!string.IsNullOrWhiteSpace(unitValue))
                 {
                     if (!ValidUnits.Contains(unitValue))

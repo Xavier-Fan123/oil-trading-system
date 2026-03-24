@@ -187,10 +187,10 @@ public class MarketDataController : ControllerBase
             _logger.LogWarning(ex, "Exposure table processing failed: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
         {
-            _logger.LogError(ex, "Unexpected error processing exposure table: {FileName}", file.FileName);
-            return StatusCode(500, new { error = "Error processing exposure table", details = ex.Message });
+            _logger.LogError(ex, "Database error processing exposure table: {FileName}", file.FileName);
+            return StatusCode(500, new { error = "Database error processing exposure table" });
         }
     }
 
@@ -385,10 +385,15 @@ public class MarketDataController : ControllerBase
 
             return Ok(result);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error retrieving settlement prices for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
+            _logger.LogWarning(ex, "Invalid operation retrieving settlement prices for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
             return BadRequest(new { error = "Error retrieving settlement prices", details = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving settlement prices for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
+            return StatusCode(500, new { error = "Database error retrieving settlement prices" });
         }
     }
 
@@ -435,10 +440,15 @@ public class MarketDataController : ControllerBase
 
             return Ok(result);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error retrieving price statistics for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
+            _logger.LogWarning(ex, "Invalid operation retrieving price statistics for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
             return BadRequest(new { error = "Error retrieving price statistics", details = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving price statistics for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
+            return StatusCode(500, new { error = "Database error retrieving price statistics" });
         }
     }
 
@@ -484,10 +494,15 @@ public class MarketDataController : ControllerBase
 
             return Ok(result);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error retrieving latest price for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
+            _logger.LogWarning(ex, "Invalid operation retrieving latest price for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
             return BadRequest(new { error = "Error retrieving latest price", details = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving latest price for ProductCode={ProductCode}, ContractMonth={ContractMonth}", productCode, contractMonth);
+            return StatusCode(500, new { error = "Database error retrieving latest price" });
         }
     }
 
@@ -535,10 +550,15 @@ public class MarketDataController : ControllerBase
 
             return Ok(contractMonths);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error retrieving contract months for ProductCode={ProductCode}, PriceType={PriceType}", productCode, priceType ?? "All");
+            _logger.LogWarning(ex, "Invalid operation retrieving contract months for ProductCode={ProductCode}, PriceType={PriceType}", productCode, priceType ?? "All");
             return BadRequest(new { error = "Error retrieving contract months", details = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving contract months for ProductCode={ProductCode}, PriceType={PriceType}", productCode, priceType ?? "All");
+            return StatusCode(500, new { error = "Database error retrieving contract months" });
         }
     }
 
@@ -579,10 +599,15 @@ public class MarketDataController : ControllerBase
             _logger.LogWarning(ex, "Insufficient data for VaR calculation: {ProductCode}", productCode);
             return NotFound(new { error = ex.Message });
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error calculating VaR for {ProductCode}", productCode);
-            return StatusCode(500, new { error = "Error calculating VaR metrics", details = ex.Message });
+            _logger.LogWarning(ex, "Invalid argument for VaR calculation: {ProductCode}", productCode);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error calculating VaR for {ProductCode}", productCode);
+            return StatusCode(500, new { error = "Database error calculating VaR metrics" });
         }
     }
 
@@ -670,10 +695,15 @@ public class MarketDataController : ControllerBase
             _logger.LogInformation("Available benchmarks retrieved: {Count} benchmarks from market data", benchmarks.Count);
             return Ok(benchmarks);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error retrieving available benchmarks");
-            return StatusCode(500, new { error = "Error retrieving available benchmarks", details = ex.Message });
+            _logger.LogWarning(ex, "Invalid operation retrieving available benchmarks");
+            return BadRequest(new { error = "Error retrieving available benchmarks", details = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving available benchmarks");
+            return StatusCode(500, new { error = "Database error retrieving available benchmarks" });
         }
     }
 }

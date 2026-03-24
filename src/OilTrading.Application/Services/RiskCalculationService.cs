@@ -187,7 +187,7 @@ public class RiskCalculationService : IRiskCalculationService
                 .ToList();
 
             var productsWithData = productMonthPairs
-                .Where(pm => productReturns.ContainsKey(pm) && productReturns[pm].Any())
+                .Where(pm => productReturns.TryGetValue(pm, out var returns) && returns.Any())
                 .ToList();
 
             if (!productsWithData.Any())
@@ -237,9 +237,15 @@ public class RiskCalculationService : IRiskCalculationService
 
             return (var95, var99);
         }
-        catch (Exception ex)
+        catch (ArithmeticException ex)
         {
-            _logger.LogError(ex, "Error calculating delta-normal VaR, falling back to historical method");
+            _logger.LogError(ex, "Arithmetic error in delta-normal VaR, falling back to historical method");
+            var portfolioReturns = CalculatePortfolioReturns(positions, productReturns);
+            return await CalculateHistoricalVaRAsync(positions, portfolioReturns);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation in delta-normal VaR, falling back to historical method");
             var portfolioReturns = CalculatePortfolioReturns(positions, productReturns);
             return await CalculateHistoricalVaRAsync(positions, portfolioReturns);
         }
@@ -457,18 +463,22 @@ public class RiskCalculationService : IRiskCalculationService
             // Call Python script for GARCH calculation
             var result = await CallPythonScript("garch", jsonInput);
             
-            if (result.ContainsKey("var95") && result.ContainsKey("var99"))
+            if (result.TryGetValue("var95", out var v95) && result.TryGetValue("var99", out var v99))
             {
-                var var95 = Convert.ToDecimal(result["var95"]);
-                var var99 = Convert.ToDecimal(result["var99"]);
-                
+                var var95 = Convert.ToDecimal(v95);
+                var var99 = Convert.ToDecimal(v99);
+
                 _logger.LogInformation("GARCH VaR calculated: 95%={VaR95:C}, 99%={VaR99:C}", var95, var99);
                 return (var95, var99);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Error calculating GARCH VaR, falling back to historical method");
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogError(ex, "Format error in GARCH VaR result, falling back to historical method");
         }
 
         // Fallback to historical method if GARCH fails
@@ -504,18 +514,22 @@ public class RiskCalculationService : IRiskCalculationService
             // Call Python script for Monte Carlo simulation
             var result = await CallPythonScript("montecarlo", jsonInput);
             
-            if (result.ContainsKey("var95") && result.ContainsKey("var99"))
+            if (result.TryGetValue("var95", out var v95mc) && result.TryGetValue("var99", out var v99mc))
             {
-                var var95 = Convert.ToDecimal(result["var95"]);
-                var var99 = Convert.ToDecimal(result["var99"]);
-                
+                var var95 = Convert.ToDecimal(v95mc);
+                var var99 = Convert.ToDecimal(v99mc);
+
                 _logger.LogInformation("Monte Carlo VaR calculated: 95%={VaR95:C}, 99%={VaR99:C}", var95, var99);
                 return (var95, var99);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Error calculating Monte Carlo VaR, falling back to historical method");
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogError(ex, "Format error in Monte Carlo VaR result, falling back to historical method");
         }
 
         // Fallback to historical method
@@ -692,7 +706,7 @@ public class RiskCalculationService : IRiskCalculationService
                 .Select(p => $"{p.ProductType}|{p.ContractMonth}")
                 .Distinct()
                 .ToList();
-            var productsWithData = products.Where(p => productReturns.ContainsKey(p) && productReturns[p].Any()).ToList();
+            var productsWithData = products.Where(p => productReturns.TryGetValue(p, out var returns) && returns.Any()).ToList();
 
             if (!productsWithData.Any())
             {
@@ -751,9 +765,14 @@ public class RiskCalculationService : IRiskCalculationService
 
             return annualVol;
         }
-        catch (Exception ex)
+        catch (ArithmeticException ex)
         {
-            _logger.LogError(ex, "Error calculating covariance-based volatility, using fallback");
+            _logger.LogError(ex, "Arithmetic error in covariance-based volatility, using fallback");
+            return CalculateVolatilityFallback(positions, productReturns);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation in covariance-based volatility, using fallback");
             return CalculateVolatilityFallback(positions, productReturns);
         }
     }
@@ -814,6 +833,8 @@ public class RiskCalculationService : IRiskCalculationService
         try
         {
             var purchases = await _purchaseContractRepository.GetActiveContractsAsync();
+            if (purchases == null) return positions;
+
             foreach (var contract in purchases)
             {
                 if (contract.Status == ContractStatus.Cancelled || contract.Status == ContractStatus.Completed) continue;
@@ -831,6 +852,8 @@ public class RiskCalculationService : IRiskCalculationService
 
             // Include physical sales contracts as synthetic Short positions for VaR
             var sales = await _salesContractRepository.GetActiveContractsAsync();
+            if (sales == null) return positions;
+
             foreach (var contract in sales)
             {
                 if (contract.Status == ContractStatus.Cancelled || contract.Status == ContractStatus.Completed) continue;
@@ -846,9 +869,13 @@ public class RiskCalculationService : IRiskCalculationService
                 });
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to include physical contracts in VaR calculation, using paper-only");
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout fetching physical contracts for VaR calculation, using paper-only");
         }
 
         return positions;
@@ -885,17 +912,17 @@ public class RiskCalculationService : IRiskCalculationService
             
             foreach (var position in positions)
             {
-                if (productReturns.ContainsKey(position.ProductType))
+                if (productReturns.TryGetValue(position.ProductType, out var returns) && returns.Count > i)
                 {
                     // CRITICAL FIX: Preserve position sign for proper risk calculation
                     // Use signed exposure to correctly account for hedging effects
                     var signedExposure = position.Quantity * position.LotSize * (position.CurrentPrice ?? position.EntryPrice);
-                    
+
                     // Adjust for position type (Short positions have negative exposure)
                     if (position.Position == PositionType.Short)
                         signedExposure = -Math.Abs(signedExposure);
-                    
-                    var positionReturn = productReturns[position.ProductType][i];
+
+                    var positionReturn = returns[i];
                     
                     portfolioReturn += positionReturn * signedExposure;
                     totalValue += Math.Abs(signedExposure); // Use absolute value only for denominator
@@ -1087,9 +1114,19 @@ public class RiskCalculationService : IRiskCalculationService
             var result = JsonSerializer.Deserialize<Dictionary<string, object>>(output);
             return result ?? CalculateFallbackRisk(jsonInput);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Error executing Python risk engine. Falling back to basic calculations.");
+            return CalculateFallbackRisk(jsonInput);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Error parsing Python risk engine output. Falling back to basic calculations.");
+            return CalculateFallbackRisk(jsonInput);
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            _logger.LogError(ex, "Python runtime not found. Falling back to basic calculations.");
             return CalculateFallbackRisk(jsonInput);
         }
     }
@@ -1103,8 +1140,8 @@ public class RiskCalculationService : IRiskCalculationService
 
             // Extract portfolio value if available, otherwise use a default
             var portfolioValue = 1000000m; // Default $1M
-            if (input?.ContainsKey("portfolio_value") == true &&
-                decimal.TryParse(input["portfolio_value"].ToString(), out var pv))
+            if (input != null && input.TryGetValue("portfolio_value", out var pvObj) &&
+                decimal.TryParse(pvObj.ToString(), out var pv))
             {
                 portfolioValue = pv;
             }
@@ -1187,9 +1224,14 @@ public class RiskCalculationService : IRiskCalculationService
             var portfolioValue = Math.Abs(totalValue);
             return portfolioValue < 100000m ? 1000000m : portfolioValue;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Error calculating portfolio value. Using default.");
+            return 1000000m; // Default fallback
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "Timeout calculating portfolio value. Using default.");
             return 1000000m; // Default fallback
         }
     }

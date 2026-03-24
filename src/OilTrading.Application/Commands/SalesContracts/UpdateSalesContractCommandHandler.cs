@@ -52,8 +52,8 @@ public class UpdateSalesContractCommandHandler : IRequestHandler<UpdateSalesCont
             if (customer.Type == TradingPartnerType.Supplier)
                 throw new DomainException($"Trading partner {customer.Name} is a supplier and cannot be a sales customer");
 
-            if (customer.Type == TradingPartnerType.Trader && customer.Type != TradingPartnerType.Both)
-                throw new DomainException($"Trading partner {customer.Name} is a trader and cannot be a direct sales customer");
+            if (customer.Type != TradingPartnerType.Customer && customer.Type != TradingPartnerType.Both)
+                throw new DomainException($"Trading partner {customer.Name} is not a valid sales customer");
 
             var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
             if (product == null)

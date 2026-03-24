@@ -86,49 +86,51 @@ public class NetPositionService : INetPositionService
             var month = contract.LaycanStart.ToString("MMMyy").ToUpper();
             var key = (contract.ProductType, month);
             
-            if (!groupedData.ContainsKey(key))
+            if (!groupedData.TryGetValue(key, out var physPosition))
             {
-                groupedData[key] = new NetPositionDto
+                physPosition = new NetPositionDto
                 {
                     ProductType = contract.ProductType,
                     Month = month
                 };
+                groupedData[key] = physPosition;
             }
-            
+
             if (contract.ContractType == Core.Entities.PhysicalContractType.Purchase)
             {
-                groupedData[key].PhysicalPurchases += contract.Quantity;
+                physPosition.PhysicalPurchases += contract.Quantity;
             }
             else
             {
-                groupedData[key].PhysicalSales += contract.Quantity;
+                physPosition.PhysicalSales += contract.Quantity;
             }
         }
-        
+
         // Process paper contracts
         foreach (var contract in paperContracts)
         {
             var key = (contract.ProductType, contract.ContractMonth);
-            
-            if (!groupedData.ContainsKey(key))
+
+            if (!groupedData.TryGetValue(key, out var paperPosition))
             {
-                groupedData[key] = new NetPositionDto
+                paperPosition = new NetPositionDto
                 {
                     ProductType = contract.ProductType,
                     Month = contract.ContractMonth
                 };
+                groupedData[key] = paperPosition;
             }
-            
+
             if (contract.Position == Core.Entities.PositionType.Long)
             {
-                groupedData[key].PaperLongPosition += contract.Quantity;
+                paperPosition.PaperLongPosition += contract.Quantity;
             }
             else
             {
-                groupedData[key].PaperShortPosition += contract.Quantity;
+                paperPosition.PaperShortPosition += contract.Quantity;
             }
         }
-        
+
         // Calculate net positions and exposure
         foreach (var position in groupedData.Values)
         {
@@ -235,28 +237,27 @@ public class NetPositionService : INetPositionService
             var month = monthDate.ToString("MMMyy").ToUpper();
             var key = (productType, month);
 
-            if (!groupedData.ContainsKey(key))
+            if (!groupedData.TryGetValue(key, out var purchasePos))
             {
-                groupedData[key] = new NetPositionDto
+                purchasePos = new NetPositionDto
                 {
                     ProductType = productType,
                     Month = month
                 };
+                groupedData[key] = purchasePos;
             }
 
             // Deduct settled quantities from open position
             var settledQty = settledPurchaseQty.GetValueOrDefault(contract.Id, 0m);
             var openQty = Math.Max(0, contract.ContractQuantity.Value - settledQty);
-            groupedData[key].PurchaseContractQuantity += openQty;
+            purchasePos.PurchaseContractQuantity += openQty;
 
-            if (!settledPurchaseByKey.ContainsKey(key)) settledPurchaseByKey[key] = 0;
-            settledPurchaseByKey[key] += settledQty;
+            settledPurchaseByKey[key] = settledPurchaseByKey.GetValueOrDefault(key, 0m) + settledQty;
 
             // Accumulate matched quantities per product for natural hedge calculation
             if (contract.MatchedQuantity > 0)
             {
-                if (!matchedByProduct.ContainsKey(productType)) matchedByProduct[productType] = 0;
-                matchedByProduct[productType] += contract.MatchedQuantity;
+                matchedByProduct[productType] = matchedByProduct.GetValueOrDefault(productType, 0m) + contract.MatchedQuantity;
             }
         }
 
@@ -276,22 +277,22 @@ public class NetPositionService : INetPositionService
             var month = monthDate.ToString("MMMyy").ToUpper();
             var key = (productType, month);
 
-            if (!groupedData.ContainsKey(key))
+            if (!groupedData.TryGetValue(key, out var salesPos))
             {
-                groupedData[key] = new NetPositionDto
+                salesPos = new NetPositionDto
                 {
                     ProductType = productType,
                     Month = month
                 };
+                groupedData[key] = salesPos;
             }
 
             // Deduct settled quantities from open position
             var settledQty = settledSalesQty.GetValueOrDefault(contract.Id, 0m);
             var openQty = Math.Max(0, contract.ContractQuantity.Value - settledQty);
-            groupedData[key].SalesContractQuantity += openQty;
+            salesPos.SalesContractQuantity += openQty;
 
-            if (!settledSalesByKey.ContainsKey(key)) settledSalesByKey[key] = 0;
-            settledSalesByKey[key] += settledQty;
+            settledSalesByKey[key] = settledSalesByKey.GetValueOrDefault(key, 0m) + settledQty;
         }
         
         // Process physical contracts
@@ -299,47 +300,49 @@ public class NetPositionService : INetPositionService
         {
             var month = contract.LaycanStart.ToString("MMMyy").ToUpper();
             var key = (contract.ProductType, month);
-            
-            if (!groupedData.ContainsKey(key))
+
+            if (!groupedData.TryGetValue(key, out var rtPhysPos))
             {
-                groupedData[key] = new NetPositionDto
+                rtPhysPos = new NetPositionDto
                 {
                     ProductType = contract.ProductType,
                     Month = month
                 };
+                groupedData[key] = rtPhysPos;
             }
-            
+
             if (contract.ContractType == Core.Entities.PhysicalContractType.Purchase)
             {
-                groupedData[key].PhysicalPurchases += contract.Quantity;
+                rtPhysPos.PhysicalPurchases += contract.Quantity;
             }
             else
             {
-                groupedData[key].PhysicalSales += contract.Quantity;
+                rtPhysPos.PhysicalSales += contract.Quantity;
             }
         }
-        
+
         // Process paper contracts
         foreach (var contract in paperContracts)
         {
             var key = (contract.ProductType, contract.ContractMonth);
-            
-            if (!groupedData.ContainsKey(key))
+
+            if (!groupedData.TryGetValue(key, out var rtPaperPos))
             {
-                groupedData[key] = new NetPositionDto
+                rtPaperPos = new NetPositionDto
                 {
                     ProductType = contract.ProductType,
                     Month = contract.ContractMonth
                 };
+                groupedData[key] = rtPaperPos;
             }
-            
+
             if (contract.Position == Core.Entities.PositionType.Long)
             {
-                groupedData[key].PaperLongPosition += contract.Quantity;
+                rtPaperPos.PaperLongPosition += contract.Quantity;
             }
             else
             {
-                groupedData[key].PaperShortPosition += contract.Quantity;
+                rtPaperPos.PaperShortPosition += contract.Quantity;
             }
         }
         

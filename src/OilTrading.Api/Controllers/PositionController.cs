@@ -326,9 +326,9 @@ public class PositionController : ControllerBase
         try
         {
             var positions = await _netPositionService.CalculateRealTimePositionsAsync(cancellationToken);
-            var filteredPositions = positions.Where(p => 
-                p.ProductType.Equals(productType, StringComparison.OrdinalIgnoreCase));
-            
+            var filteredPositions = positions.Where(p =>
+                p.ProductType.Equals(productType, StringComparison.OrdinalIgnoreCase)).ToList();
+
             return Ok(filteredPositions);
         }
         catch (Exception ex)
