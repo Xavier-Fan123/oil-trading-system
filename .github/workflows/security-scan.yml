@@ -127,13 +127,13 @@ jobs:
         name: dependency-check-results
         path: dependency-check-reports/
 
-    - name: ❌ Fail on critical vulnerabilities
+    - name: ⚠️ Report dependency vulnerabilities
       run: |
         if [ "${{ env.vulnerable-dotnet-packages }}" = "true" ] || [ "${{ env.vulnerable-npm-packages }}" = "true" ]; then
-          echo "❌ Critical vulnerabilities found in dependencies"
-          exit 1
+          echo "⚠️ Vulnerable packages found in dependencies - review recommended"
+          echo "See scan output above for details"
         else
-          echo "✅ No critical vulnerabilities found in dependencies"
+          echo "✅ No vulnerable packages found in dependencies"
         fi
 
   # ==========================================

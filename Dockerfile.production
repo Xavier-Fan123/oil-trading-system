@@ -31,9 +31,9 @@ COPY --chown=builduser:builduser src/OilTrading.Api/*.csproj ./src/OilTrading.Ap
 USER builduser
 
 # Restore dependencies (this layer will be cached unless project files change)
-RUN dotnet restore OilTrading-Production.sln \
+RUN dotnet restore OilTrading.sln \
     --runtime linux-musl-x64 \
-    --configfile nuget.config 2>/dev/null || dotnet restore OilTrading-Production.sln --runtime linux-musl-x64
+    --configfile nuget.config 2>/dev/null || dotnet restore OilTrading.sln --runtime linux-musl-x64
 
 # Copy source code
 COPY --chown=builduser:builduser src/ ./src/

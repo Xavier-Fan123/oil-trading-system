@@ -67,10 +67,14 @@ jobs:
     - name: 🔢 Generate version
       id: version
       run: |
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          VERSION="1.$(date +'%Y%m%d').${{ github.run_number }}"
+        # Use short date format to stay within 65535 limit for each version part
+        YEAR=$(date +'%y')
+        MONTHDAY=$(date +'%-m%d')
+        if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
+          VERSION="2.${YEAR}.${MONTHDAY}.${{ github.run_number }}"
         else
-          VERSION="1.$(date +'%Y%m%d').${{ github.run_number }}-preview"
+          # Preview builds use same numeric format (preview suffix is invalid for AssemblyVersion)
+          VERSION="0.${YEAR}.${MONTHDAY}.${{ github.run_number }}"
         fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Generated version: $VERSION"

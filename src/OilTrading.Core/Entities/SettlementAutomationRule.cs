@@ -53,9 +53,9 @@ public class SettlementAutomationRule : BaseEntity
     // Status and lifecycle
     public RuleStatus Status { get; private set; }
     public bool IsEnabled { get; private set; }
-    public DateTime CreatedDate { get; private set; }
+    public new DateTime CreatedDate { get; private set; }
     public DateTime? LastModifiedDate { get; private set; }
-    public string CreatedBy { get; private set; } = string.Empty;
+    public new string CreatedBy { get; private set; } = string.Empty;
     public string? LastModifiedBy { get; private set; }
 
     // Versioning for rule evolution

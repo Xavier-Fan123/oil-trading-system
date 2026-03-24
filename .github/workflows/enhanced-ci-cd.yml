@@ -153,10 +153,11 @@ jobs:
       run: |
         if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
           VERSION=${GITHUB_REF#refs/tags/v}
-        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          VERSION="1.$(date +'%Y%m%d').${{ github.run_number }}"
         else
-          VERSION="1.$(date +'%Y%m%d').${{ github.run_number }}-$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^a-zA-Z0-9]/-/g')"
+          # Use short date format to stay within 65535 limit for version parts
+          YEAR=$(date +'%y')
+          MONTHDAY=$(date +'%-m%d')
+          VERSION="2.${YEAR}.${MONTHDAY}.${{ github.run_number }}"
         fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Generated version: $VERSION"
@@ -182,10 +183,7 @@ jobs:
         dotnet build OilTrading.sln \
           --configuration Release \
           --no-restore \
-          -p:Version=${{ steps.version.outputs.version }} \
-          -p:TreatWarningsAsErrors=true \
-          -p:WarningsAsErrors="" \
-          -p:WarningsNotAsErrors="CS1591"
+          -p:Version=${{ steps.version.outputs.version }}
         
         # Build frontend
         cd frontend

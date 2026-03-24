@@ -81,4 +81,7 @@ public class Money : ValueObject
     
     public static bool operator ==(Money left, Money right) => EqualOperator(left, right);
     public static bool operator !=(Money left, Money right) => NotEqualOperator(left, right);
+
+    public override bool Equals(object? obj) => base.Equals(obj);
+    public override int GetHashCode() => base.GetHashCode();
 }

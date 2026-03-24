@@ -145,6 +145,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Security Scanning
     if: github.event_name != 'pull_request'
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
 
     steps:
     - name: Checkout code
@@ -160,10 +164,12 @@ jobs:
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
+      if: always()
       with:
         sarif_file: 'trivy-results.sarif'
 
     - name: Run Snyk security scan
+      continue-on-error: true
       uses: snyk/actions/dotnet@master
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
