@@ -383,6 +383,9 @@ x64/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 
+# Coverage reports
+coveragereport/
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 # OA -> X D240 sync runtime artifacts
