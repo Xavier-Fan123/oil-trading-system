@@ -1,48 +1,21 @@
-# Oil Trading & Risk Management System
+# Oil Trading System
 
-Enterprise-grade oil trading platform built with .NET 9 and React 18, implementing Clean Architecture with DDD, CQRS, and advanced contract lifecycle management.
+Oil Trading System is a full-stack platform for physical oil trading, settlement, position management, and operational workflows. This repository combines the .NET 9 backend, the React/Vite frontend, automated tests, and deployment assets in a single monorepo.
 
-## Architecture
+## What Is In This Repository
 
-```
-src/
-├── OilTrading.Core             # Domain entities, value objects, interfaces
-├── OilTrading.Application      # CQRS commands/queries (MediatR), validators, DTOs
-├── OilTrading.Infrastructure   # EF Core, PostgreSQL, Redis, repositories
-└── OilTrading.Api              # ASP.NET Core Web API, auth, middleware
+- ASP.NET Core API with Clean Architecture layers under `src/`
+- React 18 + TypeScript + Vite client under `frontend/`
+- xUnit-based unit, integration, and benchmark suites under `tests/`
+- Docker Compose, Helm, Kubernetes, Nginx, and monitoring assets for deployment and operations
 
-frontend/                       # React 18 + TypeScript + MUI + Vite
+## Core Capabilities
 
-tests/
-├── OilTrading.Tests            # Original test suite
-├── OilTrading.UnitTests        # Domain & application unit tests
-├── OilTrading.IntegrationTests # API integration tests (Testcontainers)
-└── OilTrading.Benchmarks       # Performance benchmarks
-```
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | .NET 9, ASP.NET Core, EF Core 9 |
-| Frontend | React 18, TypeScript, MUI, Vite, Recharts |
-| Database | PostgreSQL 15 (prod), SQLite (dev) |
-| Cache | Redis 7 |
-| Patterns | CQRS, Repository, Unit of Work, Domain Events |
-| Auth | JWT Bearer tokens, role-based access |
-| Observability | OpenTelemetry, Prometheus, Serilog |
-| Testing | xUnit, Moq, FluentAssertions, Bogus, Coverlet |
-
-## Core Features
-
-- **Purchase/Sales Contracts** -- Full lifecycle with approval workflow (Draft -> Active -> Completed)
-- **Contract Matching** -- Manual purchase-to-sales matching for natural hedging
-- **Settlement** -- Mixed-unit calculations (MT/BBL) with B/L data and 4-step workflow
-- **Position Tracking** -- Real-time net position with VaR risk metrics
-- **Market Data** -- Price feeds, basis analysis, and forward curves
-- **Shipping Operations** -- Logistics and freight management
-- **Trade Groups** -- Multi-leg strategy support with VaR aggregation
-- **Reporting** -- Contract execution reports with Excel export
+- Purchase and sales contract lifecycle management
+- Contract matching and settlement workflows
+- Position tracking and risk analytics
+- Market data ingestion and reporting
+- Shipping operations and trade-group support
 
 ## Quick Start
 
@@ -50,60 +23,76 @@ tests/
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [Node.js 18+](https://nodejs.org/)
-- Redis (bundled in `redis/` for Windows)
+- Docker Desktop or a local Redis/PostgreSQL setup for reproducible local runs
 
-### One-Click Start (Windows)
+### Recommended Local Start on Windows
 
+```powershell
+.\START-ALL.bat
 ```
-Double-click: START-ALL.bat
-```
 
-Starts Redis + Backend API (localhost:5000) + Frontend (localhost:3002) and opens browser.
+The startup script launches the bundled Redis server, the ASP.NET Core API on `http://localhost:5000`, and the Vite frontend on `http://localhost:3002`.
 
-### Manual Setup
+### Manual Development Start
 
-```bash
-# 1. Redis
+```powershell
+# Redis
 cd redis
-redis-server.exe redis.windows.conf
+.\redis-server.exe .\redis.windows.conf
 
-# 2. Backend API
-cd src/OilTrading.Api
-dotnet run                          # localhost:5000, Swagger at /swagger
+# API
+cd ..\src\OilTrading.Api
+dotnet run
 
-# 3. Frontend
-cd frontend
+# Frontend
+cd ..\..\frontend
 npm install
-npm run dev                         # localhost:3002
+npm run dev
 ```
 
-### Docker
+Swagger is available at `http://localhost:5000/swagger`, and the health endpoint is `http://localhost:5000/health`.
+
+### Docker Compose
 
 ```bash
-docker compose up -d                # API + PostgreSQL + Redis
+docker compose up -d
 ```
 
-## Testing
+The default compose stack provisions PostgreSQL, Redis, the API, Nginx, and the monitoring services declared in [`docker-compose.yml`](docker-compose.yml). The bundled compose settings are suitable for local or lab environments and should be hardened before public deployment.
 
-```bash
-# Run all tests
-dotnet test
+## Repository Layout
 
-# Run with coverage (Cobertura XML)
-dotnet test --collect:"XPlat Code Coverage"
-
-# Generate HTML coverage report
-dotnet tool restore
-dotnet reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
-# Open coveragereport/index.html in browser
+```text
+frontend/     React 18 client application
+src/          .NET domain, application, infrastructure, and API projects
+tests/        Unit, integration, and benchmark suites
+deployment/   Environment-specific compose assets
+helm/         Helm chart for cluster deployment
+k8s/          Kubernetes manifests and supporting config
+monitoring/   Prometheus, Grafana, ELK, and telemetry configuration
+scripts/      Operational, data, and deployment scripts
 ```
 
-## API Documentation
+## Engineering Practices
 
-Swagger UI: `http://localhost:5000/swagger`
+- Shared .NET build settings live in [`Directory.Build.props`](Directory.Build.props)
+- Example environment files are provided in [`.env.example`](.env.example) and [`frontend/.env.example`](frontend/.env.example)
+- GitHub Actions workflows cover build, test, and security automation
+- Long-form architecture, API, and operational documentation lives in [`docs/`](docs/README.md)
 
-Health check: `http://localhost:5000/health`
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Architecture blueprint](docs/architecture-blueprint.md)
+- [API reference](docs/api-reference.md)
+- [Advanced features guide](docs/advanced-features-guide.md)
+- [Production deployment guide](docs/production-deployment-guide.md)
+- [Testing and quality notes](docs/testing-and-quality.md)
+
+## Security and Configuration
+
+Keep local environment files and deployment secrets out of version control. Use the example env files as templates, and inject real credentials through local configuration, CI secrets, or your deployment platform.
 
 ## License
 
-MIT
+This project is released under the [MIT License](LICENSE).
