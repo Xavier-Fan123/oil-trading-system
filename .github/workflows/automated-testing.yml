@@ -1,9 +1,6 @@
 name: Automated Testing Suite
 
 on:
-  schedule:
-    # Run comprehensive tests daily at 2 AM UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_environment:

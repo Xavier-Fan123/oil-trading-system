@@ -1,9 +1,6 @@
 name: Security Scanning Pipeline
 
 on:
-  schedule:
-    # Run comprehensive security scans daily at 2 AM UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       scan_type:
@@ -118,7 +115,6 @@ jobs:
         args: >
           --enableRetired
           --enableExperimental
-          --suppression suppression.xml
 
     - name: 📤 Upload OWASP Dependency Check results
       uses: actions/upload-artifact@v4
@@ -338,6 +334,11 @@ jobs:
     steps:
     - name: 🔄 Checkout code
       uses: actions/checkout@v4
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.14.4'
 
     - name: 🔍 Kubernetes manifest security scan
       run: |
