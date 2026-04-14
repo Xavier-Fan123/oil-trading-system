@@ -123,12 +123,8 @@ public class ReportExecutionService : IReportExecutionService
         if (status == "Completed" || status == "Failed")
         {
             execution.ExecutionEndTime = DateTime.UtcNow;
-
-            if (execution.ExecutionStartTime != null)
-            {
-                var duration = execution.ExecutionEndTime.Value - execution.ExecutionStartTime;
-                execution.DurationSeconds = (double)duration.TotalSeconds;
-            }
+            var duration = execution.ExecutionEndTime.Value - execution.ExecutionStartTime;
+            execution.DurationSeconds = duration.TotalSeconds;
         }
 
         _context.ReportExecutions.Update(execution);

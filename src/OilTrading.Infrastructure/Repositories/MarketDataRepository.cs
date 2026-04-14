@@ -153,7 +153,7 @@ public class MarketDataRepository : Repository<MarketPrice>, IMarketDataReposito
     /// Add multiple market prices in batch for efficient bulk inserts.
     /// Used by X-group format upload for performance optimization.
     /// </summary>
-    public async Task AddRangeAsync(IEnumerable<MarketPrice> marketPrices, CancellationToken cancellationToken = default)
+    public new async Task AddRangeAsync(IEnumerable<MarketPrice> marketPrices, CancellationToken cancellationToken = default)
     {
         await _dbSet.AddRangeAsync(marketPrices, cancellationToken);
     }

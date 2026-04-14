@@ -964,109 +964,7 @@ static void ShowHelp(ILogger logger)
     logger.LogInformation("  dotnet run -- --validate-database --validate-config");
 }
 
-// Enhanced database initialization method - REMOVED DUE TO DUPLICATION
-
-static async Task InitializeInMemoryDatabaseAsync(ApplicationDbContext context, ILogger logger)
-{
-    logger.LogInformation("Setting up in-memory database");
-    
-    // Ensure database is created
-    await context.Database.EnsureCreatedAsync();
-    
-    // Seed with basic test data
-    await SeedBasicTestDataAsync(context, logger);
-}
-
-static async Task InitializeSqliteDatabaseAsync(ApplicationDbContext context, ILogger logger)
-{
-    logger.LogInformation("Setting up SQLite database");
-
-    try
-    {
-        // Apply all migrations - this will create the database if it doesn't exist
-        // EnsureCreatedAsync() doesn't work well with IsRowVersion() on SQLite, so use MigrateAsync() instead
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-        logger.LogInformation("Found {Count} pending migrations", pendingMigrations.Count());
-
-        await context.Database.MigrateAsync();
-        logger.LogInformation("Successfully applied all migrations");
-
-        // Seed with comprehensive test data
-        await SeedBasicTestDataAsync(context, logger);
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error during SQLite database initialization");
-        throw;
-    }
-}
-
-static async Task InitializePostgreSQLDatabaseAsync(IServiceScope scope, ApplicationDbContext context, ILogger logger, string environment)
-{
-    logger.LogInformation("Setting up PostgreSQL database for environment: {Environment}", environment);
-    
-    try
-    {
-        // Check database connectivity
-        if (!await context.Database.CanConnectAsync())
-        {
-            logger.LogWarning("Cannot connect to PostgreSQL database. Waiting for database to be ready...");
-            
-            // Wait up to 60 seconds for database to be ready
-            var maxRetries = 12;
-            var retryCount = 0;
-            while (!await context.Database.CanConnectAsync() && retryCount < maxRetries)
-            {
-                await Task.Delay(5000); // Wait 5 seconds
-                retryCount++;
-                logger.LogInformation("Retry {Retry}/{MaxRetries} - Checking database connectivity", retryCount, maxRetries);
-            }
-            
-            if (retryCount >= maxRetries)
-            {
-                throw new InvalidOperationException("Cannot establish connection to PostgreSQL database after maximum retries");
-            }
-        }
-        
-        // Apply migrations
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-        if (pendingMigrations.Any())
-        {
-            logger.LogInformation("Applying {Count} pending migrations to PostgreSQL", pendingMigrations.Count());
-            await context.Database.MigrateAsync();
-        }
-        else
-        {
-            logger.LogInformation("No pending migrations found");
-        }
-        
-        // Initialize database with optimizations
-        var dbInitializer = scope.ServiceProvider.GetService<DatabaseInitializer>();
-        if (dbInitializer != null)
-        {
-            await dbInitializer.InitializeAsync();
-        }
-        
-        // Seed data based on environment
-        if (environment == "Development" || environment == "Staging")
-        {
-            await SeedBasicTestDataAsync(context, logger);
-        }
-        else if (environment == "Production")
-        {
-            // In production, only seed reference data if tables are empty
-            await SeedProductionReferenceDataAsync(context, logger);
-        }
-        
-        logger.LogInformation("PostgreSQL database setup completed successfully");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Failed to initialize PostgreSQL database");
-        throw;
-    }
-}
-
+#pragma warning disable CS8321
 static async Task SeedBasicTestDataAsync(ApplicationDbContext context, ILogger logger)
 {
     // Check if data already exists
@@ -1369,4 +1267,5 @@ static async Task AddXGroupColumnsIfMissingAsync(ApplicationDbContext context, I
 }
 
 // Make Program class accessible for testing
+#pragma warning restore CS8321
 public partial class Program { }

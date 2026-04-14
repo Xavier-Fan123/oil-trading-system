@@ -92,7 +92,7 @@ public class DashboardControllerTests
         badRequestResult!.Value.Should().NotBeNull();
 
         // The error is returned as an anonymous object with an 'error' property
-        var errorValue = badRequestResult.Value.ToString();
+        var errorValue = badRequestResult.Value!.ToString();
         errorValue.Should().Contain("Failed to retrieve dashboard overview");
     }
 
@@ -380,7 +380,7 @@ public class DashboardControllerTests
         badRequestResult!.Value.Should().NotBeNull();
 
         // Verify the error response structure without using dynamic
-        var errorValue = badRequestResult.Value.ToString();
+        var errorValue = badRequestResult.Value!.ToString();
         errorValue.Should().NotBeNull();
     }
 

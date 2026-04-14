@@ -153,7 +153,7 @@ public class MultiLayerCacheService : IMultiLayerCacheService
                 var batch = _l2Cache.CreateBatch();
                 foreach (var key in keys)
                 {
-                    batch.KeyDeleteAsync(key);
+                    _ = batch.KeyDeleteAsync(key);
                 }
                 batch.Execute();
             }

@@ -232,9 +232,7 @@ public class GetSettlementAnalyticsQueryHandler : IRequestHandler<GetSettlementA
     /// </summary>
     private void CalculateProcessingMetrics(SettlementAnalyticsDto analytics, List<ContractSettlement> settlements)
     {
-        var settlementsWithProcessingTime = settlements
-            .Where(s => s.CreatedDate != null)
-            .ToList();
+        var settlementsWithProcessingTime = settlements.ToList();
 
         if (settlementsWithProcessingTime.Count == 0)
         {

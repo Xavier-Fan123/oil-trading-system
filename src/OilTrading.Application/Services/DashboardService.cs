@@ -731,8 +731,8 @@ public class DashboardService : IDashboardService
             {
                 ContractNumber = contract.ContractNumber.Value,
                 ContractType = "Purchase",
-                LaycanStart = contract.LaycanStart.Value,
-                LaycanEnd = contract.LaycanEnd ?? contract.LaycanStart.Value.AddDays(5),
+                LaycanStart = contract.LaycanStart!.Value,
+                LaycanEnd = contract.LaycanEnd ?? contract.LaycanStart!.Value.AddDays(5),
                 Product = contract.Product?.Type.ToString() ?? "Unknown",
                 Quantity = contract.ContractQuantity.Value
             });
@@ -744,8 +744,8 @@ public class DashboardService : IDashboardService
             {
                 ContractNumber = contract.ContractNumber.Value,
                 ContractType = "Sales",
-                LaycanStart = contract.LaycanStart.Value,
-                LaycanEnd = contract.LaycanEnd ?? contract.LaycanStart.Value.AddDays(5),
+                LaycanStart = contract.LaycanStart!.Value,
+                LaycanEnd = contract.LaycanEnd ?? contract.LaycanStart!.Value.AddDays(5),
                 Product = contract.Product?.Type.ToString() ?? "Unknown",
                 Quantity = contract.ContractQuantity.Value
             });

@@ -12,7 +12,11 @@ public static class TypeExtensions
         // Handle nullable types
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
         {
-            type = Nullable.GetUnderlyingType(type);
+            var underlyingType = Nullable.GetUnderlyingType(type);
+            if (underlyingType == null)
+                return false;
+
+            type = underlyingType;
         }
 
         switch (Type.GetTypeCode(type))

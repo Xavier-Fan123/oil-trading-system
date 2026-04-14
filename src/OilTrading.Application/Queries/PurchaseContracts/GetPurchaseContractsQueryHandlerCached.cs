@@ -27,11 +27,11 @@ public class GetPurchaseContractsQueryHandlerCached : IRequestHandler<GetPurchas
         // Generate cache key based on query parameters
         var cacheKey = _cacheService.GenerateKey(
             CacheKeys.PURCHASE_CONTRACTS,
-            request.Status,
-            request.SupplierId,
-            request.ProductId,
-            request.LaycanFrom?.ToString("yyyy-MM-dd"),
-            request.LaycanTo?.ToString("yyyy-MM-dd"),
+            request.Status ?? string.Empty,
+            request.SupplierId?.ToString() ?? string.Empty,
+            request.ProductId?.ToString() ?? string.Empty,
+            request.LaycanFrom?.ToString("yyyy-MM-dd") ?? string.Empty,
+            request.LaycanTo?.ToString("yyyy-MM-dd") ?? string.Empty,
             request.Page,
             request.PageSize);
 

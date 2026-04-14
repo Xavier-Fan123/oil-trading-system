@@ -120,7 +120,7 @@ public class CacheService : ICacheService
 
     public string GenerateKey(string prefix, params object[] keyParts)
     {
-        if (keyParts?.Length == 0)
+        if (keyParts == null || keyParts.Length == 0)
         {
             return prefix;
         }

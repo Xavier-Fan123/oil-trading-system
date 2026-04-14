@@ -19,8 +19,7 @@ public static class EPPlusLicenseConfig
         {
             try
             {
-                // For EPPlus 8+, set license context to non-commercial
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                ExcelPackage.License.SetNonCommercialOrganization("Oil Trading System");
                 _licenseSet = true;
             }
             catch (Exception)

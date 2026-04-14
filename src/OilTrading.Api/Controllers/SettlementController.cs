@@ -818,12 +818,18 @@ public class SettlementController : ControllerBase
                 IsPurchaseSettlement = isCachedPurchase
             };
 
-            var calculationResult = await _mediator.Send(command);
+            await _mediator.Send(command);
 
-            if (calculationResult == null)
+            var calculationResult = await _mediator.Send(new GetSettlementByIdQuery
             {
-                _logger.LogError("Settlement calculation returned null: {SettlementId}", settlementId);
-                return StatusCode(500, new { error = "Settlement not found or calculation failed" });
+                SettlementId = settlementId,
+                IsPurchaseSettlement = isCachedPurchase
+            });
+
+            if (calculationResult is null)
+            {
+                _logger.LogError("Settlement calculation completed but no settlement was found: {SettlementId}", settlementId);
+                return NotFound(new { error = "Settlement not found after calculation" });
             }
 
             _logger.LogInformation("Settlement calculated successfully: {SettlementId}", settlementId);
@@ -880,12 +886,18 @@ public class SettlementController : ControllerBase
                 ApprovedBy = request?.ApprovedBy ?? GetCurrentUserName()
             };
 
-            var approvalResult = await _mediator.Send(command);
+            await _mediator.Send(command);
 
-            if (approvalResult == null)
+            var approvalResult = await _mediator.Send(new GetSettlementByIdQuery
             {
-                _logger.LogError("Settlement approval returned null: {SettlementId}", settlementId);
-                return StatusCode(500, new { error = "Settlement not found or approval failed" });
+                SettlementId = settlementId,
+                IsPurchaseSettlement = isCachedPurchase
+            });
+
+            if (approvalResult is null)
+            {
+                _logger.LogError("Settlement approval completed but no settlement was found: {SettlementId}", settlementId);
+                return NotFound(new { error = "Settlement not found after approval" });
             }
 
             _logger.LogInformation("Settlement approved successfully: {SettlementId}", settlementId);
@@ -942,12 +954,18 @@ public class SettlementController : ControllerBase
                 FinalizedBy = request?.FinalizedBy ?? GetCurrentUserName()
             };
 
-            var finalizeResult = await _mediator.Send(command);
+            await _mediator.Send(command);
 
-            if (finalizeResult == null)
+            var finalizeResult = await _mediator.Send(new GetSettlementByIdQuery
             {
-                _logger.LogError("Settlement finalization returned null: {SettlementId}", settlementId);
-                return StatusCode(500, new { error = "Settlement not found or finalization failed" });
+                SettlementId = settlementId,
+                IsPurchaseSettlement = isCachedPurchase
+            });
+
+            if (finalizeResult is null)
+            {
+                _logger.LogError("Settlement finalization completed but no settlement was found: {SettlementId}", settlementId);
+                return NotFound(new { error = "Settlement not found after finalization" });
             }
 
             _logger.LogInformation("Settlement finalized successfully: {SettlementId}", settlementId);

@@ -56,6 +56,6 @@ public class ReportExecutionConfiguration : IEntityTypeConfiguration<ReportExecu
         builder.HasIndex(e => new { e.ReportConfigId, e.Status });
         builder.HasIndex(e => e.ExecutionStartTime)
             .HasFilter("[IsDeleted] = 0")
-            .HasName("IX_ReportExecutions_ExecutionStartTime_Active");
+            .HasDatabaseName("IX_ReportExecutions_ExecutionStartTime_Active");
     }
 }

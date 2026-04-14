@@ -369,7 +369,7 @@ public class HealthController : ControllerBase
         return Math.Round(Environment.ProcessorCount * 0.1, 2);
     }
 
-    private string MaskConnectionString(string connectionString)
+    private string MaskConnectionString(string? connectionString)
     {
         if (string.IsNullOrEmpty(connectionString))
             return "Not configured";

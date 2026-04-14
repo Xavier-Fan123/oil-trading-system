@@ -59,10 +59,9 @@ public class GetSettlementMetricsQueryHandler : IRequestHandler<GetSettlementMet
             metrics.AverageSettlementValue = allSettlements.Average(s => s.TotalSettlementAmount);
 
             // Calculate processing time
-            var settlementsWithCreationDate = allSettlements.Where(s => s.CreatedDate != null).ToList();
-            if (settlementsWithCreationDate.Count > 0)
+            if (allSettlements.Count > 0)
             {
-                var processingTimes = settlementsWithCreationDate
+                var processingTimes = allSettlements
                     .Select(s => (DateTime.UtcNow - s.CreatedDate).TotalHours)
                     .ToList();
 

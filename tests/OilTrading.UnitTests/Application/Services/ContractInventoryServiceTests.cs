@@ -47,7 +47,6 @@ public class ContractInventoryServiceTests
         // Arrange
         var contractId = Guid.NewGuid();
         var productCode = "BRENT";
-        var locationCode = "ROTTERDAM";
         var quantity = new Quantity(1000m, QuantityUnit.MT);
 
         var purchaseContract = CreatePurchaseContract(contractId, productCode, quantity);
@@ -96,7 +95,6 @@ public class ContractInventoryServiceTests
         // Arrange
         var contractId = Guid.NewGuid();
         var productCode = "BRENT";
-        var locationCode = "ROTTERDAM";
         var requiredQuantity = new Quantity(1000m, QuantityUnit.MT);
         var availableQuantity = 500m; // Less than required
 

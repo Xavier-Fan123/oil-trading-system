@@ -66,7 +66,8 @@ public class PaymentStatusCalculationService : IPaymentStatusCalculationService
         // Priority 1: Check for overdue (most severe status)
         var overdueDueDate = unpaidSettlements
             .Where(s => s.ActualPayableDueDate.HasValue)
-            .Any(s => nowDate > s.ActualPayableDueDate.Value.Date);
+            .Select(s => s.ActualPayableDueDate!.Value.Date)
+            .Any(dueDate => nowDate > dueDate);
 
         if (overdueDueDate)
         {
@@ -76,7 +77,8 @@ public class PaymentStatusCalculationService : IPaymentStatusCalculationService
         // Priority 2: Check if any settlement is due today
         var isDueToday = unpaidSettlements
             .Where(s => s.ActualPayableDueDate.HasValue)
-            .Any(s => nowDate == s.ActualPayableDueDate.Value.Date);
+            .Select(s => s.ActualPayableDueDate!.Value.Date)
+            .Any(dueDate => nowDate == dueDate);
 
         if (isDueToday)
         {
@@ -136,7 +138,8 @@ public class PaymentStatusCalculationService : IPaymentStatusCalculationService
         // Priority 1: Check for overdue (most severe status)
         var overdueDueDate = uncollectedSettlements
             .Where(s => s.ActualPayableDueDate.HasValue)
-            .Any(s => nowDate > s.ActualPayableDueDate.Value.Date);
+            .Select(s => s.ActualPayableDueDate!.Value.Date)
+            .Any(dueDate => nowDate > dueDate);
 
         if (overdueDueDate)
         {
@@ -146,7 +149,8 @@ public class PaymentStatusCalculationService : IPaymentStatusCalculationService
         // Priority 2: Check if any settlement is due today
         var isDueToday = uncollectedSettlements
             .Where(s => s.ActualPayableDueDate.HasValue)
-            .Any(s => nowDate == s.ActualPayableDueDate.Value.Date);
+            .Select(s => s.ActualPayableDueDate!.Value.Date)
+            .Any(dueDate => nowDate == dueDate);
 
         if (isDueToday)
         {
@@ -182,7 +186,7 @@ public class PaymentStatusCalculationService : IPaymentStatusCalculationService
 
         var dueDates = unpaidSettlements
             .Where(s => s.ActualPayableDueDate.HasValue)
-            .Select(s => s.ActualPayableDueDate.Value)
+            .Select(s => s.ActualPayableDueDate!.Value)
             .ToList();
 
         return dueDates.Any() ? dueDates.Min() : null;

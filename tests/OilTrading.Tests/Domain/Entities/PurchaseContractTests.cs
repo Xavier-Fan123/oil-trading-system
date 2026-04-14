@@ -77,7 +77,7 @@ public class PurchaseContractTests
         // Assert
         contract.PriceFormula.Should().Be(priceFormula);
         contract.ContractValue.Should().Be(contractValue);
-        contract.PriceFormula.IsFixedPrice.Should().BeTrue();
+        contract.PriceFormula!.IsFixedPrice.Should().BeTrue();
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class PurchaseContractTests
         // Assert
         contract.PriceFormula.Should().Be(priceFormula);
         contract.ContractValue.Should().Be(contractValue);
-        contract.PriceFormula.IsFixedPrice.Should().BeFalse();
+        contract.PriceFormula!.IsFixedPrice.Should().BeFalse();
     }
 
     [Fact]

@@ -296,7 +296,7 @@ public class MetricsController : ControllerBase
 
         if (!contracts.Any()) return 0;
 
-        return contracts.Average(c => c.ContractQuantity.Value * (decimal)(c.PriceFormula.FixedPrice ?? 75.0m));
+        return contracts.Average(c => c.ContractQuantity.Value * (c.PriceFormula?.FixedPrice ?? 75.0m));
     }
 
     private async Task<object> GetRiskMetricsAsync()

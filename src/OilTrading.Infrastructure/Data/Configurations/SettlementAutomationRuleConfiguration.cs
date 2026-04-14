@@ -9,7 +9,7 @@ namespace OilTrading.Infrastructure.Data.Configurations;
 /// <summary>
 /// Custom value converter for List&lt;Guid&gt; to/from JSON string
 /// </summary>
-internal class GuidListConverter : ValueConverter<List<Guid>, string?>
+internal class GuidListConverter : ValueConverter<List<Guid>?, string?>
 {
     public GuidListConverter() : base(
         v => ConvertToDb(v),

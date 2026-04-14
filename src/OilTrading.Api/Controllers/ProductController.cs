@@ -67,8 +67,8 @@ public class ProductController : ControllerBase
             ProductCode = dto.Code,
             Type = dto.Type,
             ProductType = dto.Type,
-            Grade = dto.Grade,
-            Specification = dto.Specification,
+            Grade = dto.Grade ?? string.Empty,
+            Specification = dto.Specification ?? string.Empty,
             UnitOfMeasure = dto.UnitOfMeasure,
             Density = dto.Density ?? 0,
             Origin = string.IsNullOrWhiteSpace(dto.Origin) ? "Unknown" : dto.Origin,
@@ -95,8 +95,8 @@ public class ProductController : ControllerBase
 
         product.Name = dto.Name;
         product.ProductName = dto.Name;
-        product.Grade = dto.Grade;
-        product.Specification = dto.Specification;
+        product.Grade = dto.Grade ?? product.Grade;
+        product.Specification = dto.Specification ?? product.Specification;
         product.Density = dto.Density ?? product.Density;
         product.Origin = string.IsNullOrWhiteSpace(dto.Origin) ? product.Origin : dto.Origin;
 

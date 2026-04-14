@@ -24,10 +24,10 @@ public class MoneyTests
     [InlineData(-1, "USD")]
     [InlineData(100, "")]
     [InlineData(100, null)]
-    public void Money_WithInvalidData_ShouldThrowException(decimal amount, string currency)
+    public void Money_WithInvalidData_ShouldThrowException(decimal amount, string? currency)
     {
         // Act & Assert
-        var action = () => new Money(amount, currency);
+        var action = () => new Money(amount, currency!);
         action.Should().Throw<OilTrading.Core.Common.DomainException>();
     }
 
