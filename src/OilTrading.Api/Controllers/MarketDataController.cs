@@ -712,10 +712,10 @@ public class MarketDataController : ControllerBase
 public class MarketDataUploadRequest
 {
     [FromForm(Name = "file")]
-    public IFormFile File { get; set; }
+    public IFormFile File { get; set; } = null!;
 
     [FromForm(Name = "fileType")]
-    public string FileType { get; set; }
+    public string FileType { get; set; } = string.Empty;
 
     [FromForm(Name = "overwriteExisting")]
     public bool OverwriteExisting { get; set; } = false;
@@ -724,5 +724,5 @@ public class MarketDataUploadRequest
 public class ExposureUploadRequest
 {
     [FromForm(Name = "file")]
-    public IFormFile File { get; set; }
+    public IFormFile File { get; set; } = null!;
 }

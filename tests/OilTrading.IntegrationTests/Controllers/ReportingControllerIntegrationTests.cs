@@ -18,9 +18,9 @@ namespace OilTrading.IntegrationTests.Controllers;
 /// </summary>
 public class ReportingControllerIntegrationTests : IAsyncLifetime
 {
-    private InMemoryWebApplicationFactory _factory;
-    private HttpClient _client;
-    private ApplicationDbContext _dbContext;
+    private InMemoryWebApplicationFactory _factory = null!;
+    private HttpClient _client = null!;
+    private ApplicationDbContext _dbContext = null!;
 
     public async Task InitializeAsync()
     {

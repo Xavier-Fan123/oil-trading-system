@@ -16,9 +16,9 @@ namespace OilTrading.IntegrationTests.BackgroundJobs;
 /// </summary>
 public class BackgroundJobIntegrationTests : IAsyncLifetime
 {
-    private InMemoryWebApplicationFactory _factory;
-    private IHost _host;
-    private ApplicationDbContext _dbContext;
+    private InMemoryWebApplicationFactory _factory = null!;
+    private IHost _host = null!;
+    private ApplicationDbContext _dbContext = null!;
 
     public Task InitializeAsync()
     {
