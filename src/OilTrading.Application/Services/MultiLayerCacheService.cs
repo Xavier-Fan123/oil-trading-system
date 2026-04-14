@@ -1,3 +1,5 @@
+#pragma warning disable CS1998
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -741,4 +743,3 @@ public class CacheStatisticsCollector
         };
     }
 }
-

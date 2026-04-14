@@ -1,3 +1,5 @@
+#pragma warning disable CS1998
+
 using Microsoft.Extensions.Logging;
 using OilTrading.Core.Repositories;
 using OilTrading.Application.TransactionOperations;
@@ -393,4 +395,3 @@ public class TransactionCoordinatorService : ITransactionCoordinatorService
         }
     }
 }
-

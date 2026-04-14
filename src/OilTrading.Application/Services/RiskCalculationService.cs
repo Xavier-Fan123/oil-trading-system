@@ -1,3 +1,5 @@
+#pragma warning disable CS1998
+
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;

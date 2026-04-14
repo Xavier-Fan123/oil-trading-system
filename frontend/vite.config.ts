@@ -51,6 +51,22 @@ export default defineConfig({
     outDir: 'dist',
     // Reduce concurrent operations to prevent file handle exhaustion
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'mui-vendor': [
+            '@emotion/react',
+            '@emotion/styled',
+            '@mui/icons-material',
+            '@mui/material',
+            '@mui/x-date-pickers',
+            'date-fns',
+          ],
+          'data-vendor': ['@tanstack/react-query', 'axios', 'recharts'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     // Re-enable dependency discovery but limit file watching

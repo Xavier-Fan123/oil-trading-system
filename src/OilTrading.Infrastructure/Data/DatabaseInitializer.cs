@@ -1,3 +1,5 @@
+#pragma warning disable CS1998
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

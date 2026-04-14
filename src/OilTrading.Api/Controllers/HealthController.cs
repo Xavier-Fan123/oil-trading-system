@@ -1,3 +1,5 @@
+#pragma warning disable CS1998
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OilTrading.Infrastructure.Data;

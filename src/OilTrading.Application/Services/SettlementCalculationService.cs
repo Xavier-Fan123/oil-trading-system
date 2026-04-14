@@ -1,3 +1,5 @@
+#pragma warning disable CS1998
+
 using OilTrading.Core.Entities;
 using OilTrading.Core.Enums;
 using OilTrading.Core.Repositories;
