@@ -1,3 +1,4 @@
+#pragma warning disable CS1998
 using Microsoft.AspNetCore.Mvc;
 using OilTrading.Application.Services;
 using OilTrading.Application.DTOs;

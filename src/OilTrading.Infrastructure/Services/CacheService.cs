@@ -1,3 +1,4 @@
+#pragma warning disable CS1998
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;

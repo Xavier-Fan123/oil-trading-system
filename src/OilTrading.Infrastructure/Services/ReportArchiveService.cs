@@ -1,3 +1,4 @@
+#pragma warning disable CS1998
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OilTrading.Core.Entities;

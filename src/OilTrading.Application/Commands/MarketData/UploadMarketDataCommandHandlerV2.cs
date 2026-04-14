@@ -1,3 +1,4 @@
+#pragma warning disable CS1998
 using MediatR;
 using ClosedXML.Excel;
 using OilTrading.Application.DTOs;

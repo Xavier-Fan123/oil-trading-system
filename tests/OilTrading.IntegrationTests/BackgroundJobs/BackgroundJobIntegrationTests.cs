@@ -20,7 +20,7 @@ public class BackgroundJobIntegrationTests : IAsyncLifetime
     private IHost _host;
     private ApplicationDbContext _dbContext;
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         _factory = new InMemoryWebApplicationFactory();
         _dbContext = _factory.GetDbContext();
@@ -37,6 +37,7 @@ public class BackgroundJobIntegrationTests : IAsyncLifetime
             });
 
         _host = hostBuilder.Build();
+        return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()

@@ -9,6 +9,7 @@ using OilTrading.Api.Attributes;
 using OilTrading.Core.Enums;
 using OilTrading.Core.Repositories;
 
+#pragma warning disable CS1998
 namespace OilTrading.Api.Controllers;
 
 [ApiController]

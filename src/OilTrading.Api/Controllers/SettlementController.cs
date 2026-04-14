@@ -1,3 +1,4 @@
+#pragma warning disable CS1998
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using OilTrading.Application.Commands.Settlements;

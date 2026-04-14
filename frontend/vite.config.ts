@@ -2,6 +2,41 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+const uiVendorPackages = [
+  '@remix-run',
+  '@emotion',
+  '@floating-ui',
+  '@mui',
+  '@popperjs',
+  'clsx',
+  'date-fns',
+  'dom-helpers',
+  'react',
+  'react-dom',
+  'react-router',
+  'react-router-dom',
+  'react-transition-group',
+  'scheduler',
+  'stylis',
+]
+const dataVendorPackages = [
+  '@apollo',
+  '@tanstack',
+  'axios',
+  'graphql',
+  'graphql-tag',
+  'graphql-ws',
+  'optimism',
+  'subscriptions-transport-ws',
+  'ts-invariant',
+  'ws',
+]
+const chartVendorPackages = ['d3-', 'internmap', 'lodash', 'recharts']
+
+function isNodeModulePackage(id: string, packages: string[]) {
+  return packages.some(pkg => id.includes(`/node_modules/${pkg}`))
+}
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -53,17 +88,24 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'mui-vendor': [
-            '@emotion/react',
-            '@emotion/styled',
-            '@mui/icons-material',
-            '@mui/material',
-            '@mui/x-date-pickers',
-            'date-fns',
-          ],
-          'data-vendor': ['@tanstack/react-query', 'axios', 'recharts'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined
+          }
+
+          if (isNodeModulePackage(id, chartVendorPackages)) {
+            return 'charts-vendor'
+          }
+
+          if (isNodeModulePackage(id, uiVendorPackages)) {
+            return 'ui-vendor'
+          }
+
+          if (isNodeModulePackage(id, dataVendorPackages)) {
+            return 'data-vendor'
+          }
+
+          return undefined
         },
       },
     },

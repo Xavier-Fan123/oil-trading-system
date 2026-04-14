@@ -1,3 +1,4 @@
+#pragma warning disable CS1998
 using OilTrading.Application.TransactionOperations;
 using OilTrading.Application.DTOs;
 using OilTrading.Core.ValueObjects;
