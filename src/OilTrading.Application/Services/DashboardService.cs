@@ -321,7 +321,7 @@ public class DashboardService : IDashboardService
         return alerts.Count();
     }
 
-    private async Task<decimal> CalculateAverageTradeSize(
+    private Task<decimal> CalculateAverageTradeSize(
         IEnumerable<PurchaseContract> purchaseContracts,
         IEnumerable<SalesContract> salesContracts,
         IEnumerable<PaperContract> paperContracts)
@@ -332,10 +332,10 @@ public class DashboardService : IDashboardService
         
         var totalTrades = purchaseContracts.Count() + salesContracts.Count() + paperContracts.Count();
         
-        return totalTrades > 0 ? totalVolume / totalTrades : 0;
+        return Task.FromResult(totalTrades > 0 ? totalVolume / totalTrades : 0);
     }
 
-    private async Task<Dictionary<string, decimal>> CalculateProductBreakdown(
+    private Task<Dictionary<string, decimal>> CalculateProductBreakdown(
         IEnumerable<PurchaseContract> purchaseContracts,
         IEnumerable<SalesContract> salesContracts,
         IEnumerable<PaperContract> paperContracts)
@@ -363,10 +363,10 @@ public class DashboardService : IDashboardService
             breakdown[product] += contract.Quantity;
         }
         
-        return breakdown;
+        return Task.FromResult(breakdown);
     }
 
-    private async Task<Dictionary<string, decimal>> CalculateCounterpartyBreakdown(
+    private Task<Dictionary<string, decimal>> CalculateCounterpartyBreakdown(
         IEnumerable<PurchaseContract> purchaseContracts,
         IEnumerable<SalesContract> salesContracts)
     {
@@ -386,7 +386,7 @@ public class DashboardService : IDashboardService
             breakdown[counterparty] += contract.ContractQuantity.Value;
         }
         
-        return breakdown;
+        return Task.FromResult(breakdown);
     }
 
     private async Task<decimal> CalculateTradeFrequency(DateTime start, DateTime end, CancellationToken cancellationToken)
@@ -400,35 +400,35 @@ public class DashboardService : IDashboardService
         return Math.Round(monthlyRate, 1);
     }
 
-    private async Task<Dictionary<string, decimal>> CalculateVolumeByProduct(
+    private Task<Dictionary<string, decimal>> CalculateVolumeByProduct(
         IEnumerable<PurchaseContract> purchaseContracts,
         IEnumerable<SalesContract> salesContracts,
         IEnumerable<PaperContract> paperContracts)
     {
-        return await CalculateProductBreakdown(purchaseContracts, salesContracts, paperContracts);
+        return CalculateProductBreakdown(purchaseContracts, salesContracts, paperContracts);
     }
 
-    private async Task<decimal> CalculateTotalReturn(IEnumerable<PnLDto> pnlData)
+    private Task<decimal> CalculateTotalReturn(IEnumerable<PnLDto> pnlData)
     {
-        return pnlData.Sum(p => p.UnrealizedPnL);
+        return Task.FromResult(pnlData.Sum(p => p.UnrealizedPnL));
     }
 
-    private async Task<decimal> CalculateAnnualizedReturn(DateTime start, DateTime end, IEnumerable<PnLDto> pnlData)
+    private Task<decimal> CalculateAnnualizedReturn(DateTime start, DateTime end, IEnumerable<PnLDto> pnlData)
     {
         var days = (end - start).Days;
         var totalReturn = pnlData.Sum(p => p.UnrealizedPnL);
-        return days > 0 ? (totalReturn / days) * 365 : 0;
+        return Task.FromResult(days > 0 ? (totalReturn / days) * 365 : 0);
     }
 
-    private async Task<decimal> CalculateSharpeRatio(IEnumerable<PnLDto> pnlData)
+    private Task<decimal> CalculateSharpeRatio(IEnumerable<PnLDto> pnlData)
     {
-        if (!pnlData.Any()) return 0;
+        if (!pnlData.Any()) return Task.FromResult(0m);
         
         var returns = pnlData.Select(p => p.UnrealizedPnL).ToList();
         var avgReturn = returns.Average();
         var stdDev = Math.Sqrt(returns.Select(r => Math.Pow((double)(r - avgReturn), 2)).Average());
         
-        return stdDev > 0 ? (decimal)(avgReturn / (decimal)stdDev) : 0;
+        return Task.FromResult(stdDev > 0 ? (decimal)(avgReturn / (decimal)stdDev) : 0);
     }
 
     private decimal CalculateMaxDrawdownFromHistory(List<DailyPnLDto> history)
@@ -445,18 +445,18 @@ public class DashboardService : IDashboardService
         return maxDrawdown;
     }
 
-    private async Task<decimal> CalculateWinRate(IEnumerable<PnLDto> pnlData)
+    private Task<decimal> CalculateWinRate(IEnumerable<PnLDto> pnlData)
     {
-        if (!pnlData.Any()) return 0;
+        if (!pnlData.Any()) return Task.FromResult(0m);
         var winningTrades = pnlData.Count(p => p.UnrealizedPnL > 0);
-        return (decimal)winningTrades / pnlData.Count() * 100;
+        return Task.FromResult((decimal)winningTrades / pnlData.Count() * 100);
     }
 
-    private async Task<decimal> CalculateProfitFactor(IEnumerable<PnLDto> pnlData)
+    private Task<decimal> CalculateProfitFactor(IEnumerable<PnLDto> pnlData)
     {
         var profits = pnlData.Where(p => p.UnrealizedPnL > 0).Sum(p => p.UnrealizedPnL);
         var losses = Math.Abs(pnlData.Where(p => p.UnrealizedPnL < 0).Sum(p => p.UnrealizedPnL));
-        return losses > 0 ? profits / losses : 0;
+        return Task.FromResult(losses > 0 ? profits / losses : 0);
     }
 
     private async Task<decimal> CalculateVaRUtilization(CancellationToken cancellationToken)
@@ -465,9 +465,9 @@ public class DashboardService : IDashboardService
         return Math.Min(100, (riskCalculation.HistoricalVaR95 / 5_000_000m) * 100);
     }
 
-    private async Task<decimal> CalculateVolatilityAdjustedReturn(IEnumerable<PnLDto> pnlData)
+    private Task<decimal> CalculateVolatilityAdjustedReturn(IEnumerable<PnLDto> pnlData)
     {
-        return await CalculateSharpeRatio(pnlData);
+        return CalculateSharpeRatio(pnlData);
     }
 
     private async Task<List<DailyPnLDto>> GetDailyPnLHistory(DateTime start, DateTime end, CancellationToken cancellationToken)
@@ -486,16 +486,16 @@ public class DashboardService : IDashboardService
         return history;
     }
 
-    private async Task<List<ProductPerformanceDto>> GetProductPerformance(IEnumerable<ExposureDto> exposures)
+    private Task<List<ProductPerformanceDto>> GetProductPerformance(IEnumerable<ExposureDto> exposures)
     {
         var totalExposure = exposures.Sum(e => e.TotalExposure);
-        return exposures.Select(e => new ProductPerformanceDto
+        return Task.FromResult(exposures.Select(e => new ProductPerformanceDto
         {
             Product = e.Category,
             Exposure = e.TotalExposure,
             PnL = 0, // Needs per-product P&L tracking
             Return = totalExposure != 0 ? Math.Round((e.TotalExposure / totalExposure) * 100, 2) : 0
-        }).ToList();
+        }).ToList());
     }
 
     private decimal CalculatePriceChange(string productName, IEnumerable<MarketPrice> priceHistory)
@@ -514,7 +514,7 @@ public class DashboardService : IDashboardService
         return oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice) * 100 : 0;
     }
 
-    private async Task<Dictionary<string, decimal>> CalculateVolatilityIndicators(IEnumerable<MarketPrice> marketPrices)
+    private Task<Dictionary<string, decimal>> CalculateVolatilityIndicators(IEnumerable<MarketPrice> marketPrices)
     {
         var result = new Dictionary<string, decimal>();
         var grouped = marketPrices.GroupBy(p => p.ProductName);
@@ -546,7 +546,7 @@ public class DashboardService : IDashboardService
             result["NoData"] = 0;
         }
 
-        return result;
+        return Task.FromResult(result);
     }
 
     private async Task<Dictionary<string, Dictionary<string, decimal>>> CalculateCorrelationMatrix(CancellationToken cancellationToken)
@@ -600,12 +600,12 @@ public class DashboardService : IDashboardService
         return result;
     }
 
-    private async Task<Dictionary<string, decimal>> CalculateTechnicalIndicators(IEnumerable<MarketPrice> priceHistory)
+    private Task<Dictionary<string, decimal>> CalculateTechnicalIndicators(IEnumerable<MarketPrice> priceHistory)
     {
         var result = new Dictionary<string, decimal>();
         var prices = priceHistory.OrderBy(p => p.PriceDate).Select(p => p.Price).ToList();
 
-        if (prices.Count == 0) return result;
+        if (prices.Count == 0) return Task.FromResult(result);
 
         // Simple Moving Average (20-day)
         if (prices.Count >= 20)
@@ -646,10 +646,10 @@ public class DashboardService : IDashboardService
         // Latest price
         result["LatestPrice"] = prices.Last();
 
-        return result;
+        return Task.FromResult(result);
     }
 
-    private async Task<List<MarketTrendDto>> AnalyzeMarketTrends(IEnumerable<MarketPrice> priceHistory)
+    private Task<List<MarketTrendDto>> AnalyzeMarketTrends(IEnumerable<MarketPrice> priceHistory)
     {
         var trends = new List<MarketTrendDto>();
         var grouped = priceHistory.GroupBy(p => p.ProductName);
@@ -685,7 +685,7 @@ public class DashboardService : IDashboardService
             trends.Add(new MarketTrendDto { Product = group.Key, Trend = trend, Strength = strength });
         }
 
-        return trends;
+        return Task.FromResult(trends);
     }
 
     private async Task<Dictionary<string, decimal>> CalculateSentimentIndicators()

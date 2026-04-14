@@ -248,7 +248,7 @@ public static class DependencyInjection
         // - Profile implementations (Profile-based mapping configurations)
         // Examples: PurchaseContractMappingProfile, SettlementMappingProfile, etc.
 
-        services.AddAutoMapper(Assembly.GetExecutingAssembly());
+        services.AddAutoMapper(_ => { }, Assembly.GetExecutingAssembly());
 
         // ====================================================================
         // 4. MEDIATOR PIPELINE BEHAVIORS (Cross-cutting Concerns)
