@@ -1,10 +1,6 @@
-name: Oil Trading System CI/CD Pipeline
+name: Manual Legacy Oil Trading System CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main, master, develop, 'feature/*' ]
-  pull_request:
-    branches: [ main, master, develop ]
   workflow_dispatch:
     inputs:
       environment:
@@ -39,24 +35,24 @@ jobs:
       artifact-name: ${{ steps.build.outputs.artifact-name }}
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0 # Required for GitVersion
 
-    - name: 🏗️ Setup .NET
+    - name: 馃彈锔?Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: 🏗️ Setup Node.js
+    - name: 馃彈锔?Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
-    - name: 📦 Cache NuGet packages
+    - name: 馃摝 Cache NuGet packages
       uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
@@ -64,7 +60,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
-    - name: 🔢 Generate version
+    - name: 馃敘 Generate version
       id: version
       run: |
         # Use short date format to stay within 65535 limit for each version part
@@ -79,12 +75,12 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Generated version: $VERSION"
 
-    - name: 🔧 Restore dependencies
+    - name: 馃敡 Restore dependencies
       run: |
         dotnet restore OilTrading.sln
         cd frontend && npm ci
 
-    - name: 🏗️ Build solution
+    - name: 馃彈锔?Build solution
       id: build
       run: |
         dotnet build OilTrading.sln \
@@ -100,7 +96,7 @@ jobs:
         
         echo "artifact-name=oil-trading-${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
 
-    - name: 🧪 Run unit tests
+    - name: 馃И Run unit tests
       if: ${{ !inputs.skip_tests }}
       run: |
         dotnet test tests/OilTrading.UnitTests/*.csproj \
@@ -112,7 +108,7 @@ jobs:
           --collect:"XPlat Code Coverage" \
           -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
-    - name: 📊 Publish test results
+    - name: 馃搳 Publish test results
       uses: dorny/test-reporter@v1
       if: always() && !inputs.skip_tests
       with:
@@ -120,14 +116,14 @@ jobs:
         path: './test-results/*.trx'
         reporter: dotnet-trx
 
-    - name: 📈 Upload code coverage
+    - name: 馃搱 Upload code coverage
       if: ${{ !inputs.skip_tests }}
       uses: codecov/codecov-action@v4
       with:
         file: ./test-results/**/coverage.opencover.xml
         fail_ci_if_error: false
 
-    - name: 📦 Create application package
+    - name: 馃摝 Create application package
       run: |
         # Create application package
         mkdir -p ./artifacts
@@ -145,7 +141,7 @@ jobs:
         # Create deployment scripts
         cp -r deployment/ ./artifacts/deployment 2>/dev/null || true
 
-    - name: 📤 Upload build artifacts
+    - name: 馃摛 Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.build.outputs.artifact-name }}
@@ -187,21 +183,21 @@ jobs:
           - 6379:6379
 
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: 🏗️ Setup .NET
+    - name: 馃彈锔?Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: 📥 Download build artifacts
+    - name: 馃摜 Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ needs.build-and-test.outputs.artifact-name }}
         path: ./artifacts/
 
-    - name: 🧪 Run integration tests
+    - name: 馃И Run integration tests
       env:
         ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=oiltrading_test;Username=postgres;Password=postgres
         ConnectionStrings__Redis: localhost:6379
@@ -213,7 +209,7 @@ jobs:
           --results-directory ./test-results \
           --collect:"XPlat Code Coverage"
 
-    - name: 📊 Publish integration test results
+    - name: 馃搳 Publish integration test results
       uses: dorny/test-reporter@v1
       if: always()
       with:
@@ -232,15 +228,15 @@ jobs:
       security-events: write
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: 🏗️ Setup .NET
+    - name: 馃彈锔?Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: 🔍 Run security audit
+    - name: 馃攳 Run security audit
       run: |
         # .NET security audit
         dotnet list OilTrading.sln package --vulnerable --include-transitive
@@ -248,20 +244,20 @@ jobs:
         # Install security scanning tools
         dotnet tool install --global security-scan --version 5.6.7
 
-    - name: 🔒 Run SAST analysis
+    - name: 馃敀 Run SAST analysis
       uses: github/codeql-action/init@v3
       with:
         languages: csharp, javascript
 
-    - name: 🏗️ Build for CodeQL
+    - name: 馃彈锔?Build for CodeQL
       run: |
         dotnet restore OilTrading.sln
         dotnet build OilTrading.sln --configuration Release --no-restore
 
-    - name: 🔒 Perform CodeQL Analysis
+    - name: 馃敀 Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
 
-    - name: 🛡️ Run Trivy vulnerability scanner
+    - name: 馃洝锔?Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
@@ -269,7 +265,7 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
 
-    - name: 📤 Upload Trivy scan results
+    - name: 馃摛 Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
@@ -282,26 +278,26 @@ jobs:
     name: Performance Testing
     runs-on: ubuntu-latest
     needs: build-and-test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: 📥 Download build artifacts
+    - name: 馃摜 Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ needs.build-and-test.outputs.artifact-name }}
         path: ./artifacts/
 
-    - name: 🏗️ Setup test environment
+    - name: 馃彈锔?Setup test environment
       run: |
         # Start application for performance testing
         cd ./artifacts/api
         nohup dotnet OilTrading.Api.dll &
         sleep 30 # Wait for application to start
 
-    - name: ⚡ Run performance tests
+    - name: 鈿?Run performance tests
       run: |
         # Install k6 for load testing
         sudo gpg -k
@@ -315,7 +311,7 @@ jobs:
           k6 run --out json=./performance-results.json ./tests/performance/load-test.js
         fi
 
-    - name: 📊 Upload performance results
+    - name: 馃搳 Upload performance results
       uses: actions/upload-artifact@v4
       if: always()
       with:
@@ -329,29 +325,29 @@ jobs:
     name: Build Docker Images
     runs-on: ubuntu-latest
     needs: [build-and-test, integration-tests, security-scan]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: 🏗️ Set up Docker Buildx
+    - name: 馃彈锔?Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: 🔐 Log in to Container Registry
+    - name: 馃攼 Log in to Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 📥 Download build artifacts
+    - name: 馃摜 Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ needs.build-and-test.outputs.artifact-name }}
         path: ./artifacts/
 
-    - name: 🏷️ Extract metadata
+    - name: 馃彿锔?Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
@@ -362,7 +358,7 @@ jobs:
           type=semver,pattern={{version}},value=${{ needs.build-and-test.outputs.version }}
           type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: 🐳 Build and push API image
+    - name: 馃惓 Build and push API image
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -386,22 +382,22 @@ jobs:
     environment: staging
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: 📥 Download build artifacts
+    - name: 馃摜 Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ needs.build-and-test.outputs.artifact-name }}
         path: ./artifacts/
 
-    - name: 🔧 Configure deployment
+    - name: 馃敡 Configure deployment
       run: |
         # Replace configuration placeholders
         sed -i 's/__VERSION__/${{ needs.build-and-test.outputs.version }}/g' ./artifacts/deployment/staging/docker-compose.yml
         sed -i 's/__DATABASE_CONNECTION__/${{ secrets.STAGING_DB_CONNECTION }}/g' ./artifacts/deployment/staging/.env
 
-    - name: 🚀 Deploy to staging
+    - name: 馃殌 Deploy to staging
       run: |
         echo "Deploying version ${{ needs.build-and-test.outputs.version }} to staging..."
         
@@ -413,10 +409,10 @@ jobs:
         cp -r ./artifacts/deployment/staging/* ./deployment-staging/
         
         # Simulate deployment
-        echo "✅ Application deployed to staging environment"
-        echo "🔗 Staging URL: https://staging.oiltrading.example.com"
+        echo "鉁?Application deployed to staging environment"
+        echo "馃敆 Staging URL: https://staging.oiltrading.example.com"
 
-    - name: 🧪 Run smoke tests
+    - name: 馃И Run smoke tests
       run: |
         # Wait for deployment to be ready
         sleep 60
@@ -425,12 +421,12 @@ jobs:
         echo "Running smoke tests..."
         
         # Simulate smoke tests
-        curl -f https://staging.oiltrading.example.com/health || echo "❌ Health check failed"
-        curl -f https://staging.oiltrading.example.com/api/health || echo "❌ API health check failed"
+        curl -f https://staging.oiltrading.example.com/health || echo "鉂?Health check failed"
+        curl -f https://staging.oiltrading.example.com/api/health || echo "鉂?API health check failed"
         
-        echo "✅ Smoke tests completed"
+        echo "鉁?Smoke tests completed"
 
-    - name: 📢 Notify deployment
+    - name: 馃摙 Notify deployment
       uses: 8398a7/action-slack@v3
       if: always()
       with:
@@ -450,32 +446,32 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-and-test, integration-tests, security-scan, docker-build, deploy-staging]
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
     environment: production
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: 📥 Download build artifacts
+    - name: 馃摜 Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: ${{ needs.build-and-test.outputs.artifact-name }}
         path: ./artifacts/
 
-    - name: 🔧 Configure production deployment
+    - name: 馃敡 Configure production deployment
       run: |
         # Replace configuration placeholders for production
         sed -i 's/__VERSION__/${{ needs.build-and-test.outputs.version }}/g' ./artifacts/deployment/production/docker-compose.yml
         sed -i 's/__DATABASE_CONNECTION__/${{ secrets.PROD_DB_CONNECTION }}/g' ./artifacts/deployment/production/.env
 
-    - name: 💾 Create database backup
+    - name: 馃捑 Create database backup
       run: |
         echo "Creating database backup before deployment..."
         # In production, run actual backup commands
-        echo "✅ Database backup completed"
+        echo "鉁?Database backup completed"
 
-    - name: 🔵 Blue-Green Deployment (Blue Phase)
+    - name: 馃數 Blue-Green Deployment (Blue Phase)
       run: |
         echo "Starting blue-green deployment..."
         echo "Deploying to blue environment..."
@@ -485,33 +481,33 @@ jobs:
         cp -r ./artifacts/deployment/production/* ./deployment-blue/
         
         # Simulate blue deployment
-        echo "✅ Blue environment deployed"
+        echo "鉁?Blue environment deployed"
 
-    - name: 🧪 Run production smoke tests
+    - name: 馃И Run production smoke tests
       run: |
         echo "Running production smoke tests on blue environment..."
         sleep 30
         
         # Run comprehensive health checks
-        echo "✅ All smoke tests passed"
+        echo "鉁?All smoke tests passed"
 
-    - name: 🔄 Traffic Switch (Green Phase)
+    - name: 馃攧 Traffic Switch (Green Phase)
       run: |
         echo "Switching traffic to blue environment (making it green)..."
         
         # Update load balancer configuration
         # In production, this would update your load balancer or ingress controller
         
-        echo "✅ Traffic switched to new version"
+        echo "鉁?Traffic switched to new version"
 
-    - name: 🧹 Cleanup old version
+    - name: 馃Ч Cleanup old version
       run: |
         echo "Cleaning up old version after successful deployment..."
         
         # Keep old version for quick rollback, cleanup after some time
-        echo "✅ Old version marked for cleanup"
+        echo "鉁?Old version marked for cleanup"
 
-    - name: 📊 Update deployment metrics
+    - name: 馃搳 Update deployment metrics
       run: |
         echo "Updating deployment metrics..."
         
@@ -519,12 +515,12 @@ jobs:
         echo "Deployment successful at $(date)"
         echo "Version: ${{ needs.build-and-test.outputs.version }}"
 
-    - name: 📢 Notify successful deployment
+    - name: 馃摙 Notify successful deployment
       uses: 8398a7/action-slack@v3
       with:
         status: success
         text: |
-          🎉 Production deployment successful!
+          馃帀 Production deployment successful!
           Version: ${{ needs.build-and-test.outputs.version }}
           Environment: Production
           URL: https://oiltrading.example.com
@@ -538,16 +534,16 @@ jobs:
   rollback:
     name: Rollback Deployment
     runs-on: ubuntu-latest
-    if: failure() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    if: failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch')
     environment: production-rollback
     
     steps:
-    - name: 🔄 Checkout code
+    - name: 馃攧 Checkout code
       uses: actions/checkout@v4
 
-    - name: ⏪ Execute rollback
+    - name: 鈴?Execute rollback
       run: |
-        echo "🚨 Executing emergency rollback..."
+        echo "馃毃 Executing emergency rollback..."
         
         # Get previous version from deployment history
         PREVIOUS_VERSION="1.20240101.100" # This would be retrieved from deployment history
@@ -557,24 +553,24 @@ jobs:
         # Restore previous version
         # In production, this would restore the previous container/deployment
         
-        echo "✅ Rollback completed"
+        echo "鉁?Rollback completed"
 
-    - name: 🧪 Verify rollback
+    - name: 馃И Verify rollback
       run: |
         echo "Verifying rollback..."
         
         # Run health checks on rolled back version
         sleep 30
         
-        echo "✅ Rollback verification successful"
+        echo "鉁?Rollback verification successful"
 
-    - name: 🚨 Notify rollback
+    - name: 馃毃 Notify rollback
       uses: 8398a7/action-slack@v3
       with:
         status: custom
         custom_payload: |
           {
-            text: "🚨 ROLLBACK EXECUTED",
+            text: "馃毃 ROLLBACK EXECUTED",
             attachments: [{
               color: "warning",
               fields: [{
@@ -602,10 +598,10 @@ jobs:
     name: Post-Deployment Monitoring
     runs-on: ubuntu-latest
     needs: [deploy-production]
-    if: success() && github.ref == 'refs/heads/main'
+    if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     
     steps:
-    - name: 📊 Monitor deployment health
+    - name: 馃搳 Monitor deployment health
       run: |
         echo "Starting post-deployment monitoring..."
         
@@ -616,10 +612,10 @@ jobs:
           # Simulate health checks
           sleep 60
           
-          echo "✅ Health check $i passed"
+          echo "鉁?Health check $i passed"
         done
 
-    - name: 📈 Generate deployment report
+    - name: 馃搱 Generate deployment report
       run: |
         echo "Generating deployment report..."
         
@@ -633,11 +629,11 @@ jobs:
         - **Deployed by**: ${{ github.actor }}
         
         ## Test Results
-        - ✅ Unit Tests: Passed
-        - ✅ Integration Tests: Passed
-        - ✅ Security Scan: Passed
-        - ✅ Performance Tests: Passed
-        - ✅ Smoke Tests: Passed
+        - 鉁?Unit Tests: Passed
+        - 鉁?Integration Tests: Passed
+        - 鉁?Security Scan: Passed
+        - 鉁?Performance Tests: Passed
+        - 鉁?Smoke Tests: Passed
         
         ## Deployment Method
         - Blue-Green Deployment
@@ -649,13 +645,13 @@ jobs:
         - No errors detected
         EOF
 
-    - name: 📤 Upload deployment report
+    - name: 馃摛 Upload deployment report
       uses: actions/upload-artifact@v4
       with:
         name: deployment-report-${{ needs.build-and-test.outputs.version }}
         path: deployment-report.md
 
-    - name: ✅ Deployment complete
+    - name: 鉁?Deployment complete
       run: |
-        echo "🎉 Deployment pipeline completed successfully!"
-        echo "✅ Version ${{ needs.build-and-test.outputs.version }} is now live in production"
+        echo "馃帀 Deployment pipeline completed successfully!"
+        echo "鉁?Version ${{ needs.build-and-test.outputs.version }} is now live in production"

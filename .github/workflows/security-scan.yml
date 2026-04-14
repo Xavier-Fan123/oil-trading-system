@@ -1,4 +1,4 @@
-name: Security Scanning Pipeline
+name: Manual Security Scanning Pipeline
 
 on:
   workflow_dispatch:
@@ -13,16 +13,6 @@ on:
           - vulnerability-only
           - dependency-only
           - container-only
-  push:
-    branches: [ main, master, develop ]
-    paths:
-      - '**/*.cs'
-      - '**/*.js'
-      - '**/*.ts'
-      - '**/*.json'
-      - '**/Dockerfile*'
-      - '**/package*.json'
-      - '**/*.csproj'
 
 env:
   REGISTRY: ghcr.io

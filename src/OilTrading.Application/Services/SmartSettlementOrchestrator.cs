@@ -51,14 +51,12 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
                 return result;
             }
 
-            // Apply max settlements limit if specified
             var toProcess = settlements;
             if (rule.MaxSettlementsPerExecution.HasValue && toProcess.Count > rule.MaxSettlementsPerExecution.Value)
             {
                 toProcess = toProcess.Take(rule.MaxSettlementsPerExecution.Value).ToList();
             }
 
-            // Execute based on strategy
             var executionResult = rule.OrchestrationStrategy switch
             {
                 SettlementOrchestrationStrategy.Sequential =>
@@ -91,7 +89,7 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
         }
     }
 
-    private async Task<ExecutionResult> ExecuteSequentialAsync(
+    private Task<ExecutionResult> ExecuteSequentialAsync(
         List<ContractSettlement> settlements,
         SettlementAutomationRule rule,
         string executedBy,
@@ -101,9 +99,10 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
 
         foreach (var settlement in settlements)
         {
+            ct.ThrowIfCancellationRequested();
+
             try
             {
-                // Execute actions for this settlement
                 result.SettlementsProcessed++;
                 result.SettlementIds.Add(settlement.Id);
                 _logger.LogDebug("Processed settlement {SettlementId} sequentially", settlement.Id);
@@ -115,7 +114,7 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
         }
 
         result.IsSuccessful = !result.Errors.Any();
-        return result;
+        return Task.FromResult(result);
     }
 
     private async Task<ExecutionResult> ExecuteParallelAsync(
@@ -124,22 +123,27 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
         string executedBy,
         CancellationToken ct)
     {
+        var outcomes = await Task.WhenAll(settlements.Select(settlement => ProcessSettlementAsync(settlement, ct)));
         var result = new ExecutionResult();
 
-        var tasks = settlements.Select(s => Task.Run(() =>
+        foreach (var outcome in outcomes)
         {
-            result.SettlementsProcessed++;
-            result.SettlementIds.Add(s.Id);
-            return s.Id;
-        }));
-
-        await Task.WhenAll(tasks);
+            if (outcome.Error is null)
+            {
+                result.SettlementsProcessed++;
+                result.SettlementIds.Add(outcome.SettlementId);
+            }
+            else
+            {
+                result.Errors.Add(outcome.Error);
+            }
+        }
 
         result.IsSuccessful = !result.Errors.Any();
         return result;
     }
 
-    private async Task<ExecutionResult> ExecuteGroupedAsync(
+    private Task<ExecutionResult> ExecuteGroupedAsync(
         List<ContractSettlement> settlements,
         SettlementAutomationRule rule,
         string executedBy,
@@ -152,6 +156,8 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
         {
             foreach (var settlement in group)
             {
+                ct.ThrowIfCancellationRequested();
+
                 try
                 {
                     result.SettlementsProcessed++;
@@ -165,7 +171,13 @@ public class SmartSettlementOrchestrator : ISmartSettlementOrchestrator
         }
 
         result.IsSuccessful = !result.Errors.Any();
-        return result;
+        return Task.FromResult(result);
+    }
+
+    private static Task<SettlementExecutionOutcome> ProcessSettlementAsync(ContractSettlement settlement, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult(new SettlementExecutionOutcome(settlement.Id, null));
     }
 
     private List<List<ContractSettlement>> GroupSettlements(
@@ -206,3 +218,5 @@ internal class ExecutionResult
     public List<Guid> SettlementIds { get; set; } = new();
     public List<string> Errors { get; set; } = new();
 }
+
+internal readonly record struct SettlementExecutionOutcome(Guid SettlementId, string? Error);
