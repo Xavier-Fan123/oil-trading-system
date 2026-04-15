@@ -185,8 +185,8 @@ public class DealReferenceIdService : IDealReferenceIdService
         // Query purchase contracts
         var purchaseContracts = await _purchaseContractRepository.GetAllAsync(cancellationToken);
         var maxPurchaseSeq = purchaseContracts
-            .Where(c => !string.IsNullOrEmpty(c.DealReferenceId) && c.DealReferenceId.StartsWith(yearPrefix))
-            .Select(c => ParseDealReferenceId(c.DealReferenceId))
+            .Where(c => !string.IsNullOrEmpty(c.DealReferenceId) && c.DealReferenceId!.StartsWith(yearPrefix))
+            .Select(c => ParseDealReferenceId(c.DealReferenceId!))
             .Where(parsed => parsed.HasValue)
             .Select(parsed => parsed!.Value.Sequence)
             .DefaultIfEmpty(0)
@@ -195,8 +195,8 @@ public class DealReferenceIdService : IDealReferenceIdService
         // Query sales contracts
         var salesContracts = await _salesContractRepository.GetAllAsync(cancellationToken);
         var maxSalesSeq = salesContracts
-            .Where(c => !string.IsNullOrEmpty(c.DealReferenceId) && c.DealReferenceId.StartsWith(yearPrefix))
-            .Select(c => ParseDealReferenceId(c.DealReferenceId.Replace("-S", "")))
+            .Where(c => !string.IsNullOrEmpty(c.DealReferenceId) && c.DealReferenceId!.StartsWith(yearPrefix))
+            .Select(c => ParseDealReferenceId(c.DealReferenceId!.Replace("-S", "")))
             .Where(parsed => parsed.HasValue)
             .Select(parsed => parsed!.Value.Sequence)
             .DefaultIfEmpty(0)

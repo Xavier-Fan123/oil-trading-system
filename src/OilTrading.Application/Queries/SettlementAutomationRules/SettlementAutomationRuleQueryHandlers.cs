@@ -274,7 +274,7 @@ public class GetRuleAnalyticsQueryHandler : IRequestHandler<GetRuleAnalyticsQuer
 
         var durations = executionHistory
             .Where(e => e.ExecutionDurationMs.HasValue)
-            .Select(e => e.ExecutionDurationMs.Value)
+            .Select(e => e.ExecutionDurationMs!.Value)
             .ToList();
 
         var analytics = new RuleAnalyticsDto

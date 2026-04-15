@@ -321,7 +321,7 @@ public class TradeChainService : ITradeChainService
     private Money CalculateContractValue(PurchaseContract contract)
     {
         // Simplified calculation - in reality would be more complex
-        var basePrice = contract.PriceFormula.BasePrice ?? new Money(75m, "USD");
+        var basePrice = contract.PriceFormula?.BasePrice ?? new Money(75m, "USD");
         var totalValue = basePrice.Amount * contract.ContractQuantity.Value;
         
         return new Money(totalValue, basePrice.Currency);
@@ -330,7 +330,7 @@ public class TradeChainService : ITradeChainService
     private Money CalculateContractValue(SalesContract contract)
     {
         // Simplified calculation - in reality would be more complex
-        var basePrice = contract.PriceFormula.BasePrice ?? new Money(75m, "USD");
+        var basePrice = contract.PriceFormula?.BasePrice ?? new Money(75m, "USD");
         var totalValue = basePrice.Amount * contract.ContractQuantity.Value;
         
         return new Money(totalValue, basePrice.Currency);

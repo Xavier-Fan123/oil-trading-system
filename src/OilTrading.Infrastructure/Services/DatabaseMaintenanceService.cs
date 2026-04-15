@@ -161,10 +161,12 @@ public class DatabaseMaintenanceService : BackgroundService
                     if (index.FragmentationPercent > _options.IndexRebuildThreshold)
                     {
                         // 重建索引
-                        await context.Database.ExecuteSqlRawAsync($@"
-                            ALTER INDEX [{index.IndexName}] 
-                            ON [{index.SchemaName}].[{index.TableName}] 
-                            REBUILD ONLINE = ON");
+                        await context.Database.ExecuteSqlRawAsync(
+                            DatabaseMaintenanceSqlHelpers.BuildQualifiedIndexCommand(
+                                index.SchemaName,
+                                index.TableName,
+                                index.IndexName,
+                                "REBUILD ONLINE = ON"));
 
                         result.RebuiltIndexes.Add(index.IndexName);
                         _logger.LogInformation("Rebuilt index {IndexName} with fragmentation {Fragmentation}%", 
@@ -173,10 +175,12 @@ public class DatabaseMaintenanceService : BackgroundService
                     else
                     {
                         // 重新组织索引
-                        await context.Database.ExecuteSqlRawAsync($@"
-                            ALTER INDEX [{index.IndexName}] 
-                            ON [{index.SchemaName}].[{index.TableName}] 
-                            REORGANIZE");
+                        await context.Database.ExecuteSqlRawAsync(
+                            DatabaseMaintenanceSqlHelpers.BuildQualifiedIndexCommand(
+                                index.SchemaName,
+                                index.TableName,
+                                index.IndexName,
+                                "REORGANIZE"));
 
                         result.ReorganizedIndexes.Add(index.IndexName);
                         _logger.LogInformation("Reorganized index {IndexName} with fragmentation {Fragmentation}%", 
@@ -270,23 +274,25 @@ public class DatabaseMaintenanceService : BackgroundService
         {
             // 清理旧的价格事件数据
             var pricingEventsCutoff = DateTime.UtcNow.AddDays(-_options.PricingEventsRetentionDays);
-            var deletedPricingEvents = await context.Database.ExecuteSqlRawAsync($@"
+            var deletedPricingEvents = await context.Database.ExecuteSqlRawAsync(@"
                 DELETE FROM PricingEvents 
-                WHERE EventDate < {pricingEventsCutoff}
+                WHERE EventDate < {0}
                   AND Id NOT IN (
                       SELECT DISTINCT pe.Id 
                       FROM PricingEvents pe 
                       INNER JOIN PurchaseContracts pc ON pe.ProductId = pc.ProductId 
                       WHERE pc.Status IN (1, 2)
-                  )");
+                  )",
+                pricingEventsCutoff);
 
             result.DeletedPricingEvents = deletedPricingEvents;
 
             // 清理旧的审计日志
             var auditLogsCutoff = DateTime.UtcNow.AddDays(-_options.AuditLogsRetentionDays);
-            var deletedAuditLogs = await context.Database.ExecuteSqlRawAsync($@"
+            var deletedAuditLogs = await context.Database.ExecuteSqlRawAsync(@"
                 DELETE FROM OperationAuditLogs 
-                WHERE Timestamp < {auditLogsCutoff}");
+                WHERE Timestamp < {0}",
+                auditLogsCutoff);
 
             result.DeletedAuditLogs = deletedAuditLogs;
 
@@ -611,4 +617,33 @@ public class StatisticsInfo
     public DateTime? LastUpdated { get; set; }
     public long RowCount { get; set; }
     public long ModificationCount { get; set; }
+}
+
+file static class DatabaseMaintenanceSqlHelpers
+{
+    public static string BuildQualifiedIndexCommand(string schemaName, string tableName, string indexName, string operation)
+    {
+        return $@"
+        ALTER INDEX {QuoteSqlIdentifier(indexName)}
+        ON {QuoteSqlIdentifier(schemaName)}.{QuoteSqlIdentifier(tableName)}
+        {operation}";
+    }
+
+    private static string QuoteSqlIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            throw new InvalidOperationException("SQL identifier cannot be null or empty.");
+        }
+
+        foreach (var ch in identifier)
+        {
+            if (!(char.IsLetterOrDigit(ch) || ch == '_'))
+            {
+                throw new InvalidOperationException($"Unsafe SQL identifier: {identifier}");
+            }
+        }
+
+        return $"[{identifier}]";
+    }
 }

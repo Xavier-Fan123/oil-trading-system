@@ -85,7 +85,7 @@ public class InventoryReservationOperation : ITransactionOperation
                 IsSuccess = true,
                 Data = new Dictionary<string, object> 
                 { 
-                    ["ReservationId"] = _createdReservationId,
+                    ["ReservationId"] = _createdReservationId ?? Guid.Empty,
                     ["ReservedQuantity"] = reservationResult.ReservedQuantity?.Value ?? 0
                 }
             };
@@ -164,4 +164,3 @@ public class InventoryReservationOperation : ITransactionOperation
         return null;
     }
 }
-

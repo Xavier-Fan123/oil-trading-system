@@ -949,7 +949,7 @@ public class RealTimeInventoryService : IRealTimeInventoryService
                 // ToLocationId = request.LocationId,
                 MovementType = OilTrading.Application.DTOs.InventoryMovementType.Adjustment,
                 Quantity = new Quantity(-request.Quantity.Value, request.Quantity.Unit), // Negative for reservation
-                MovementReference = request.ReservationReference,
+                MovementReference = request.ReservationReference ?? string.Empty,
                 // Notes property removed from request"
             };
 

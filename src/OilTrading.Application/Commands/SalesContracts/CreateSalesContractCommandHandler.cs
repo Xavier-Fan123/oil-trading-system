@@ -129,12 +129,12 @@ public class CreateSalesContractCommandHandler : IRequestHandler<CreateSalesCont
             
             // Calculate profit margin if linked to purchase contract
             Money? profitMargin = null;
-            if (linkedPurchaseContract?.ContractValue != null && contractValue != null)
+            if (linkedPurchaseContract?.ContractValue != null)
             {
                 profitMargin = contractValue.Subtract(linkedPurchaseContract.ContractValue);
             }
 
-            salesContract.UpdatePricing(priceFormula, contractValue, profitMargin);
+            salesContract.UpdatePricing(priceFormula, contractValue!, profitMargin);
         }
 
         // Initialize RowVersion for EF Core InMemory database compatibility

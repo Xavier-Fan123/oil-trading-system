@@ -51,7 +51,7 @@ public class ContractExecutionReportService : IContractExecutionReportService
 
         // Get pricing information
         var finalPrice = contract.ContractValue?.Amount;
-        var benchmarkPrice = contract.PriceFormula?.BasePrice;
+        var benchmarkPrice = contract.PriceFormula?.BasePrice?.Amount;
 
         // Create report
         var report = new ContractExecutionReport(
@@ -135,7 +135,7 @@ public class ContractExecutionReportService : IContractExecutionReportService
 
         // Get pricing information
         var finalPrice = contract.ContractValue?.Amount;
-        var benchmarkPrice = contract.PriceFormula?.BasePrice;
+        var benchmarkPrice = contract.PriceFormula?.BasePrice?.Amount;
 
         // Create report
         var report = new ContractExecutionReport(

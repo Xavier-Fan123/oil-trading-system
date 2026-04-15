@@ -160,7 +160,7 @@ public class DataReconciliationService
             // Check if required prices exist for active contracts
             foreach (var contract in activeContracts)
             {
-                var indexName = contract.PriceFormula.IndexName;
+                var indexName = contract.PriceFormula!.IndexName!;
                 var marketPrice = latestPrices.FirstOrDefault(p => 
                     p.ProductCode.Equals(indexName, StringComparison.OrdinalIgnoreCase));
                 

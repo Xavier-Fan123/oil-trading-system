@@ -129,7 +129,7 @@ public class ContractInventoryService : IContractInventoryService
                 Metadata = new Dictionary<string, object>
                 {
                     ["ReservationDate"] = reservation.ReservationDate,
-                    ["ExpiryDate"] = reservation.ExpiryDate,
+                    ["ExpiryDate"] = reservation.ExpiryDate?.ToString("O") ?? string.Empty,
                     ["ProductCode"] = productCode,
                     ["LocationCode"] = locationCode
                 }

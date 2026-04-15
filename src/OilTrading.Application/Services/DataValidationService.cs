@@ -849,7 +849,7 @@ public class DataValidationService : IDataValidationService
         return ValidateFieldRange(value, rule.Parameters);
     }
 
-    private bool ValidateFieldRange(object value, Dictionary<string, object> parameters)
+    private bool ValidateFieldRange(object? value, Dictionary<string, object> parameters)
     {
         if (value == null || !parameters.ContainsKey("min") || !parameters.ContainsKey("max"))
             return true;
@@ -873,7 +873,7 @@ public class DataValidationService : IDataValidationService
         return ValidateFieldLength(value, rule.Parameters);
     }
 
-    private bool ValidateFieldLength(object value, Dictionary<string, object> parameters)
+    private bool ValidateFieldLength(object? value, Dictionary<string, object> parameters)
     {
         if (value == null)
             return true;

@@ -350,13 +350,36 @@ public class DatabaseInitializer
 
             foreach (var table in requiredTables)
             {
-                var exists = await _context.Database.ExecuteSqlRawAsync(
-                    $"SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{table}'") > 0;
-                
-                if (!exists)
+                var connection = _context.Database.GetDbConnection();
+                var shouldClose = connection.State != System.Data.ConnectionState.Open;
+                if (shouldClose)
                 {
-                    _logger.LogError("Required table {TableName} does not exist", table);
-                    return false;
+                    await connection.OpenAsync();
+                }
+
+                try
+                {
+                    await using var command = connection.CreateCommand();
+                    command.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @tableName";
+
+                    var tableParameter = command.CreateParameter();
+                    tableParameter.ParameterName = "@tableName";
+                    tableParameter.Value = table;
+                    command.Parameters.Add(tableParameter);
+
+                    var exists = Convert.ToInt32(await command.ExecuteScalarAsync()) > 0;
+                    if (!exists)
+                    {
+                        _logger.LogError("Required table {TableName} does not exist", table);
+                        return false;
+                    }
+                }
+                finally
+                {
+                    if (shouldClose)
+                    {
+                        await connection.CloseAsync();
+                    }
                 }
             }
 
