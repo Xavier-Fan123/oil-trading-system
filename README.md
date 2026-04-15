@@ -46,11 +46,30 @@ dotnet run
 
 # Frontend
 cd ..\..\frontend
-npm install
+npm ci
 npm run dev
 ```
 
 Swagger is available at `http://localhost:5000/swagger`, and the health endpoint is `http://localhost:5000/health`.
+
+## Build And Test
+
+Use these commands when validating local changes before pushing:
+
+```powershell
+dotnet restore OilTrading.sln
+dotnet build OilTrading.sln --configuration Release
+dotnet test tests/OilTrading.UnitTests/OilTrading.UnitTests.csproj --configuration Release --no-build
+dotnet test tests/OilTrading.IntegrationTests/OilTrading.IntegrationTests.csproj --configuration Release --no-build
+
+cd frontend
+npm ci
+npm run lint
+npm run type-check
+npm run build
+```
+
+The integration test suite expects PostgreSQL and Redis to be available locally. The easiest way to satisfy that requirement is to use `docker compose up -d` from the repository root.
 
 ### Docker Compose
 
@@ -73,6 +92,15 @@ monitoring/   Prometheus, Grafana, ELK, and telemetry configuration
 scripts/      Operational, data, and deployment scripts
 ```
 
+## CI/CD Workflows
+
+- `Core CI` runs automatically on `push` and `pull_request` for `main`, `master`, and `develop`.
+- `Manual Regression Test Suite` is `workflow_dispatch` only and is intended for deeper backend or frontend regression runs.
+- `Manual Security Scanning Pipeline` is `workflow_dispatch` only and is intended for dependency, container, and vulnerability scans.
+- `Manual Enhanced Oil Trading System CI/CD Pipeline` and `Manual Legacy Oil Trading System CI/CD Pipeline` are manual deployment-oriented workflows that may require environment-specific secrets or target infrastructure.
+
+The repository is intentionally configured with one stable automatic CI path and several manual workflows. This keeps routine branch activity quiet while preserving the heavier security and deployment pipelines for explicit runs.
+
 ## Engineering Practices
 
 - Shared .NET build settings live in [`Directory.Build.props`](Directory.Build.props)
@@ -92,6 +120,15 @@ scripts/      Operational, data, and deployment scripts
 ## Security and Configuration
 
 Keep local environment files and deployment secrets out of version control. Use the example env files as templates, and inject real credentials through local configuration, CI secrets, or your deployment platform.
+
+## Local Generated Files
+
+The following directories are typically local or generated outputs and should be reviewed carefully before committing:
+
+- `ci-test-results/`
+- `TestResults/`
+- `logs/`
+- `frontend/dist/`
 
 ## License
 
